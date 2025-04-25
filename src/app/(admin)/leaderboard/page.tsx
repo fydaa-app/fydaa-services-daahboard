@@ -5,12 +5,11 @@ import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import Leaderboard from "@/components/leaderboard/leaderboard";
 import Cookies from "js-cookie";
 
-async function fetchLeaderboard(criteria: string) {
+async function fetchLeaderboard() {
   try {
     // Await cookies to access its methods
     const cookieStore = await cookies();
-    const authToken = cookieStore.get("authToken")?.value || "";
-    console.log("Auth Token:", authToken);
+    const authToken = cookieStore.get("authToken")?.value || "";   
     const response = await fetch(
       `https://stocktransaction.fydaa.com/goal/getGoal`,
       {
@@ -47,7 +46,7 @@ export default async function LeaderboardPage({
   const criteria: "revenue" | "users" | "investment" =
     (resolvedSearchParams.criteria as "revenue" | "users" | "investment") || "revenue";
 
-  const leaderboardData = await fetchLeaderboard(criteria);
+  const leaderboardData = await fetchLeaderboard();
 
   return (
     <div>

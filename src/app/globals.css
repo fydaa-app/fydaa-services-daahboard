@@ -585,7 +585,10 @@ layer(base);
 .taskCheckbox:checked ~ .box {
   @apply border-brand-500 bg-brand-500 dark:border-brand-500;
 }
-
+.bg-black-opacity {
+  background: rgb(0 0 0 / 65%);
+  margin: 0;
+}
 .search-box{
   max-width: 30%;
   width: 100%;

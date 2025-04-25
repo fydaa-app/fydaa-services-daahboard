@@ -31,17 +31,17 @@ const navItems: NavItem[] = [
   {
     icon: <LeaderboardIcon />,
     name: "Goals",
-    path: "/leaderboard",
+    path: "/goal",
   },
   {
     icon: <ShoppingCartIcon />,
     name: "Packages",
-    path: "/transaction",
+    path: "/packages",
   },
   {
     icon: <UserCircleIcon />,
     name: "Stocks",
-    path: "/userlist",
+    path: "/stock",
   },
   {
     icon: <PieChartIcon />,
