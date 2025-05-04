@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import Input from '@/components/form/input/InputField';
 import Select from '@/components/form/Select';
 import Label from "@/components/form/Label";
+import Image from "next/image";
 
 interface CreateGoalProps {
   isOpen: boolean;
@@ -77,6 +78,7 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
     return Object.keys(newErrors).length === 0;
   };
 
+
   const handleCreateGoal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -96,11 +98,24 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
         }
       });
 
-      // Example API call with FormData
-      // const response = await fetch('/api/goals', {
-      //   method: 'POST',
-      //   body: formData
-      // });
+      const url = `${process.env.NEXT_PUBLIC_STOCK_API_URL}${process.env.NEXT_PUBLIC_ADD_GOAL_ENDPOINT}`;
+      
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${document.cookie.split("; ").find(row => row.startsWith("authToken="))?.split("=")[1] || ""}`,
+        },
+        body: JSON.stringify(formData)
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to add stock');
+      }
+
+      toast.success('Stock added successfully');
+      router.refresh();
+      closeModal();
       
       toast.success('Goal created successfully');
       router.refresh();
@@ -354,7 +369,7 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
             />
             {goalData.imageUrl && (
               <div className="mt-2">
-                <img 
+                <Image 
                   src={getImageUrl(goalData.imageUrl)} 
                   alt="Preview" 
                   className="h-32 object-cover rounded"
@@ -444,7 +459,7 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
                   <div className="flex justify-between items-start">
                     <div className="flex gap-3">
                       {item.image && (
-                        <img 
+                        <Image 
                           src={getImageUrl(item.image)} 
                           alt={item.title} 
                           className="h-16 w-16 object-cover rounded" 

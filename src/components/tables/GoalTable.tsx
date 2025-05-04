@@ -6,6 +6,7 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
+import Image from "next/image";
 import Link from "next/link";
 import Badge from "../ui/badge/Badge";
 import { EyeIcon } from "@/icons";

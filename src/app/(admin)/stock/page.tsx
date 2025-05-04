@@ -175,7 +175,7 @@ export default function StockTablesPage() { // Renamed from UserTablesPage
                   focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 px-4 py-2 
                   rounded-lg text-sm font-medium disabled:opacity-70 disabled:cursor-not-allowed ml-1"
                   >
-                  Create New Stock
+                  Add New Stock
                   </button>
               </div>
               <CreateStock

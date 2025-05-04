@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import PackageListTable from "@/components/tables/PackageListTable"; 
+import CreatePackage from "@/components/form/admin-form/CreatePackage"
 import Cookies from 'js-cookie';
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -62,6 +63,7 @@ interface Package {
     }
   }
 export default function PackageTablesPage() { 
+   const [isModalOpen, setIsModalOpen] = useState(false);
     const [packages, setPackages] = useState<Package[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
@@ -129,7 +131,7 @@ export default function PackageTablesPage() {
             <PageBreadcrumb pageTitle="Packages" /> {/* Updated title */}
             <div className="space-y-6">
                 <ComponentCard title="Package List"> {/* Updated title */}
-                <div>
+                <div className="flex justify-self-end">
                     <form onSubmit={handleSearch}>
                         <div className="relative search-box">
                             <span className="absolute -translate-y-1/2 left-4 top-1/2 pointer-events-none">
@@ -167,7 +169,19 @@ export default function PackageTablesPage() {
                             )}
                         </div>
                     </form>
+                    <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="w-auto inline-flex bg-brand-500 text-white hover:bg-brand-600 
+                    focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 px-4 py-2 
+                    rounded-lg text-sm font-medium disabled:opacity-70 disabled:cursor-not-allowed ml-1"
+                    >
+                    Add New Package
+                    </button>
                 </div>
+                <CreatePackage
+                      isOpen={isModalOpen}
+                      onClose={() => setIsModalOpen(false)}
+                  />
 
                 <PackageListTable packages={packages} error={error} />
                            
