@@ -6,10 +6,9 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
-import Image from "next/image";
-import Link from "next/link";
+// import Link from "next/link";
 import Badge from "../ui/badge/Badge";
-import { EyeIcon } from "@/icons";
+// import { EyeIcon } from "@/icons";
 
 export interface GoalTableProps {
   goals: {
@@ -79,9 +78,9 @@ export default function GoalListTable({ goals, error }: GoalTableProps) {
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Created At
                   </TableCell>
-                  <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
+                  {/* <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Action
-                  </TableCell>
+                  </TableCell> */}
                 </TableRow>
               </TableHeader>
               {/* Table Body */}
@@ -139,7 +138,7 @@ export default function GoalListTable({ goals, error }: GoalTableProps) {
                     <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                       {new Date(goal.createdAt).toLocaleDateString()}
                     </TableCell>
-                    <TableCell>
+                    {/* <TableCell>
                       <Link 
                         href={`/goals/${goal.id}`} 
                         className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-theme-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200"
@@ -148,7 +147,7 @@ export default function GoalListTable({ goals, error }: GoalTableProps) {
                       >
                         <EyeIcon />
                       </Link>                      
-                    </TableCell>
+                    </TableCell> */}
                   </TableRow>
                 ))}
               </TableBody>

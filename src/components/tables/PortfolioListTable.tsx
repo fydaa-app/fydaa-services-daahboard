@@ -71,9 +71,9 @@ export default function PortfolioListTable({ portfolios, error, getPlanName, get
                     <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                         Order Amount
                     </TableCell>                  
-                    <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
+                    {/* <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                       Action
-                    </TableCell>
+                    </TableCell> */}
                   </TableRow>
                 </TableHeader>
                 {/* Table Body */}
@@ -101,10 +101,10 @@ export default function PortfolioListTable({ portfolios, error, getPlanName, get
                       <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">                        
                         {formatCurrency(portfolio.orderAmount.toString())}
                       </TableCell>                   
-                      <TableCell className="px-4 py-3">
+                      {/* <TableCell className="px-4 py-3"> */}
                         {/* Add action buttons here */}
-                        <button className="text-blue-500 hover:underline">Edit</button>
-                      </TableCell>
+                        {/* <button className="text-blue-500 hover:underline">Edit</button> */}
+                      {/* </TableCell> */}
                     </TableRow>
                   ))}
                 </TableBody>

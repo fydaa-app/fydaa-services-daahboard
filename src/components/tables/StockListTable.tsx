@@ -7,9 +7,9 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
-import Link from "next/link";
+// import Link from "next/link";
 import Badge from "../ui/badge/Badge";
-import { EyeIcon } from "@/icons";
+// import { EyeIcon } from "@/icons";
 
 export interface StockTableProps {
   stocks: {
@@ -83,9 +83,9 @@ export default function StockListTable({ stocks, error }: StockTableProps) {
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Updated At
                   </TableCell>
-                  <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
+                  {/* <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Action
-                  </TableCell>
+                  </TableCell> */}
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
@@ -128,7 +128,7 @@ export default function StockListTable({ stocks, error }: StockTableProps) {
                       <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                         {new Date(stock.updatedAt).toLocaleString()}
                       </TableCell>
-                      <TableCell>
+                      {/* <TableCell>
                         <Link 
                           href={`/stocks/${stock.id}`} 
                           className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-theme-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200"
@@ -137,7 +137,7 @@ export default function StockListTable({ stocks, error }: StockTableProps) {
                         >
                           <EyeIcon />
                         </Link>                      
-                      </TableCell>
+                      </TableCell> */}
                     </TableRow>
                   );
                 })}
