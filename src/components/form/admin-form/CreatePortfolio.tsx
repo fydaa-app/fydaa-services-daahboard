@@ -8,7 +8,7 @@ import Select from "@/components/form/Select";
 import { stockManagementServiceApi } from '@/services/stockManagementServiceApi'; 
 import { goalManagementServiceApi } from '@/services/goalManagementServiceApi';
 import { packagesManagementServiceApi } from '@/services/packagesManagementServiceApi';
-
+import { portfolioManagementServiceApi } from '@/services/portfolioManagementServiceApi'; 
 
 const capTypeMapping: Record<string, string> = {
   "Largecap": "Large Cap",
@@ -16,19 +16,24 @@ const capTypeMapping: Record<string, string> = {
   "Smallcap": "Small Cap",
   "ETF": "ETF",
 };
-
-const sectorMapping: Record<string, string> = {
-  "1": "Financial Services",
-  "2": "Basic Materials",
-  "3": "Consumer Cyclicals",
-  "4": "Technology",
-  "5": "Energy",
-  "6": "Industrials",
-  "7": "Consumer Defensive",
-  "8": "Healthcare",
-  "9": "Utilities",
-  "10": "Others"
-};
+interface FieldW {
+  weight: string; 
+}
+// type SectorMappingType = {
+//   [key: string]: string;
+// }; 
+// const sectorMapping: SectorMappingType = {
+//   1: "Financial Services",
+//   2: "Basic Materials",
+//   3: "Consumer Cyclicals",
+//   4: "Technology",
+//   5: "Energy",
+//   6: "Industrials",
+//   7: "Consumer Defensive",
+//   8: "Healthcare",
+//   9: "Utilities",
+//   10: "Others"
+// }; 
 
 const investmentTypeOptions = [
   { value: "", label: "Select Investment Type" },
@@ -148,18 +153,18 @@ const DEFAULT_PORTFOLIO_DATA: PortfolioData = {
 
 export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddStockProps) {
   const [portfolioDetails, setPortfolioDetails] = useState<PortfolioData>(DEFAULT_PORTFOLIO_DATA);
-  const [fields, setFields] = useState<Field[]>([
-    { id: 1, selectValue: '', weight: '', currentPrice: '', MinAmountquantity: 0, MinAmountorderValue: 0 }
-  ]);
+  // const [fields, setFields] = useState<Field[]>([
+  //   { id: 1, selectValue: '', weight: '', currentPrice: '', MinAmountquantity: 0, MinAmountorderValue: 0 }
+  // ]);
   const [goalListData, setGoalListData] = useState<Goal[]>([]);
   const [packageListData, setPackageListData] = useState<Package[]>([]);
   const [fieldstock, setFieldstock] = useState<FieldsState>({});
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [totalWeights, setTotalWeights] = useState<WeightsState>({});
   const [initialOptions, setInitialOptions] = useState<StockOption[]>([]);
-  const [sectorWeights, setSectorWeights] = useState<{ [sector: string]: number }>({});
+  // const [sectorWeights, setSectorWeights] = useState<{ [sector: string]: number }>({});
   const [captypeWeights, setCaptypeWeights] = useState<{ [capType: string]: number }>({});
-  const [stocktypeWeights, setStocktypeWeights] = useState<{ [stockType: string]: number }>({});
+  // const [stocktypeWeights, setStocktypeWeights] = useState<{ [stockType: string]: number }>({});
   const [summary, setSummary] = useState({ totalStocks: 0, top3Weight: 0, top5Weight: 0, top10Weight: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -188,7 +193,7 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
         
         console.log('options===', options);
         setInitialOptions(options);
-      setFields([{ id: 1, selectValue: '', weight: '', currentPrice:'', options, MinAmountquantity: 0, MinAmountorderValue: 0 }]);
+      // setFields([{ id: 1, selectValue: '', weight: '', currentPrice:'', options, MinAmountquantity: 0, MinAmountorderValue: 0 }]);
       } catch (error) {
         toast.error('Failed to fetch data');
         console.error('Error fetching data:', error);
@@ -211,7 +216,13 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
       }
 
       // Add your form submission logic here
-      // const response = await portfolioService.createPortfolio(portfolioDetails);
+      const response = await portfolioManagementServiceApi.createPortfolio(portfolioDetails);
+      
+      if (response.status !== 201) {
+        toast.error('Failed to create portfolio');
+        setIsLoading(false);
+        return;
+      }
       
       toast.success('Portfolio created successfully');
       resetForm();
@@ -275,8 +286,8 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
     console.log('fieldsWeight', fieldsWeight);
     return fieldsWeight === 100;
   };
-
-  const calculateCategoryWeight = (fields: any[]) => {
+  
+  const calculateCategoryWeight = (fields: FieldW[]) => {
     return fields.reduce((total, field) => total + (parseFloat(field.weight) || 0), 0);
   };
 
@@ -292,8 +303,8 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
         const dataInvst = fields;
         console.log('dataInvst', dataInvst);
         const newWeights = Weights;
-        let idsArr: number[] = [];
-        let weightsArr: number[] = [];
+        const idsArr: number[] = [];
+        const weightsArr: number[] = [];
 
         for (const key in newWeights) {
             if (newWeights.hasOwnProperty(key)) {
@@ -351,8 +362,8 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
         }
         if (highestLTPItem) {
             // Step 2: Calculate the minimum amount and quantity
-            let totalOrderValue = 0;
-            let totalMinAmountorderValue = 0;
+            // const totalOrderValue = 0;
+            // let totalMinAmountorderValue = 0;
              
             for (const item of enrichedOptions) {
                 let amount = 0;
@@ -370,7 +381,7 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
                     item.quantity = 1;
                 }
                 item.orderValue = item.quantity * price;
-                totalOrderValue += item.orderValue;  
+                // totalOrderValue += item.orderValue;  
 
                 let minamount = 0;
                 const minInvestment = parseFloat(portfolioDetails.minimumInvestment);
@@ -387,7 +398,7 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
                         item.MinAmountquantity = 1;
                     }
                     item.MinAmountorderValue = item.MinAmountquantity * price;
-                    totalMinAmountorderValue += item.MinAmountorderValue;
+                    // totalMinAmountorderValue += item.MinAmountorderValue;
                 }
             }
         }    
@@ -475,54 +486,54 @@ const updateTotalWeight = (category: string, weight: number) => {
 
   const resetForm = () => {
     setPortfolioDetails(DEFAULT_PORTFOLIO_DATA);
-    setFields([{ id: 1, selectValue: '', weight: '', currentPrice: '', MinAmountquantity: 0, MinAmountorderValue: 0 }]);
+    // setFields([{ id: 1, selectValue: '', weight: '', currentPrice: '', MinAmountquantity: 0, MinAmountorderValue: 0 }]);
     setSelectedCategories([]);
     setFieldstock({});
     setTotalWeights({});
   };
 
-  const handleSelectChange1 = (
-    category: string,
-    id: number,
-    currentPrice: string,
-    selectedOption: { value: string; label: string; } | null
-  ) => {
-    if (!selectedOption) return; // Handle null case if needed
+  // const handleSelectChange1 = (
+  //   category: string,
+  //   id: number,
+  //   currentPrice: string,
+  //   selectedOption: { value: string; label: string; } | null
+  // ) => {
+  //   if (!selectedOption) return; // Handle null case if needed
   
-    const selectedValue = selectedOption.value;
-    console.log('currentPrice', currentPrice);
+  //   const selectedValue = selectedOption.value;
+  //   console.log('currentPrice', currentPrice);
     
-    setFieldstock((prevFields) => {
-      // Check if the value is already selected in another field within the same category
-      const isValueSelected = prevFields[category]?.some(
-        (field) => field.id !== id && field.selectValue === selectedValue
-      );
+  //   setFieldstock((prevFields) => {
+  //     // Check if the value is already selected in another field within the same category
+  //     const isValueSelected = prevFields[category]?.some(
+  //       (field) => field.id !== id && field.selectValue === selectedValue
+  //     );
   
-      if (!isValueSelected) {
-        const newFields = {
-          ...prevFields,
-          [category]: (prevFields[category] || []).map((field) =>
-            field.id === id 
-              ? { 
-                  ...field, 
-                  selectValue: selectedValue,
-                  currentPrice: currentPrice // Use the price from the selected option
-                } 
-              : field
-          ),
-        };        
-        console.log('newFields--', newFields);
-        calculateCapTypeWeights(newFields);
-        calculateStockTypeWeights(newFields);
-        calculateSummary(newFields);
-        calculateOrderValue(newFields, totalWeights, portfolioDetails);
-        return newFields;
-      } else {
-        toast.error('This value is already selected in another field.');
-        return prevFields; // No changes if value is already selected
-      }
-    });
-  };
+  //     if (!isValueSelected) {
+  //       const newFields = {
+  //         ...prevFields,
+  //         [category]: (prevFields[category] || []).map((field) =>
+  //           field.id === id 
+  //             ? { 
+  //                 ...field, 
+  //                 selectValue: selectedValue,
+  //                 currentPrice: currentPrice // Use the price from the selected option
+  //               } 
+  //             : field
+  //         ),
+  //       };        
+  //       console.log('newFields--', newFields);
+  //       calculateCapTypeWeights(newFields);
+  //       calculateStockTypeWeights(newFields);
+  //       calculateSummary(newFields);
+  //       calculateOrderValue(newFields, totalWeights, portfolioDetails);
+  //       return newFields;
+  //     } else {
+  //       toast.error('This value is already selected in another field.');
+  //       return prevFields; // No changes if value is already selected
+  //     }
+  //   });
+  // };
 
   const addField1 = (category: string) => {
     console.log('category', category);
@@ -589,43 +600,43 @@ const updateTotalWeight = (category: string, weight: number) => {
     return (topNWeight / totalWeight) * 100;
   };
 
-  const calculateSectorWeights = (fields: FieldsState) => {
-    const sectorWeightMap: { [sector: string]: number } = {};
-    let totalWeight = 0;
-    console.log('fields', fields);
+  // const calculateSectorWeights = (fields: FieldsState) => {
+  //   const sectorWeightMap: { [sector: string]: number } = {};
+  //   let totalWeight = 0;
+  //   console.log('fields', fields);
 
-    Object.values(fields).forEach((categoryFields) => {
-      categoryFields.forEach((field) => {
-        const selectedOption = initialOptions.find(
-          (option) => option.value.toString() === field.selectValue.toString()
-        );
-        if (selectedOption) {
-          const sector = selectedOption.sector;
-            if(selectedOption.stockType === 'IndianStock')
-            {
-                const weight = parseFloat(field.weight) || 0;
-                if (!sectorWeightMap[sector]) {
-                    sectorWeightMap[sector] = 0;
-                }
-                sectorWeightMap[sector] += weight;
-                totalWeight += weight;
-            }
-        }
-      });
-    });
+  //   Object.values(fields).forEach((categoryFields) => {
+  //     categoryFields.forEach((field) => {
+  //       const selectedOption = initialOptions.find(
+  //         (option) => option.value.toString() === field.selectValue.toString()
+  //       );
+  //       if (selectedOption) {
+  //         const sector = selectedOption.sector;
+  //           if(selectedOption.stockType === 'IndianStock')
+  //           {
+  //               const weight = parseFloat(field.weight) || 0;
+  //               if (!sectorWeightMap[sector]) {
+  //                   sectorWeightMap[sector] = 0;
+  //               }
+  //               sectorWeightMap[sector] += weight;
+  //               totalWeight += weight;
+  //           }
+  //       }
+  //     });
+  //   });
 
-    const sectorWeights: { [sector: string]: number } = {};
-    console.log('sectorWeightMap--', sectorWeightMap);
+  //   const sectorWeights: { [sector: string]: number } = {};
+  //   console.log('sectorWeightMap--', sectorWeightMap);
     
-    // Only calculate percentages if there's a positive total weight
-    if (totalWeight > 0) {
-      for (const sector in sectorWeightMap) {
-        sectorWeights[sector] = (sectorWeightMap[sector] / totalWeight) * 100;
-      }
-    }
+  //   // Only calculate percentages if there's a positive total weight
+  //   if (totalWeight > 0) {
+  //     for (const sector in sectorWeightMap) {
+  //       sectorWeights[sector] = (sectorWeightMap[sector] / totalWeight) * 100;
+  //     }
+  //   }
     
-    setSectorWeights(sectorWeights);
-  };
+  //   setSectorWeights(sectorWeights);
+  // };
 
   const calculateStockTypeWeights = (fields: FieldsState) => {
     // Flatten the fields from all categories into a single array
@@ -660,7 +671,7 @@ const updateTotalWeight = (category: string, weight: number) => {
       }
     }
     
-    setStocktypeWeights(stockTypeWeights);
+    // setStocktypeWeights(stockTypeWeights);
   };
 
   const calculateCapTypeWeights = (fields: FieldsState) => {
@@ -903,48 +914,48 @@ const updateTotalWeight = (category: string, weight: number) => {
                 type="number"
               />
               {fieldstock[category]?.map((field) => (
-  <div key={field.id} className="flex gap-2 items-center">
-    {renderStockDropdown(category, field)}
-    <Input
-      value={field.currentPrice}
-      readOnly
-      placeholder="Current Price"
-      required
-      type="number"
-    />
-    
-    <Input
-      value={field.weight}
-      onChange={(e) => handleInputChange1(category, field.id, e)}
-      placeholder="Weight"
-      required
-      type="number"
-    />
-    
-    <Input
-      value={field.MinAmountquantity}
-      readOnly
-      placeholder="Quantity"
-      required
-      type="number"
-    /> 
-    
-    <Input
-      value={field.MinAmountorderValue}
-      readOnly
-      placeholder="OrderValue"
-      required
-      type="number"
-    />
-    <button 
-      type="button" 
-      onClick={() => removeField1(category, field.id)}
-      className="px-2 py-1 text-white bg-red-500 rounded hover:bg-red-600"
-    >
-      Remove
-    </button>
-  </div>
-))}
+                <div key={field.id} className="flex gap-2 items-center">
+                  {renderStockDropdown(category, field)}
+                  <Input
+                    value={field.currentPrice}
+                    readOnly
+                    placeholder="Current Price"
+                    required
+                    type="number"
+                  />
+                  
+                  <Input
+                    value={field.weight}
+                    onChange={(e) => handleInputChange1(category, field.id, e)}
+                    placeholder="Weight"
+                    required
+                    type="number"
+                  />
+                  
+                  <Input
+                    value={field.MinAmountquantity}
+                    readOnly
+                    placeholder="Quantity"
+                    required
+                    type="number"
+                  /> 
+                  
+                  <Input
+                    value={field.MinAmountorderValue}
+                    readOnly
+                    placeholder="OrderValue"
+                    required
+                    type="number"
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => removeField1(category, field.id)}
+                    className="px-2 py-1 text-white bg-red-500 rounded hover:bg-red-600"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
               <button 
                 type="button"
                 onClick={() => addField1(category)}
@@ -954,6 +965,74 @@ const updateTotalWeight = (category: string, weight: number) => {
               </button>
             </div>
           ))}
+          {summary.totalStocks > 0 && (
+              <div className="portfolio-summary-container">
+                {/* Asset Wise Allocation */}
+                <div className="summary-section">
+                  <h2 className="summary-title">Asset Wise Allocation</h2>
+                  <div className="breakup-grid">
+                    {Object.entries(totalWeights).map(([category, weight]) => (
+                      <div className="breakup-item" key={category}>
+                        <div className="breakup-label">{category}</div>
+                        <div className="breakup-value">{weight.toFixed(2)}%</div>
+                        <div className="breakup-bar" style={{ width: `${weight}%` }}></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sectoral Breakups */}
+                {/* <div className="summary-section">
+                  <h2 className="summary-title">Sectoral Breakups</h2>
+                  <div className="breakup-grid">
+                    {Object.entries(sectorWeights).map(([sector, weight]) => (
+                      <div className="breakup-item" key={sector}>
+                        <div className="breakup-label">{sectorMapping[sector]}</div>
+                        <div className="breakup-value">{weight.toFixed(2)}%</div>
+                        <div className="breakup-bar" style={{ width: `${weight}%` }}></div>
+                      </div>
+                    ))}
+                  </div>
+                </div> */}
+
+                {/* Market Cap Wise Allocation */}
+                <div className="summary-section">
+                  <h2 className="summary-title">Market Cap Wise Allocation</h2>
+                  <div className="breakup-grid">
+                    {Object.entries(captypeWeights).map(([capType, weight]) => (
+                      <div className="breakup-item" key={capType}>
+                        <div className="breakup-label">{capTypeMapping[capType]}</div>
+                        <div className="breakup-value">{weight.toFixed(2)}%</div>
+                        <div className="breakup-bar" style={{ width: `${weight}%` }}></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Summary Stats */}
+                <div className="summary-section">
+                  <h2 className="summary-title">Portfolio Summary</h2>
+                  <div className="stats-grid">
+                    <div className="stat-item">
+                      <div className="stat-label">Total Stocks</div>
+                      <div className="stat-value">{summary.totalStocks}</div>
+                    </div>
+                    <div className="stat-item">
+                      <div className="stat-label">Top 3 Weight</div>
+                      <div className="stat-value">{summary.top3Weight.toFixed(2)}%</div>
+                    </div>
+                    <div className="stat-item">
+                      <div className="stat-label">Top 5 Weight</div>
+                      <div className="stat-value">{summary.top5Weight.toFixed(2)}%</div>
+                    </div>
+                    <div className="stat-item">
+                      <div className="stat-label">Top 10 Weight</div>
+                      <div className="stat-value">{summary.top10Weight.toFixed(2)}%</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           <div className="flex justify-end gap-3 pt-4">
             <button
               type="button"
@@ -973,25 +1052,7 @@ const updateTotalWeight = (category: string, weight: number) => {
               {isLoading ? 'Saving...' : 'Save Portfolio'}
             </button>
 
-            {selectedCategories.length > 0 && (
-  <div className="mt-4 p-4 bg-gray-100 rounded-lg">
-    <h3 className="text-lg font-semibold mb-2">Summary</h3>
-    <div className="grid grid-cols-2 gap-4">
-      <div>
-        <span className="font-medium">Total Number of Stocks:</span> {summary.totalStocks}
-      </div>
-      <div>
-        <span className="font-medium">Top 3 Stock Weights:</span> {summary.top3Weight.toFixed(2)}%
-      </div>
-      <div>
-        <span className="font-medium">Top 5 Stock Weights:</span> {summary.top5Weight.toFixed(2)}%
-      </div>
-      <div>
-        <span className="font-medium">Top 10 Stock Weights:</span> {summary.top10Weight.toFixed(2)}%
-      </div>
-    </div>
-  </div>
-)}
+            
           </div>
         </form>
       </div>
