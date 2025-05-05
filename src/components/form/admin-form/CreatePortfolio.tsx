@@ -225,6 +225,50 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
     }
   };
 
+  const renderStockDropdown = (category: string, field: Field) => {
+    return (
+      <select
+        className="form-select w-full border rounded px-2 py-1"
+        value={field.selectValue}
+        onChange={(e) => {
+          const value = e.target.value;
+          const matchingOption = initialOptions.find(opt => opt.value === value);
+          const currentPrice = matchingOption?.currentPrice || '';
+          
+          // Direct state update without using the custom Select component
+          setFieldstock(prev => {
+            const newFields = {...prev};
+            if (!newFields[category]) return prev;
+            
+            newFields[category] = newFields[category].map(f => 
+              f.id === field.id ? {
+                ...f,
+                selectValue: value,
+                currentPrice: currentPrice
+              } : f
+            );
+            
+            // Run calculations
+            setTimeout(() => {
+              calculateCapTypeWeights(newFields);
+              calculateStockTypeWeights(newFields);
+              calculateSummary(newFields);
+              calculateOrderValue(newFields, totalWeights, portfolioDetails);
+            }, 0);
+            
+            return newFields;
+          });
+        }}
+      >
+        <option value="">Select a stock/ETF</option>
+        {initialOptions.map(option => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    );
+  };
   const validateWeights = (category: string) => {
     console.log('category', category);
     const fieldsWeight = calculateCategoryWeight(fieldstock[category] || []);
@@ -859,58 +903,48 @@ const updateTotalWeight = (category: string, weight: number) => {
                 type="number"
               />
               {fieldstock[category]?.map((field) => (
-                <div key={field.id} className="flex gap-2 items-center">
-                  <Select
-                    value={field.selectValue}
-                    options={field.options ? field.options.map(option => ({
-                      value: option.value,
-                      label: option.label
-                    })): [{ value: "", label: "Select a stock/ETF"}]}
-                    
-                    onChange={(selectedOption) => 
-                      handleSelectChange1(category, field.id,field.currentPrice,selectedOption )
-                    }
-                  />
-                  <Input
-                    value={field.currentPrice}
-                    readOnly
-                    placeholder="Current Price"
-                    required
-                    type="number"
-                  />
-                  
-                  <Input
-                    value={field.weight}
-                    onChange={(e) => handleInputChange1(category, field.id, e)}
-                    placeholder="Weight"
-                    required
-                    type="number"
-                  />
-                  
-                  <Input
-                    value={field.MinAmountquantity}
-                    readOnly
-                    placeholder="Quantity"
-                    required
-                    type="number"
-                  /> 
-                  
-                  <Input
-                    value={field.MinAmountorderValue}
-                    readOnly
-                    placeholder="OrderValue"
-                    required
-                    type="number"
-                  />
-                  <button 
-                    type="button" 
-                    onClick={() => removeField1(category, field.id)}
-                    className="px-2 py-1 text-white bg-red-500 rounded hover:bg-red-600"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
+  <div key={field.id} className="flex gap-2 items-center">
+    {renderStockDropdown(category, field)}
+    <Input
+      value={field.currentPrice}
+      readOnly
+      placeholder="Current Price"
+      required
+      type="number"
+    />
+    
+    <Input
+      value={field.weight}
+      onChange={(e) => handleInputChange1(category, field.id, e)}
+      placeholder="Weight"
+      required
+      type="number"
+    />
+    
+    <Input
+      value={field.MinAmountquantity}
+      readOnly
+      placeholder="Quantity"
+      required
+      type="number"
+    /> 
+    
+    <Input
+      value={field.MinAmountorderValue}
+      readOnly
+      placeholder="OrderValue"
+      required
+      type="number"
+    />
+    <button 
+      type="button" 
+      onClick={() => removeField1(category, field.id)}
+      className="px-2 py-1 text-white bg-red-500 rounded hover:bg-red-600"
+    >
+      Remove
+    </button>
+  </div>
+))}
               <button 
                 type="button"
                 onClick={() => addField1(category)}
@@ -938,6 +972,26 @@ const updateTotalWeight = (category: string, weight: number) => {
             >
               {isLoading ? 'Saving...' : 'Save Portfolio'}
             </button>
+
+            {selectedCategories.length > 0 && (
+  <div className="mt-4 p-4 bg-gray-100 rounded-lg">
+    <h3 className="text-lg font-semibold mb-2">Summary</h3>
+    <div className="grid grid-cols-2 gap-4">
+      <div>
+        <span className="font-medium">Total Number of Stocks:</span> {summary.totalStocks}
+      </div>
+      <div>
+        <span className="font-medium">Top 3 Stock Weights:</span> {summary.top3Weight.toFixed(2)}%
+      </div>
+      <div>
+        <span className="font-medium">Top 5 Stock Weights:</span> {summary.top5Weight.toFixed(2)}%
+      </div>
+      <div>
+        <span className="font-medium">Top 10 Stock Weights:</span> {summary.top10Weight.toFixed(2)}%
+      </div>
+    </div>
+  </div>
+)}
           </div>
         </form>
       </div>
