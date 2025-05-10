@@ -9,20 +9,32 @@ import Cookies from 'js-cookie';
 import { useRouter, useSearchParams } from "next/navigation";
 import Pagination from "@/components/tables/Pagination";
 
+interface AssetClass {    
+    [key: string]: number; 
+  }
+  
+  interface AssetClassStock {   
+    [key: string]: [];
+  }
+
 interface Portfolio {
     id: number;
     portfolioName: string;
-    planId: number;
+    planId: string;
     goalId: string;
     packageId: string;
-    termId: number;
-    riskScore: number;
-    investMentType: number;
-    minimumInvestment: number;
+    termId: string;
+    riskScore: string;
+    investMentType: string;
+    minimumInvestment: string
     fundType: number;
-    orderAmount: number;
+    orderAmount: string;
     goalName: string | null;
-    packageName: string | null;
+    packageName: string | null;  
+    stockIds: string;
+    weights: string; 
+    assetClass: AssetClass;
+    assetClassStock: AssetClassStock;  
 }
 
 interface ApiResponse {
@@ -142,7 +154,7 @@ export default function PortfolioTablesPage() {
             setError(null);
             
             const result = await fetchPortfolios(currentPage, limit, searchQuery);
-            
+            console.log("API Response:", result);
             // Check if result is an error object
             if ('errorType' in result) {
                 setError(result);

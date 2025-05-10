@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import Input from '@/components/form/input/InputField';
@@ -7,9 +7,10 @@ import Select from '@/components/form/Select';
 import Label from "@/components/form/Label";
 import Image from "next/image";
 
-interface CreateGoalProps {
+interface EditGoalProps {
   isOpen: boolean;
   onClose: () => void;
+  goalData: GoalData;
 }
 
 interface BrandName {
@@ -23,6 +24,7 @@ interface GoalItem {
 }
 
 interface GoalData {
+  id?: number;
   name: string;
   termId: number | null;
   feePricing: string;
@@ -37,32 +39,39 @@ interface GoalData {
   items: GoalItem[];
 }
 
-const DEFAULT_GOAL_DATA: GoalData = {
-  name: "",
-  termId: null,
-  feePricing: "",
-  tenureMin: 0,
-  tenureMax: 0,
-  goalAmountMin: "",
-  goalAmountMax: "",
-  brandName: [],
-  discount: "",
-  imageUrl: null,
-  description: "",
-  items: []
-};
-
 const DEFAULT_GOAL_ITEM: GoalItem = { image: "", title: "", description: "" };
 
-export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
+interface SelectOption {
+    value: string;
+    label: string;
+  }
+
+const termOptions: SelectOption[] = [
+    { value: "", label: "Select Period" },
+    { value: "1", label: "Short Term" },
+    { value: "2", label: "Mid Term" },
+    { value: "3", label: "Long Term" },
+    { value: "4", label: "Emergency" },
+  ];
+
+export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }: EditGoalProps) {
   const router = useRouter();
-  const [goalData, setGoalData] = useState<GoalData>(DEFAULT_GOAL_DATA);
+  const [goalData, setGoalData] = useState<GoalData>(initialGoalData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
   const [newItem, setNewItem] = useState<GoalItem>(DEFAULT_GOAL_ITEM);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setGoalData(initialGoalData);
+      setErrors({});
+      setNewBrandName("");
+      setNewItem(DEFAULT_GOAL_ITEM);
+    }
+  }, [isOpen, initialGoalData]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -78,16 +87,18 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleCreateGoal = async (e: React.FormEvent) => {
+  const handleUpdateGoal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
+    if (!goalData.id) return;
+    
     setIsLoading(true);
     
     try {
-      // Create FormData for file uploads
       const formData = new FormData();
       
       // Append simple fields
+      formData.append('id', goalData.id.toString());
       formData.append('name', goalData.name);
       formData.append('termId', goalData.termId?.toString() || '');
       formData.append('feePricing', goalData.feePricing);
@@ -114,12 +125,11 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
         }
       });
   
-      // Append main image if it exists
+      // Append main image if it exists and is a new file
       if (goalData.imageUrl instanceof File) {
         formData.append('image', goalData.imageUrl);
       }
   
-      // Get the auth token from cookies
       const getAuthToken = () => {
         return document.cookie
           .split('; ')
@@ -127,36 +137,34 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
           ?.split('=')[1] || '';
       };
   
-      const url = `${process.env.NEXT_PUBLIC_STOCK_API_URL}${process.env.NEXT_PUBLIC_ADD_GOAL_ENDPOINT}`;
-              
+      const url = `${process.env.NEXT_PUBLIC_STOCK_API_URL}${process.env.NEXT_PUBLIC_UPDATE_GOAL_ENDPOINT}/${goalData.id}`;
+      
       const response = await fetch(url, {
-        method: "POST",
+        method: "PATCH",
         headers: {
           Authorization: `Bearer ${getAuthToken()}`,
         },
         body: formData
       });
-  
+      
+      // Add this section to properly parse and handle the response
+      const data = await response.json();      
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        console.error("API Error:", response.status, errorData);
-        throw new Error(`Failed to create goal: ${response.status} ${response.statusText}`);
+        console.error("API Error:", response.status, data);
+        throw new Error(data.message || `Failed to update goal: ${response.status} ${response.statusText}`);
       }
   
-      toast.success('Goal created successfully');
+      toast.success('Goal updated successfully');
       router.refresh();
       closeModal();
     } catch (error) {
-      console.error("Error creating goal:", error);  
-      toast.error(`Failed to create goal: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("Error updating goal:", error);  
+      toast.error(`Failed to update goal: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
   };
-
   const closeModal = () => {
-    setGoalData(DEFAULT_GOAL_DATA);
-    setErrors({});
     onClose();
   };
 
@@ -233,7 +241,7 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
     <div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl dark:bg-gray-800">
         <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
-          <h2 className="text-xl font-semibold dark:text-white">Create New Goal</h2>
+          <h2 className="text-xl font-semibold dark:text-white">Edit Goal</h2>
           <button
             onClick={closeModal}
             className="text-gray-500 hover:text-gray-700 dark:text-gray-300"
@@ -242,7 +250,7 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
           </button>
         </div>
 
-        <form onSubmit={handleCreateGoal} className="p-4 space-y-4 max-h-[80vh] overflow-y-auto">
+        <form onSubmit={handleUpdateGoal} className="p-4 space-y-4 max-h-[80vh] overflow-y-auto">
           {/* Main Goal Fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -258,24 +266,22 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
               />
               {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
             </div>
-
+            
             <div>
               <Label htmlFor="termId">Term *</Label>
-              <Select
-                value={goalData.termId?.toString() || ""}
-                onChange={(e) => setGoalData(prev => ({
-                  ...prev,
-                  termId: e.value ? parseInt(e.value) : null
-                }))}
-                options={[
-                  { value: "", label: "Select Period" },
-                  { value: "1", label: "Short Term" },
-                  { value: "2", label: "Mid Term" },
-                  { value: "3", label: "Long Term" },
-                  { value: "4", label: "Emergency" },
-                ]}                
+              <Select              
+                value={goalData.termId !== null ? String(goalData.termId) : ""}
+                onChange={(selectedOption) => {                  
+                  setGoalData(prev => ({
+                    ...prev,
+                    termId: selectedOption?.value ? parseInt(selectedOption.value) : null
+                  }));
+                }}
+                options={termOptions}
               />
-              {errors.termId && <p className="text-red-500 text-sm mt-1">{errors.termId}</p>}
+              {errors.termId && (
+                <p className="text-red-500 text-sm mt-1">{errors.termId}</p>
+              )}
             </div>
           </div>
 
@@ -526,7 +532,7 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
               type="submit"
               className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
-              {isLoading ? 'Creating...' : 'Create Goal'}
+              {isLoading ? 'Updating...' : 'Update Goal'}
             </button>
           </div>
         </form>

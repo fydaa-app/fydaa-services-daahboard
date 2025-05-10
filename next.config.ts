@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
     });
     return config;
   },
+  reactStrictMode: true,
+  images: {
+    domains: ['fydaa.s3.ap-south-1.amazonaws.com'],
+  },
 };
 
 export default nextConfig;
