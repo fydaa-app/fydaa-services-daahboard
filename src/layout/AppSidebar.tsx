@@ -8,7 +8,7 @@ import { useSidebar } from "../context/SidebarContext";
 import {
   GridIcon,
   PieChartIcon,
-  TableIcon,
+  // TableIcon,
   UserCircleIcon,
   LeaderboardIcon,
   SettingIcon,
@@ -47,12 +47,7 @@ const navItems: NavItem[] = [
     icon: <PieChartIcon />,
     name: "Portfolio",
     path: "/portfolio",
-  },
-  {
-    name: "Plans",
-    icon: <TableIcon />,
-    path: "/payouts",
-  },
+  },  
   {
     name: "Settings",
     icon: <SettingIcon />,

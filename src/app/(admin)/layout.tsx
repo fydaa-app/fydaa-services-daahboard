@@ -5,6 +5,7 @@ import AppSidebar from "@/layout/AppSidebar";
 import Backdrop from "@/layout/Backdrop";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import React from "react";
+import { Toaster } from 'react-hot-toast';
 
 export default function AdminLayout({
   children,
@@ -34,6 +35,10 @@ export default function AdminLayout({
           
           {/* Page Content */}
           <div className="p-4 md:p-6 dark:bg-gray-900">
+            <Toaster
+              position="bottom-center"
+              reverseOrder={false}
+            />
             {children}
           </div>
         </main>

@@ -6,8 +6,9 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
-import Link from "next/link";
-import { EyeIcon } from "@/icons";
+import { useState } from 'react';
+import { toast } from 'react-hot-toast';
+import EditPackage from '@/components/form/admin-form/EditPackage';
 
 export interface PackageTableProps {
   packages: {
@@ -18,13 +19,38 @@ export interface PackageTableProps {
     features: {
       text: string;
       price: string;
+      description?: string;
+      icon?: string;
     }[];
     createdAt: string;
     updatedAt: string;
     deletedAt: string | null;
+    imageUrl?: string;
+    iconUrl?: string;
   }[];
   error: string | null;
+  onRefresh?: () => void; // Add refresh callback
 }
+
+interface Feature {
+  text: string;
+  price: string;
+  description?: string;
+  icon?: string;
+}
+
+interface Package {
+  id: number;
+  packagesName: string;
+  targetAudience: string;
+  goals: string;
+  features: Feature[]; 
+  imageUrl?: string;
+  iconUrl?: string;
+  image?: File | string;
+  icon?: File | string;
+}
+
 
 const formatCurrency = (value: string): string => {
   const numValue = parseFloat(value);
@@ -36,9 +62,63 @@ const formatCurrency = (value: string): string => {
   }).format(numValue);
 };
 
-export default function PackageListTable({ packages, error }: PackageTableProps) {
+export default function PackageListTable({ packages, error, onRefresh }: PackageTableProps) { 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentPackage, setCurrentPackage] = useState<Package | null>(null);
+
+  const handleEdit = (packageItem: Package) => {
+    setCurrentPackage(packageItem);
+    setIsModalOpen(true);
+  };
+
+  const getAuthToken = () => {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.startsWith('authToken=')) {
+        return cookie.substring('authToken='.length, cookie.length);
+      }
+    }
+    return '';
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this package?')) return;
+    
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_STOCK_API_URL;
+      const endpoint = `${process.env.NEXT_PUBLIC_DELETE_PACKAGE_ENDPOINT || '/packages'}/${id}`;
+      const authToken = getAuthToken();
+      if (!authToken) {
+        toast.error('Authentication token not found. Please log in again.');
+        return;
+      }
+      const response = await fetch(`${apiUrl}${endpoint}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+      
+
+      if (!response.ok) {
+        throw new Error('Failed to delete package');
+      }
+      
+      toast.success('Package deleted successfully');
+      onRefresh?.(); // Call refresh callback if provided
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete package');
+    }
+  };
+
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+      <div className="flex justify-between items-center p-4">
+        <h2 className="text-xl font-semibold">Packages</h2>       
+      </div>
+
       <div className="max-w-full overflow-x-auto">
         <div className="min-w-[1102px]">
           {error && <p className="text-red-500 p-4">{error}</p>}
@@ -62,13 +142,13 @@ export default function PackageListTable({ packages, error }: PackageTableProps)
                     Created At
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
-                    Action
+                    Actions
                   </TableCell>
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                {packages.map((pkg, index) => (
-                  <TableRow key={index}>
+                {packages.map((pkg) => (
+                  <TableRow key={pkg.id}>
                     <TableCell className="px-5 py-4 sm:px-6 text-start">
                       <div className="flex items-center gap-3">
                         <div>
@@ -97,15 +177,23 @@ export default function PackageListTable({ packages, error }: PackageTableProps)
                     <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                       {new Date(pkg.createdAt).toLocaleDateString()}
                     </TableCell>
-                    <TableCell>
-                      <Link 
-                        href={`/packages/${pkg.id}`} 
-                        className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-theme-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200"
-                        role="button"
-                        aria-label={`View details for ${pkg.packagesName}`}
-                      >
-                        <EyeIcon />
-                      </Link>                      
+                    <TableCell className="px-4 py-3">
+                      <div className="flex gap-2">                        
+                        <button
+                          onClick={() => handleEdit(pkg)} 
+                          className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-theme-sm font-medium text-blue-600 shadow-theme-xs hover:bg-gray-50 hover:text-blue-800 dark:border-gray-700 dark:bg-gray-800 dark:text-blue-400 dark:hover:bg-white/[0.03] dark:hover:text-blue-300"
+                          aria-label={`Edit ${pkg.packagesName}`}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(pkg.id)} 
+                          className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-theme-sm font-medium text-red-600 shadow-theme-xs hover:bg-gray-50 hover:text-red-800 dark:border-gray-700 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-white/[0.03] dark:hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                          aria-label={`Delete ${pkg.packagesName}`}
+                        >
+                          Delete
+                        </button>                        
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -113,13 +201,18 @@ export default function PackageListTable({ packages, error }: PackageTableProps)
             </Table>
           ) : (
             !error && (
-              <div className="m-4">
-                <p>No packages found.</p>
+              <div className="m-4 p-4 text-center">
+                <p className="text-gray-500">No packages found.</p>                
               </div>             
             )
           )}
         </div>
       </div>
+      <EditPackage
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        packageData={currentPackage || undefined}        
+      />
     </div>
   );
 }

@@ -60,7 +60,7 @@ class PackagesManagementServiceApi extends API {
           Authorization: `Bearer ${this.getAuthToken()}`,
         }
       });           
-      const data = await this.handleResponse<any>(response);      
+      const data = await this.handleResponse<Package[] | { data: Package[] }>(response);      
       const packages = data;      
       return {
         packages: Array.isArray(packages) ? packages : [],        

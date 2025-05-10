@@ -1,30 +1,35 @@
 "use client";
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import Input from '@/components/form/input/InputField';
 import Label from "@/components/form/Label";
 import Image from "next/image";
 
-interface CreatePackageProps {
+interface EditPackageProps {
   isOpen: boolean;
   onClose: () => void;
+  packageData?: PackageData; // Existing package data for editing
 }
 
 interface Feature {
   text: string;
   price: string;
-  description: string;
+  description?: string;
   icon?: string;
+  id?: string; // Add ID for existing features
 }
 
 interface PackageData {
+  id?: number;
   packagesName: string;
   targetAudience: string;
   goals: string;
   features: Feature[];
   image?: File | string;
   icon?: File | string;
+  imageUrl?: string; 
+  iconUrl?: string; 
 }
 
 const DEFAULT_PACKAGE_DATA: PackageData = {
@@ -40,7 +45,7 @@ const DEFAULT_FEATURE: Feature = {
   description: ""
 };
 
-export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
+export default function EditPackage({ isOpen, onClose, packageData: initialData }: EditPackageProps) {
   const router = useRouter();
   const [packageData, setPackageData] = useState<PackageData>(DEFAULT_PACKAGE_DATA);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -50,6 +55,25 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const iconInputRef = useRef<HTMLInputElement>(null);
   const featureIconInputRef = useRef<HTMLInputElement>(null);
+  const [skipFileUploads, setSkipFileUploads] = useState(false);
+
+  // Initialize with existing data when component mounts or initialData changes
+  useEffect(() => {
+    if (initialData) {
+      setPackageData({
+        ...initialData,
+        // Convert URLs to File objects if needed
+        image: initialData.image || '',
+        icon: initialData.icon || '',
+        features: initialData.features.map(f => ({
+          ...f,
+          icon: f.icon || ''
+        }))
+      });
+    } else {
+      setPackageData(DEFAULT_PACKAGE_DATA);
+    }
+  }, [initialData]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -63,7 +87,6 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
   };
 
   const getAuthToken = () => {
-    // More robust token extraction
     const cookies = document.cookie.split(';');
     for (let i = 0; i < cookies.length; i++) {
       const cookie = cookies[i].trim();
@@ -74,10 +97,7 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
     return '';
   };
 
-  // For temporarily skipping file uploads when S3 bucket issues occur
-  const [skipFileUploads, setSkipFileUploads] = useState(false);
-
-  const handleCreatePackage = async (e: React.FormEvent) => {
+  const handleSubmitPackage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
     
@@ -92,13 +112,12 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
       formData.append('targetAudience', packageData.targetAudience);
       formData.append('goals', packageData.goals);
       
-      // Append features as JSON - ensure all features have valid properties
+      // Append features as JSON
       const sanitizedFeatures = packageData.features.map(feature => ({
         text: feature.text,
         price: feature.price,
         description: feature.description,
-        // Don't include icon URLs in JSON if we're skipping file uploads
-        // as these are likely client-side URLs that don't exist on server
+        ...(feature.id ? { _id: feature.id } : {}),
         ...(skipFileUploads ? {} : { icon: feature.icon })
       }));
       
@@ -114,9 +133,10 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
         }
       }
 
-      // Get API URL with fallback
-      const apiUrl = process.env.NEXT_PUBLIC_STOCK_API_URL || 'http://localhost:3004';
-      const endpoint = process.env.NEXT_PUBLIC_ADD_PACKAGE_ENDPOINT || '/packages';
+      const apiUrl = process.env.NEXT_PUBLIC_STOCK_API_URL;
+      const endpoint = packageData.id 
+        ? `${process.env.NEXT_PUBLIC_UPDATE_PACKAGE_ENDPOINT || '/packages'}/${packageData.id}`
+        : process.env.NEXT_PUBLIC_ADD_PACKAGE_ENDPOINT || '/packages';
       const url = `${apiUrl}${endpoint}`;
       
       const authToken = getAuthToken();
@@ -125,38 +145,31 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
         return;
       }
 
-      console.log('Submitting to URL:', url);
-      console.log('Skip file uploads:', skipFileUploads);
+      const method = packageData.id ? "PATCH" : "POST";
       
       const response = await fetch(url, {
-        method: "POST",
+        method,
         headers: {
           Authorization: `Bearer ${authToken}`,
         },
         body: formData
       });
-
-      console.log('Response status:', response.status);
       
       if (!response.ok) {
         let errorText = `Server error: ${response.status} ${response.statusText}`;
         let errorData;
         
         try {
-          // Try to get more detailed error message from response
           errorData = await response.json();
           errorText = errorData.message || errorText;
         } catch (e) {
-          // If we can't parse the JSON, use the status text
           console.error('Error parsing error response:', e);
         }
         
-        // Check for S3 bucket error specifically
         if (errorText.includes('Bucket') || (errorData && JSON.stringify(errorData).includes('Bucket'))) {
           setServerError(`${errorText}. There appears to be an S3 bucket configuration issue. Try submitting without images.`);
-          // Show option to skip image uploads
           if (!skipFileUploads) {
-            return; // Don't throw error yet, give user chance to try without images
+            return;
           }
         } else {
           setServerError(errorText);
@@ -165,12 +178,15 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
         throw new Error(errorText);
       }
 
-      toast.success('Package created successfully');
+      const successMessage = packageData.id 
+        ? 'Package updated successfully' 
+        : 'Package created successfully';
+      toast.success(successMessage);
       router.refresh();
       closeModal();
     } catch (error) {
-      console.error('Error creating package:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to create package');
+      console.error('Error saving package:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to save package');
     } finally {
       setIsLoading(false);
     }
@@ -184,66 +200,66 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
+      if (e.target.files && e.target.files[0]) {
+        setPackageData(prev => ({
+          ...prev,
+          image: e.target.files![0]
+        }));
+      }
+    };
+  
+    const handleIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files[0]) {
+        setPackageData(prev => ({
+          ...prev,
+          icon: e.target.files![0]
+        }));
+      }
+    };
+  
+    const handleFeatureIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files[0]) {
+        setNewFeature(prev => ({
+          ...prev,
+          icon: URL.createObjectURL(e.target.files![0])
+        }));
+      }
+    };
+  
+    const addFeature = () => {
+      if (newFeature.text && newFeature.price && newFeature.description) {
+        setPackageData(prev => ({
+          ...prev,
+          features: [...prev.features, { ...newFeature }]
+        }));
+        setNewFeature(DEFAULT_FEATURE);
+        if (featureIconInputRef.current) {
+          featureIconInputRef.current.value = "";
+        }
+      } else {
+        toast.error('Please fill all feature fields');
+      }
+    };
+  
+    const removeFeature = (index: number) => {
       setPackageData(prev => ({
         ...prev,
-        image: e.target.files![0]
+        features: prev.features.filter((_, i) => i !== index)
       }));
-    }
-  };
-
-  const handleIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setPackageData(prev => ({
-        ...prev,
-        icon: e.target.files![0]
-      }));
-    }
-  };
-
-  const handleFeatureIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
+    };
+  
+    const updateFeatureField = (field: keyof Feature, value: string) => {
       setNewFeature(prev => ({
         ...prev,
-        icon: URL.createObjectURL(e.target.files![0])
+        [field]: value
       }));
-    }
-  };
-
-  const addFeature = () => {
-    if (newFeature.text && newFeature.price && newFeature.description) {
-      setPackageData(prev => ({
-        ...prev,
-        features: [...prev.features, { ...newFeature }]
-      }));
-      setNewFeature(DEFAULT_FEATURE);
-      if (featureIconInputRef.current) {
-        featureIconInputRef.current.value = "";
-      }
-    } else {
-      toast.error('Please fill all feature fields');
-    }
-  };
-
-  const removeFeature = (index: number) => {
-    setPackageData(prev => ({
-      ...prev,
-      features: prev.features.filter((_, i) => i !== index)
-    }));
-  };
-
-  const updateFeatureField = (field: keyof Feature, value: string) => {
-    setNewFeature(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const getImageUrl = (image: File | string | undefined) => {
-    if (!image) return '';
-    if (typeof image === 'string') return image;
-    return URL.createObjectURL(image);
-  };
+    };
+  
+    const getImageUrl = (image: File | string | undefined) => {
+      if (!image) return '';
+      if (typeof image === 'string') return image;
+      return URL.createObjectURL(image);
+    };
 
   if (!isOpen) return null;
 
@@ -251,7 +267,9 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
     <div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl dark:bg-gray-800">
         <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
-          <h2 className="text-xl font-semibold dark:text-white">Create New Package</h2>
+          <h2 className="text-xl font-semibold dark:text-white">
+            {packageData.id ? 'Edit Package' : 'Create New Package'}
+          </h2>
           <button
             onClick={closeModal}
             className="text-gray-500 hover:text-gray-700 dark:text-gray-300 text-xl font-bold"
@@ -261,8 +279,9 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
           </button>
         </div>
 
-        <form onSubmit={handleCreatePackage} className="p-4 space-y-4 max-h-[80vh] overflow-y-auto">
-          {serverError && (
+        <form onSubmit={handleSubmitPackage} className="p-4 space-y-4 max-h-[80vh] overflow-y-auto">
+          
+        {serverError && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
               <strong className="font-bold">Error: </strong>
               <span className="block sm:inline">{serverError}</span>
@@ -495,7 +514,9 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
                 type="submit"
                 className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
-                {isLoading ? 'Creating...' : 'Create Package'}
+                {isLoading 
+                  ? packageData.id ? 'Updating...' : 'Creating...' 
+                  : packageData.id ? 'Update Package' : 'Create Package'}
               </button>
             </div>
           </div>
