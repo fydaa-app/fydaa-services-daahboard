@@ -35,6 +35,9 @@ interface GoalData {
   imageUrl: File | string | null;
   description: string;
   items: GoalItem[];
+  suggestion: boolean;
+  recommendations: string[];
+  recommendationUrl: File | string | null;
 }
 
 const DEFAULT_GOAL_DATA: GoalData = {
@@ -49,7 +52,10 @@ const DEFAULT_GOAL_DATA: GoalData = {
   discount: "",
   imageUrl: null,
   description: "",
-  items: []
+  items: [],
+  suggestion: false,
+  recommendations: [],
+  recommendationUrl: null,
 };
 
 const DEFAULT_GOAL_ITEM: GoalItem = { image: "", title: "", description: "" };
@@ -61,8 +67,10 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
   const [newItem, setNewItem] = useState<GoalItem>(DEFAULT_GOAL_ITEM);
+  const [newRecommendation, setNewRecommendation] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemFileInputRef = useRef<HTMLInputElement>(null);
+  const recommendationFileInputRef = useRef<HTMLInputElement>(null);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -84,7 +92,6 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
     setIsLoading(true);
     
     try {
-      // Create FormData for file uploads
       const formData = new FormData();
       
       // Append simple fields
@@ -97,7 +104,10 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
       formData.append('goalAmountMax', goalData.goalAmountMax);
       formData.append('discount', goalData.discount);
       formData.append('description', goalData.description);
-  
+      // formData.append('suggestion', goalData.suggestion.toString());
+        if (goalData.suggestion === true) {
+           formData.append('suggestion', "isRecommended");
+        }
       // Append brand names as array
       goalData.brandName.forEach((brand, index) => {
         formData.append(`brandName[${index}][title]`, brand.title);
@@ -113,13 +123,24 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
           formData.append(`items[${index}][image]`, item.image);
         }
       });
+
+      // Append recommendations if isRecommended is true
+      if (goalData.suggestion) {
+        goalData.recommendations.forEach((rec, index) => {
+          formData.append(`recommendations[${index}]`, rec);
+        });
+      }
   
       // Append main image if it exists
       if (goalData.imageUrl instanceof File) {
         formData.append('image', goalData.imageUrl);
       }
+
+      // Append recommendation image if it exists
+      if (goalData.recommendationUrl instanceof File) {
+        formData.append('recommendationImage', goalData.recommendationUrl);
+      }
   
-      // Get the auth token from cookies
       const getAuthToken = () => {
         return document.cookie
           .split('; ')
@@ -127,6 +148,7 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
           ?.split('=')[1] || '';
       };
   
+      console.log("Form Data:", goalData);
       const url = `${process.env.NEXT_PUBLIC_STOCK_API_URL}${process.env.NEXT_PUBLIC_ADD_GOAL_ENDPOINT}`;
               
       const response = await fetch(url, {
@@ -186,6 +208,15 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
     }
   };
 
+  const handleRecommendationImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setGoalData(prev => ({
+        ...prev,
+        recommendationUrl: e.target.files![0]
+      }));
+    }
+  };
+
   const handleItemImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setNewItem(prev => ({
@@ -212,6 +243,23 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
     setGoalData(prev => ({
       ...prev,
       items: prev.items.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addRecommendation = () => {
+    if (newRecommendation.trim()) {
+      setGoalData(prev => ({
+        ...prev,
+        recommendations: [...prev.recommendations, newRecommendation]
+      }));
+      setNewRecommendation("");
+    }
+  };
+
+  const removeRecommendation = (index: number) => {
+    setGoalData(prev => ({
+      ...prev,
+      recommendations: prev.recommendations.filter((_, i) => i !== index)
     }));
   };
 
@@ -379,31 +427,33 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
             />
           </div>
 
-          <div>
-            <Label>Main Image</Label>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleImageUpload}
-              accept="image/*"
-              className="block w-full text-sm text-gray-500
-                file:mr-4 file:py-2 file:px-4
-                file:rounded-md file:border-0
-                file:text-sm file:font-semibold
-                file:bg-blue-50 file:text-blue-700
-                hover:file:bg-blue-100"
-            />
-            {goalData.imageUrl && (
-              <div className="mt-2">
-                <Image 
-                  src={getImageUrl(goalData.imageUrl)} 
-                  alt="Preview" 
-                  className="h-32 object-cover rounded"
-                  width={128}
-                  height={128}
-                />
-              </div>
-            )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Main Image</Label>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageUpload}
+                accept="image/*"
+                className="block w-full text-sm text-gray-500
+                  file:mr-4 file:py-2 file:px-4
+                  file:rounded-md file:border-0
+                  file:text-sm file:font-semibold
+                  file:bg-blue-50 file:text-blue-700
+                  hover:file:bg-blue-100"
+              />
+              {goalData.imageUrl && (
+                <div className="mt-2">
+                  <Image 
+                    src={getImageUrl(goalData.imageUrl)} 
+                    alt="Preview" 
+                    className="h-32 object-cover rounded"
+                    width={128}
+                    height={128}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Brand Names Section */}
@@ -511,6 +561,85 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Recommendations Section */}
+          <div className="border rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <input
+                type="checkbox"
+                id="isRecommended"
+                checked={goalData.suggestion}
+                onChange={(e) => setGoalData(prev => ({
+                  ...prev,
+                  suggestion: e.target.checked
+                }))}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <Label htmlFor="isRecommended">Suggestion</Label>
+            </div>
+
+            {goalData.suggestion && (
+              <>
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    value={newRecommendation}
+                    onChange={(e) => setNewRecommendation(e.target.value)}
+                    placeholder="Enter recommendation"
+                    className="flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={addRecommendation}
+                    className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                  >
+                    Add
+                  </button>
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  {goalData.recommendations.map((rec, index) => (
+                    <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded">
+                      <span>{rec}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeRecommendation(index)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4">
+                  <Label>Recommendation Image</Label>
+                  <input
+                    type="file"
+                    ref={recommendationFileInputRef}
+                    onChange={handleRecommendationImageUpload}
+                    accept="image/*"
+                    className="block w-full text-sm text-gray-500
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-md file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-blue-50 file:text-blue-700
+                      hover:file:bg-blue-100 mt-2"
+                  />
+                  {goalData.recommendationUrl && (
+                    <div className="mt-2">
+                      <Image 
+                        src={getImageUrl(goalData.recommendationUrl)} 
+                        alt="Preview" 
+                        className="h-32 object-cover rounded"
+                        width={128}
+                        height={128}
+                      />
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
