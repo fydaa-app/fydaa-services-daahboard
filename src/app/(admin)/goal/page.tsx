@@ -27,6 +27,9 @@ interface Goal {
     title: string;
     description: string;
   }[] | null;
+  suggestion: string | null;
+  recommendations: string[];
+  recommendationUrl: File | string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;

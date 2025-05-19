@@ -35,6 +35,9 @@ interface EditGoalData {
   imageUrl: File | string | null;
   description: string;
   items: GoalItem[]; 
+  suggestion: string | null;
+  recommendations: string[];
+  recommendationUrl: File | string | null;
 }
 
 export interface GoalTableProps {
@@ -48,7 +51,7 @@ export interface GoalTableProps {
     goalAmountMin: string;
     goalAmountMax: string;
     brandName: { title: string }[] | null;
-    discount: string;
+    discount: string;    
     imageUrl: string | null;
     description: string | null;
     items: {
@@ -56,6 +59,9 @@ export interface GoalTableProps {
       title: string;
       description: string;
     }[] | null;
+    suggestion: string | null;
+    recommendations: string[];
+    recommendationUrl: File | string | null;
     createdAt: string;
     updatedAt: string;
     deletedAt: string | null;
@@ -166,6 +172,9 @@ export default function GoalListTable({ goals, error, onRefresh }: GoalTableProp
                     Brands
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
+                    Recommendations
+                  </TableCell>
+                  <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Created At
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
@@ -222,6 +231,19 @@ export default function GoalListTable({ goals, error, onRefresh }: GoalTableProp
                         </div>
                       ) : (
                         <span className="text-gray-400">No brands</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                      {goal.recommendations ? (
+                        <div className="flex flex-wrap gap-1">
+                          {goal.recommendations.map((recommendation, i) => (
+                            <Badge key={i} color="primary">
+                              {recommendation}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">No Recommendations</span>
                       )}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">

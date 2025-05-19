@@ -37,6 +37,9 @@ interface GoalData {
   imageUrl: File | string | null;
   description: string;
   items: GoalItem[];
+  suggestion: string | null;
+  recommendations: string[];
+  recommendationUrl: File | string | null;
 }
 
 const DEFAULT_GOAL_ITEM: GoalItem = { image: "", title: "", description: "" };
@@ -55,14 +58,16 @@ const termOptions: SelectOption[] = [
   ];
 
 export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }: EditGoalProps) {
-  const router = useRouter();
+ const router = useRouter();
   const [goalData, setGoalData] = useState<GoalData>(initialGoalData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
   const [newItem, setNewItem] = useState<GoalItem>(DEFAULT_GOAL_ITEM);
+  const [newRecommendation, setNewRecommendation] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemFileInputRef = useRef<HTMLInputElement>(null);
+  const recommendationFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -70,6 +75,7 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
       setErrors({});
       setNewBrandName("");
       setNewItem(DEFAULT_GOAL_ITEM);
+      setNewRecommendation("");
     }
   }, [isOpen, initialGoalData]);
 
@@ -108,6 +114,13 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
       formData.append('goalAmountMax', goalData.goalAmountMax);
       formData.append('discount', goalData.discount);
       formData.append('description', goalData.description);
+      
+      // Handle suggestion field
+      if (goalData.suggestion) {
+        formData.append('suggestion', goalData.suggestion);
+      } else {
+        formData.append('suggestion', '');
+      }
   
       // Append brand names as array
       goalData.brandName.forEach((brand, index) => {
@@ -124,10 +137,20 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
           formData.append(`items[${index}][image]`, item.image);
         }
       });
+
+      // Append recommendations
+      goalData.recommendations.forEach((rec, index) => {
+        formData.append(`recommendations[${index}]`, rec);
+      });
   
       // Append main image if it exists and is a new file
       if (goalData.imageUrl instanceof File) {
         formData.append('image', goalData.imageUrl);
+      }
+
+      // Append recommendation image if it exists
+      if (goalData.recommendationUrl instanceof File) {
+        formData.append('recommendationImage', goalData.recommendationUrl);
       }
   
       const getAuthToken = () => {
@@ -147,7 +170,6 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
         body: formData
       });
       
-      // Add this section to properly parse and handle the response
       const data = await response.json();      
       if (!response.ok) {
         console.error("API Error:", response.status, data);
@@ -164,6 +186,7 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
       setIsLoading(false);
     }
   };
+
   const closeModal = () => {
     onClose();
   };
@@ -194,6 +217,15 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
     }
   };
 
+  const handleRecommendationImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setGoalData(prev => ({
+        ...prev,
+        recommendationUrl: e.target.files![0]
+      }));
+    }
+  };
+
   const handleItemImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setNewItem(prev => ({
@@ -220,6 +252,23 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
     setGoalData(prev => ({
       ...prev,
       items: prev.items.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addRecommendation = () => {
+    if (newRecommendation.trim()) {
+      setGoalData(prev => ({
+        ...prev,
+        recommendations: [...prev.recommendations, newRecommendation]
+      }));
+      setNewRecommendation("");
+    }
+  };
+
+  const removeRecommendation = (index: number) => {
+    setGoalData(prev => ({
+      ...prev,
+      recommendations: prev.recommendations.filter((_, i) => i !== index)
     }));
   };
 
@@ -517,6 +566,92 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Recommendations Section */}
+           <div className="border rounded-lg p-4">
+            <div className="mb-4">
+              <Label htmlFor="suggestion">Suggestion</Label>
+              <Select
+                value={goalData.suggestion || ""}
+                onChange={(selectedOption) => {
+                  setGoalData(prev => ({
+                    ...prev,
+                    suggestion: selectedOption?.value || null,
+                    recommendations: selectedOption?.value === "isRecommended" ? prev.recommendations : []
+                  }));
+                }}
+                options={[
+                  { value: "", label: "Select Option" },
+                  { value: "isRecommended", label: "Recommended" },
+                ]}
+              />
+            </div>
+
+            {goalData.suggestion === "isRecommended" && (
+              <>
+                <div className="mb-4">
+                  <Label>Recommendations</Label>
+                  <div className="flex gap-2 mt-2">
+                    <Input
+                      value={newRecommendation}
+                      onChange={(e) => setNewRecommendation(e.target.value)}
+                      placeholder="Enter recommendation"
+                      className="flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={addRecommendation}
+                      className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  
+                  <div className="mt-3 space-y-2">
+                    {goalData.recommendations.map((rec, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded">
+                        <span>{rec}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeRecommendation(index)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Recommendation Image</Label>
+                  <input
+                    type="file"
+                    ref={recommendationFileInputRef}
+                    onChange={handleRecommendationImageUpload}
+                    accept="image/*"
+                    className="block w-full text-sm text-gray-500
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-md file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-blue-50 file:text-blue-700
+                      hover:file:bg-blue-100 mt-2"
+                  />
+                  {goalData.recommendationUrl && (
+                    <div className="mt-2">
+                      <Image 
+                        src={getImageUrl(goalData.recommendationUrl)} 
+                        alt="Preview" 
+                        className="h-32 object-cover rounded"
+                        width={128}
+                        height={128}
+                      />
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
