@@ -38,7 +38,7 @@ interface GoalData {
   description: string;
   items: GoalItem[];
   suggestion: string | null;
-  recommendations: string[];
+  recommendations: string[] | null;
   recommendationUrl: File | string | null;
 }
 
@@ -71,7 +71,12 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
 
   useEffect(() => {
     if (isOpen) {
-      setGoalData(initialGoalData);
+      // Ensure recommendations is always an array
+      const processedData = {
+        ...initialGoalData,
+        recommendations: initialGoalData.recommendations || []
+      };
+      setGoalData(processedData);
       setErrors({});
       setNewBrandName("");
       setNewItem(DEFAULT_GOAL_ITEM);
@@ -138,8 +143,9 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
         }
       });
 
-      // Append recommendations
-      goalData.recommendations.forEach((rec, index) => {
+      // Safely append recommendations if they exist
+      const recommendations = goalData.recommendations || [];
+      recommendations.forEach((rec, index) => {
         formData.append(`recommendations[${index}]`, rec);
       });
   
@@ -259,7 +265,7 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
     if (newRecommendation.trim()) {
       setGoalData(prev => ({
         ...prev,
-        recommendations: [...prev.recommendations, newRecommendation]
+        recommendations: [...(prev.recommendations || []), newRecommendation]
       }));
       setNewRecommendation("");
     }
@@ -268,7 +274,7 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
   const removeRecommendation = (index: number) => {
     setGoalData(prev => ({
       ...prev,
-      recommendations: prev.recommendations.filter((_, i) => i !== index)
+      recommendations: (prev.recommendations || []).filter((_, i) => i !== index)
     }));
   };
 
@@ -578,7 +584,8 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
                   setGoalData(prev => ({
                     ...prev,
                     suggestion: selectedOption?.value || null,
-                    recommendations: selectedOption?.value === "isRecommended" ? prev.recommendations : []
+                    // Initialize to empty array if setting to isRecommended and no recommendations exist
+                    recommendations: selectedOption?.value === "isRecommended" ? (prev.recommendations || []) : []
                   }));
                 }}
                 options={[
@@ -609,7 +616,7 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
                   </div>
                   
                   <div className="mt-3 space-y-2">
-                    {goalData.recommendations.map((rec, index) => (
+                   {(goalData.recommendations || []).map((rec, index) => (
                       <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded">
                         <span>{rec}</span>
                         <button
@@ -622,7 +629,7 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
                       </div>
                     ))}
                   </div>
-                </div>
+                </div> 
 
                 <div>
                   <Label>Recommendation Image</Label>

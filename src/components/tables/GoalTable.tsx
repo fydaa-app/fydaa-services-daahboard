@@ -36,7 +36,7 @@ interface EditGoalData {
   description: string;
   items: GoalItem[]; 
   suggestion: string | null;
-  recommendations: string[];
+  recommendations: string[] | null;
   recommendationUrl: File | string | null;
 }
 
