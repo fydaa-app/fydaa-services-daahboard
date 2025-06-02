@@ -49,6 +49,16 @@ const navItems: NavItem[] = [
     path: "/portfolio",
   },  
   {
+    icon: <PieChartIcon />,
+    name: "My Mutual Fund",
+    path: "/my-mutual-fund",
+  }, 
+  {
+    icon: <PieChartIcon />,
+    name: "Mutual Fund",
+    path: "/mutual-fund",
+  },   
+  {
     name: "Settings",
     icon: <SettingIcon />,
     path: "/settings",
