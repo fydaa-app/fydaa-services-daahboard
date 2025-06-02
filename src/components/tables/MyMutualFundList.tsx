@@ -8,10 +8,9 @@ import {
 } from "../ui/table";
 import Badge from "../ui/badge/Badge";
 import { toast } from "react-hot-toast";
-import EditStockModal from "@/components/form/admin-form/EditStock";
+import EditMyMutualFundModal from "@/components/form/admin-form/EditMyMutualFund";
 
-// Define a shared Stock type that matches your API response
-interface Stock {
+interface MutualFund {
   id: number;
   scriptcode: number;
   stockName: string;
@@ -21,16 +20,17 @@ interface Stock {
   StockType: string;
   CapType: string;
   sector: number;
+  switchMultiples:string;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
 }
 
-// Define StockData type for the form (with optional fields)
-type StockData = Omit<Stock, 'id'> & { id?: number };
+// Define mutualFundData type for the form (with optional fields)
+type MutualFundData = Omit<MutualFund, 'id'> & { id?: number };
 
-export interface StockTableProps {
-  stocks: Stock[];
+export interface MutualFundTableProps {
+  mutualfunds: MutualFund[];
   error: string | null;
   onRefresh?: () => void;
 }
@@ -58,52 +58,52 @@ const getPriceChange = (current: string, previous: string) => {
   };
 };
 
-export default function StockListTable({ stocks, error, onRefresh }: StockTableProps) {
+export default function MutualFundListTable({ mutualfunds, error, onRefresh }: MutualFundTableProps) {
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
-  const [editingStock, setEditingStock] = useState<StockData | null>(null);
+  const [editingMutualFund, setEditingMutualFund] = useState<MutualFundData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleDeleteStock = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this stock? This action cannot be undone.')) {
+  const handleDeleteMutualFund = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this mutual fund? This action cannot be undone.')) {
       return;
     }
 
     setIsDeleting(id);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_STOCK_API_URL      ;
-      const response = await fetch(`${apiUrl}stocks/${id}`, {
+      const response = await fetch(`${apiUrl}mutualFund/${id}`, {
         method: 'DELETE',
-         headers: {
+        headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${document.cookie.split("; ").find(row => row.startsWith("authToken="))?.split("=")[1] || ""}`,
         },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete stock');
+        throw new Error('Failed to delete mutual fund');
       }
 
-      toast.success('Stock deleted successfully');
+      toast.success('Mutual Fund deleted successfully');
       onRefresh?.();
     } catch (err) {
-      console.error('Error deleting stock:', err);
-      toast.error(err instanceof Error ? err.message : 'Failed to delete stock');
+      console.error('Error deleting mutual fund:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to delete mutual fund. Please try again.');
     } finally {
       setIsDeleting(null);
     }
   };
 
-  const handleOpenEditModal = (stock: typeof stocks[0]) => {
-    const stockData: StockData = {
-      ...stock,      
+  const handleOpenEditModal = (mutualfund: typeof mutualfunds[0]) => {
+    const mutualFundData: MutualFundData = {
+      ...mutualfund,      
     };
-    setEditingStock(stockData);
+    setEditingMutualFund(mutualFundData);
     setIsModalOpen(true);
   };
 
   const handleCloseEditModal = () => {
     setIsModalOpen(false);
-    setEditingStock(null);
+    setEditingMutualFund(null);
   };
 
   return (
@@ -111,15 +111,15 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
       <div className="max-w-full overflow-x-auto">
         <div className="min-w-[1102px]">
           {error && <p className="text-red-500 p-4">{error}</p>}
-          {!error && stocks.length > 0 ? (
+          {!error && mutualfunds.length > 0 ? (
             <Table>
               <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                 <TableRow>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
-                    Stock Name
+                    Mutual Fund Name
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
-                    Ticker
+                    ISIN 
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Current Price
@@ -134,6 +134,9 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
                     Cap Type
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
+                    Switch Multiples
+                  </TableCell>
+                  <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Updated At
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
@@ -142,28 +145,28 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                {stocks.map((stock) => {
-                  const change = getPriceChange(stock.currentPrice, stock.yesterdayPrice);
+                {mutualfunds.map((mutualfund) => {
+                  const change = getPriceChange(mutualfund.currentPrice, mutualfund.yesterdayPrice);
                   
                   return (
-                    <TableRow key={stock.id}>
+                    <TableRow key={mutualfund.id}>
                       <TableCell className="px-5 py-4 sm:px-6 text-start">
                         <div className="flex items-center gap-3">
                           <div>
                             <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                              {stock.stockName}
+                              {mutualfund.stockName}
                             </span>
                             <span className="block text-gray-500 text-xs mt-1">
-                              #{stock.scriptcode}
+                              #{mutualfund.scriptcode}
                             </span>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {stock.ticker}
+                        {mutualfund.ticker}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {formatCurrency(stock.currentPrice)}
+                        {formatCurrency(mutualfund.currentPrice)}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-start">
                         <Badge color={change.isPositive ? "success" : "error"}>
@@ -171,32 +174,35 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
                         </Badge>
                       </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {stock.StockType}
+                        {mutualfund.StockType}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                         <Badge color="primary">
-                          {stock.CapType}
+                          {mutualfund.CapType}
                         </Badge>
                       </TableCell>
+                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                        {mutualfund.switchMultiples}%
+                      </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                        {new Date(stock.updatedAt).toLocaleString()}
+                        {new Date(mutualfund.updatedAt).toLocaleString()}
                       </TableCell>
                       <TableCell className="px-4 py-3">
                         <div className="flex gap-2">                       
                           <button
-                            onClick={() => handleOpenEditModal(stock)}
+                            onClick={() => handleOpenEditModal(mutualfund)}
                             className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-theme-sm font-medium text-blue-600 shadow-theme-xs hover:bg-gray-50 hover:text-blue-800 dark:border-gray-700 dark:bg-gray-800 dark:text-blue-400 dark:hover:bg-white/[0.03] dark:hover:text-blue-300"
-                            aria-label={`Edit ${stock.stockName}`}
+                            aria-label={`Edit ${mutualfund.stockName}`}
                           >
                             Edit
                           </button>
                           <button
-                            onClick={() => handleDeleteStock(stock.id)}
-                            disabled={isDeleting === stock.id}
+                            onClick={() => handleDeleteMutualFund(mutualfund.id)}
+                            disabled={isDeleting === mutualfund.id}
                             className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-theme-sm font-medium text-red-600 shadow-theme-xs hover:bg-gray-50 hover:text-red-800 dark:border-gray-700 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-white/[0.03] dark:hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                            aria-label={`Delete ${stock.stockName}`}
+                            aria-label={`Delete ${mutualfund.stockName}`}
                           >
-                            {isDeleting === stock.id ? 'Deleting...' : 'Delete'}
+                            {isDeleting === mutualfund.id ? 'Deleting...' : 'Delete'}
                           </button>
                         </div>                     
                       </TableCell>
@@ -208,17 +214,17 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
           ) : (
             !error && (
               <div className="m-4 p-4 text-center">
-                <p className="text-gray-500">No stocks found.</p>
+                <p className="text-gray-500">No mutual funds found.</p>
               </div>             
             )
           )}
           
           
-          {editingStock && (
-            <EditStockModal
+          {editingMutualFund && (
+            <EditMyMutualFundModal
               isOpen={isModalOpen}
               onClose={handleCloseEditModal}
-              stockData={editingStock}
+              mutualFundData={editingMutualFund}
               onSuccess={() => {
                 onRefresh?.();
                 handleCloseEditModal();
