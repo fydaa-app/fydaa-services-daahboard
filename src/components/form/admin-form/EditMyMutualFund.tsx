@@ -154,10 +154,10 @@ export default function MutualFundModal({
  
   return (
     <div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md dark:bg-gray-800">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl dark:bg-gray-800">
         <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
           <h2 className="text-xl font-semibold dark:text-white">
-            {mutualFundData.id ? 'Edit Stock' : 'Add New Stock'}
+            {mutualFundData.id ? 'Edit Mutual Fund' : 'Add New Mutual Fund'}
           </h2>
           <button
             onClick={closeModal}
@@ -168,134 +168,136 @@ export default function MutualFundModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          <div>
-            <Label htmlFor="schemeId">Scheme ID</Label>
-            <Input
-                id="schemeId"
-                type="number"
-                value={mutualFundData.scriptcode.toString()} // Convert number to string for input
+        <form onSubmit={handleSubmit}  className="p-4 space-y-4 max-h-[80vh] overflow-y-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="schemeId">Scheme ID</Label>
+              <Input
+                  id="schemeId"
+                  type="number"
+                  value={mutualFundData.scriptcode.toString()} // Convert number to string for input
+                  onChange={(e) => setMutualFundData(prev => ({
+                      ...prev,
+                      scriptcode: Number(e.target.value) // Convert back to number
+                  }))}
+                  placeholder="Enter Scheme Id"
+                  disabled={!!mutualFundData.id}
+                  />
+            </div>
+
+            <div>
+              <Label htmlFor="mutualfundName">Mutual Fund Name *</Label>
+              <Input
+                id="mutualfundName"
+                value={mutualFundData.stockName}
                 onChange={(e) => setMutualFundData(prev => ({
-                    ...prev,
-                    scriptcode: Number(e.target.value) // Convert back to number
+                  ...prev,
+                  stockName: e.target.value
                 }))}
-                 placeholder="Enter Scheme Id"
-                disabled={!!mutualFundData.id}
-                />
-          </div>
+                placeholder="Enter Mutual Fund name"
+                required
+              />
+            </div>
 
-          <div>
-            <Label htmlFor="mutualfundName">Mutual Fund Name *</Label>
-            <Input
-              id="mutualfundName"
-              value={mutualFundData.stockName}
-              onChange={(e) => setMutualFundData(prev => ({
-                ...prev,
-                stockName: e.target.value
-              }))}
-              placeholder="Enter Mutual Fund name"
-              required
-            />
-          </div>
+            <div>
+              <Label htmlFor="isin">ISIN *</Label>
+              <Input
+                id="isin"
+                value={mutualFundData.ticker}
+                onChange={(e) => setMutualFundData(prev => ({
+                  ...prev,
+                  ticker: e.target.value
+                }))}
+                placeholder="Enter ISIN"
+                required
+                disabled={!!mutualFundData.id} // Ticker typically shouldn't change
+              />
+            </div>
 
-          <div>
-            <Label htmlFor="isin">ISIN *</Label>
-            <Input
-              id="isin"
-              value={mutualFundData.ticker}
-              onChange={(e) => setMutualFundData(prev => ({
-                ...prev,
-                ticker: e.target.value
-              }))}
-              placeholder="Enter ISIN"
-              required
-              disabled={!!mutualFundData.id} // Ticker typically shouldn't change
-            />
-          </div>
+            <div>
+              <Label htmlFor="currentPrice">Current Price *</Label>
+              <Input
+                id="currentPrice"
+                type="number"
+                step="any"
+                value={mutualFundData.currentPrice}
+                onChange={(e) => setMutualFundData(prev => ({
+                  ...prev,
+                  currentPrice: e.target.value
+                }))}
+                placeholder="Enter current price"
+                required
+              />
+            </div>
 
-          <div>
-            <Label htmlFor="currentPrice">Current Price *</Label>
-            <Input
-              id="currentPrice"
-              type="number"
-              step="any"
-              value={mutualFundData.currentPrice}
-              onChange={(e) => setMutualFundData(prev => ({
-                ...prev,
-                currentPrice: e.target.value
-              }))}
-              placeholder="Enter current price"
-              required
-            />
-          </div>
+            <div>
+              <Label htmlFor="Mutual Fund">Mutual Fund Type *</Label>
+              <Select
+                value={mutualFundData.StockType}
+                onChange={handleSelectChange('StockType')}
+                options={[
+                  { value: "", label: "Select Mutual Fund Type"},
+                  { value: "IndianStock", label: "Indian" },
+                  { value: "GlobalStock", label: "Global" },
+                  { value: "FixedIncomeBonds", label: "Fixed Income Bonds" },
+                  { value: "RealEstate", label: "Real Estate" },
+                  { value: "Gold", label: "Gold" },
+                ]}
+              />
+            </div>
 
-          <div>
-            <Label htmlFor="Mutual Fund">Mutual Fund Type *</Label>
-            <Select
-              value={mutualFundData.StockType}
-              onChange={handleSelectChange('StockType')}
-              options={[
-                { value: "", label: "Select Mutual Fund Type"},
-                { value: "IndianStock", label: "Indian" },
-                { value: "GlobalStock", label: "Global" },
-                { value: "FixedIncomeBonds", label: "Fixed Income Bonds" },
-                { value: "RealEstate", label: "Real Estate" },
-                { value: "Gold", label: "Gold" },
-              ]}
-            />
-          </div>
+            <div>
+              <Label htmlFor="CapType">Cap Type *</Label>
+              <Select
+                value={mutualFundData.CapType}
+                onChange={handleSelectChange('CapType')}
+                options={[
+                  { value: "", label: "Select Cap Type" },
+                  { value: "Largecap", label: "Large Cap" },
+                  { value: "Midcap", label: "Mid Cap" },
+                  { value: "Smallcap", label: "Small Cap" },
+                  { value: "ETF", label: "ETF" },
+                ]}
+              />
+            </div>
 
-          <div>
-            <Label htmlFor="CapType">Cap Type *</Label>
-            <Select
-              value={mutualFundData.CapType}
-              onChange={handleSelectChange('CapType')}
-              options={[
-                { value: "", label: "Select Cap Type" },
-                { value: "Largecap", label: "Large Cap" },
-                { value: "Midcap", label: "Mid Cap" },
-                { value: "Smallcap", label: "Small Cap" },
-                { value: "ETF", label: "ETF" },
-              ]}
-            />
+            <div>
+              <Label htmlFor="sector">Sector *</Label>
+              <Select
+                value={mutualFundData.sector.toString()} // Convert number to string for Select
+                onChange={handleNumberSelectChange('sector')}
+                options={[
+                  { value: "0", label: "Select Sector"},
+                  { value: "1", label: "Financial Services" },
+                  { value: "2", label: "Basic Materials" },
+                  { value: "3", label: "Consumer Cyclicals" },
+                  { value: "4", label: "Technology" },
+                  { value: "5", label: "Energy" },
+                  { value: "6", label: "Industrials" },
+                  { value: "7", label: "Consumer Defensive" },
+                  { value: "8", label: "Healthcare" },
+                  { value: "9", label: "Utilities" },
+                  { value: "10", label: "Others" },
+                ]}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="switchMultiples">Switch Multiples *</Label>
+              <Input
+                id="switchMultiples"
+                type="number"
+                step="any"
+                value={mutualFundData.switchMultiples}
+                onChange={(e) => setMutualFundData(prev => ({
+                  ...prev,
+                  switchMultiples: e.target.value
+                }))}
+                placeholder="Enter switch multiples"
+                required
+              />
+            </div>
           </div>
-
-          <div>
-            <Label htmlFor="sector">Sector *</Label>
-            <Select
-              value={mutualFundData.sector.toString()} // Convert number to string for Select
-              onChange={handleNumberSelectChange('sector')}
-              options={[
-                { value: "0", label: "Select Sector"},
-                { value: "1", label: "Financial Services" },
-                { value: "2", label: "Basic Materials" },
-                { value: "3", label: "Consumer Cyclicals" },
-                { value: "4", label: "Technology" },
-                { value: "5", label: "Energy" },
-                { value: "6", label: "Industrials" },
-                { value: "7", label: "Consumer Defensive" },
-                { value: "8", label: "Healthcare" },
-                { value: "9", label: "Utilities" },
-                { value: "10", label: "Others" },
-              ]}
-            />
-          </div>
-          <div>
-            <Label htmlFor="switchMultiples">Switch Multiples *</Label>
-            <Input
-              id="switchMultiples"
-              type="number"
-              step="any"
-              value={mutualFundData.switchMultiples}
-              onChange={(e) => setMutualFundData(prev => ({
-                ...prev,
-                switchMultiples: e.target.value
-              }))}
-              placeholder="Enter switch multiples"
-              required
-            />
-          </div>
-
 
           <div className="flex justify-end gap-3 pt-4">
             <button

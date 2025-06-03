@@ -1,15 +1,17 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import Select from '@/components/form/Select';
 import Label from "@/components/form/Label";
 import Input from "@/components/form/input/InputField";
+import { FundScheme } from '@/services/fundSchemesServiceApi';
 
 interface CreateMutualFundProps {
   isOpen: boolean;
   onClose: () => void;
+  prefilledData?: FundScheme | null;
 }
 
 interface MutualFundData {
@@ -20,7 +22,7 @@ interface MutualFundData {
   StockType: string;
   CapType: string;
   sector: string;
-  switchMultiples:string;
+  switchMultiples: string;
 }
 
 const DEFAULT_MUTUAL_FUND_DATA: MutualFundData = {
@@ -34,13 +36,95 @@ const DEFAULT_MUTUAL_FUND_DATA: MutualFundData = {
   switchMultiples: ''
 };
 
+// Helper function to map fund category to stock type
+const mapFundCategoryToStockType = (category: string): string => {
+  const categoryLower = category?.toLowerCase() || '';
+  
+  if (categoryLower.includes('equity') || categoryLower.includes('stock')) {
+    return 'IndianStock';
+  } else if (categoryLower.includes('international') || categoryLower.includes('global')) {
+    return 'GlobalStock';
+  } else if (categoryLower.includes('debt') || categoryLower.includes('bond') || categoryLower.includes('fixed')) {
+    return 'FixedIncomeBonds';
+  } else if (categoryLower.includes('real estate') || categoryLower.includes('reit')) {
+    return 'RealEstate';
+  } else if (categoryLower.includes('gold') || categoryLower.includes('commodity')) {
+    return 'Gold';
+  }
+  return '';
+};
+
+// Helper function to map fund category to cap type
+const mapFundCategoryToCapType = (category: string): string => {
+  const categoryLower = category?.toLowerCase() || '';
+  
+  if (categoryLower.includes('large') || categoryLower.includes('largecap')) {
+    return 'Largecap';
+  } else if (categoryLower.includes('mid') || categoryLower.includes('midcap')) {
+    return 'Midcap';
+  } else if (categoryLower.includes('small') || categoryLower.includes('smallcap')) {
+    return 'Smallcap';
+  } else if (categoryLower.includes('etf')) {
+    return 'ETF';
+  }
+  return '';
+};
+
+// Helper function to map fund category to sector
+const mapFundCategoryToSector = (category: string): string => {
+  const categoryLower = category?.toLowerCase() || '';
+  
+  if (categoryLower.includes('financial') || categoryLower.includes('bank')) {
+    return '1'; // Financial Services
+  } else if (categoryLower.includes('pharma') || categoryLower.includes('healthcare')) {
+    return '8'; // Healthcare
+  } else if (categoryLower.includes('tech') || categoryLower.includes('it')) {
+    return '4'; // Technology
+  } else if (categoryLower.includes('energy') || categoryLower.includes('oil')) {
+    return '5'; // Energy
+  } else if (categoryLower.includes('infra') || categoryLower.includes('industrial')) {
+    return '6'; // Industrials
+  } else if (categoryLower.includes('fmcg') || categoryLower.includes('consumer')) {
+    return '7'; // Consumer Defensive
+  } else if (categoryLower.includes('material') || categoryLower.includes('metal')) {
+    return '2'; // Basic Materials
+  } else if (categoryLower.includes('auto') || categoryLower.includes('cyclical')) {
+    return '3'; // Consumer Cyclicals
+  } else if (categoryLower.includes('utility')) {
+    return '9'; // Utilities
+  }
+  return '10'; // Others
+};
+
 export default function CreateMutualFund({ 
   isOpen, 
-  onClose
+  onClose,
+  prefilledData = null
 }: CreateMutualFundProps) {
   const router = useRouter();
   const [mutualFundData, setMutualFundData] = useState<MutualFundData>(DEFAULT_MUTUAL_FUND_DATA);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Effect to populate form when prefilledData changes
+  useEffect(() => {
+    if (prefilledData && isOpen) {
+      const mappedData: MutualFundData = {
+        stockName: prefilledData.name || '',
+        ticker: prefilledData.isin || '',
+        scriptcode: prefilledData.fund_scheme_id?.toString() || '',
+        currentPrice: '', // This will need to be filled manually
+        StockType: mapFundCategoryToStockType(prefilledData.fund_category || ''),
+        CapType: mapFundCategoryToCapType(prefilledData.fund_category || ''),
+        sector: mapFundCategoryToSector(prefilledData.fund_category || ''),
+        switchMultiples: prefilledData.min_switch_out_amount?.toString() || ''
+      };
+      
+      setMutualFundData(mappedData);
+    } else if (!prefilledData && isOpen) {
+      // Reset to default when no prefilled data
+      setMutualFundData(DEFAULT_MUTUAL_FUND_DATA);
+    }
+  }, [prefilledData, isOpen]);
 
   const validateForm = () => {
     // Add your validation logic here
@@ -100,7 +184,9 @@ export default function CreateMutualFund({
     <div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl dark:bg-gray-800">
         <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
-          <h2 className="text-xl font-semibold dark:text-white">Add New Mutual Fund</h2>
+          <h2 className="text-xl font-semibold dark:text-white">
+            {prefilledData ? 'Add Mutual Fund from Scheme' : 'Add New Mutual Fund'}
+          </h2>
           <button
             onClick={closeModal}
             className="text-gray-500 hover:text-gray-700 dark:text-gray-300"
@@ -108,6 +194,14 @@ export default function CreateMutualFund({
             ×
           </button>
         </div>
+
+        {prefilledData && (
+          <div className="px-4 py-2 bg-blue-50 border-b dark:bg-blue-900/20 dark:border-gray-700">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              <strong>Pre-filled from:</strong> {prefilledData.name}
+            </p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4 max-h-[80vh] overflow-y-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -229,6 +323,7 @@ export default function CreateMutualFund({
                 ]}
               />
             </div>
+            
             <div>
               <Label htmlFor="switchMultiples">Switch Multiples *</Label>
               <Input
