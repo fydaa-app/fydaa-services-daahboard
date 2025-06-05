@@ -156,6 +156,10 @@ const FundSchemesList: React.FC<FundSchemesListProps> = ({
                     <span className="text-gray-600">Min Switch Out:</span>
                     <span className="text-gray-900">₹{scheme.min_switch_out_amount.toLocaleString()}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Switch Multiples:</span>
+                    <span className="text-gray-900">{scheme.switch_multiples}</span>
+                  </div>
                 </div>
 
                 <h4 className="font-medium text-gray-900 mt-4 mb-2">Features</h4>

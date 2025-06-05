@@ -9,6 +9,7 @@ import { stockManagementServiceApi } from '@/services/stockManagementServiceApi'
 import { goalManagementServiceApi } from '@/services/goalManagementServiceApi';
 import { packagesManagementServiceApi } from '@/services/packagesManagementServiceApi';
 import { portfolioManagementServiceApi } from '@/services/portfolioManagementServiceApi'; 
+import { amcService } from '@/services/mutualFundServiceApi'; 
 
 const capTypeMapping: Record<string, string> = {
   "Largecap": "Large Cap",
@@ -16,9 +17,11 @@ const capTypeMapping: Record<string, string> = {
   "Smallcap": "Small Cap",
   "ETF": "ETF",
 };
+
 interface FieldW {
   weight: string; 
 }
+
 const investmentTypeOptions = [
   { value: "", label: "Select Investment Type" },
   { value: "1", label: "Buy" },
@@ -54,6 +57,11 @@ const stock: Record<string | number, string> = {
   'FixedIncomeBonds':'Fixed Bonds'
 };
 
+const maincategory: Record<string | number, string> = {
+  'MutualFunds': 'Mutual Funds',
+  'Stocks': 'Stocks',
+}
+
 interface Stock {
   id: string;
   stockName: string;
@@ -61,6 +69,16 @@ interface Stock {
   CapType: string;
   StockType: string;
   currentPrice: string;
+}
+
+interface MutualFund {
+  id: string;
+  stockName: string;
+  currentPrice: string;
+  StockType: string;
+  CapType: string;
+  sector: number;
+  switchMultiples: number;
 }
 
 type FieldsState = Record<string | number, Field[]>; 
@@ -94,6 +112,16 @@ interface StockOption {
   currentPrice: string;
 }
 
+interface MutualFundOption {
+  value: string;
+  label: string;
+  sector: string;
+  capType: string;
+  stockType: string;
+  currentPrice: string;
+  switchMultiples: number;
+}
+
 interface Field {
   id: number;
   selectValue: string;
@@ -101,7 +129,8 @@ interface Field {
   currentPrice: string;
   MinAmountquantity: number;
   MinAmountorderValue: number;
-  options?: StockOption[];
+  options?: StockOption[] | MutualFundOption[];
+  mainCategory?: string; // Add this to track which main category this field belongs to
 }
 
 interface Goal {
@@ -142,9 +171,11 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
   const [goalListData, setGoalListData] = useState<Goal[]>([]);
   const [packageListData, setPackageListData] = useState<Package[]>([]);
   const [fieldstock, setFieldstock] = useState<FieldsState>({});
+  const [selectedMainCategories, setSelectedMainCategories] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [totalWeights, setTotalWeights] = useState<WeightsState>({});
   const [initialOptions, setInitialOptions] = useState<StockOption[]>([]); 
+  const [initialMOptions, setInitialMOptions] = useState<MutualFundOption[]>([]); 
   const [captypeWeights, setCaptypeWeights] = useState<{ [capType: string]: number }>({});
   const [summary, setSummary] = useState({ totalStocks: 0, top3Weight: 0, top5Weight: 0, top10Weight: 0 });
   const [isLoading, setIsLoading] = useState(false);
@@ -161,18 +192,32 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
         
         if (goalsResponse.goals) setGoalListData(goalsResponse.goals);
         if (packagesResponse.packages) setPackageListData(packagesResponse.packages);
-
+        
         const stockListData = await stockManagementServiceApi.getStockList();    
         const options = stockListData.data.map((stock: Stock) => ({
           value: stock.id,
           label: stock.stockName,
-          sector: stock.sector.toString(), // Convert number to string if needed
+          sector: stock.sector.toString(),
           capType: stock.CapType,
           stockType: stock.StockType,
           currentPrice: stock.currentPrice,
         }));      
        
-        setInitialOptions(options);        
+        setInitialOptions(options); 
+
+        const mutualFundListData = await amcService.getMutualFundList();    
+        const moptions = mutualFundListData.data.map((mutualFund: MutualFund) => ({
+          value: mutualFund.id,
+          label: mutualFund.stockName,
+          sector: mutualFund.sector.toString(),
+          capType: mutualFund.CapType,
+          stockType: mutualFund.StockType,
+          currentPrice: mutualFund.currentPrice,
+          switchMultiples: mutualFund.switchMultiples,
+        }));      
+       
+        setInitialMOptions(moptions);  
+
       } catch (error) {
         toast.error('Failed to fetch data');
         console.error('Error fetching data:', error);
@@ -245,14 +290,34 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
     }
   };
 
-  const renderStockDropdown = (category: string, field: Field) => { 
-    return (
+  // Updated dropdown render function to handle both stocks and mutual funds
+  const renderDropdown = (category: string, field: Field) => { 
+    const isStockCategory = selectedMainCategories.includes('Stocks');
+    const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
+    
+    // Determine which options to use based on main category selection
+    let optionsToUse: (StockOption | MutualFundOption)[] = [];
+    let placeholderText = "Select option";
+    
+    if (isStockCategory && !isMutualFundCategory) {
+      optionsToUse = initialOptions;
+      placeholderText = "Select a stock/ETF";
+    } else if (isMutualFundCategory && !isStockCategory) {
+      optionsToUse = initialMOptions;
+      placeholderText = "Select a mutual fund";
+    } else {
+      // Both or neither selected - show appropriate message
+      placeholderText = "Please select main category first";
+    }
+
+    return (      
       <select
         className="form-select text-sm shadow-theme-xs text-gray-800 border-gray-300 h-11 w-full border rounded px-4 py-2.5"
         value={field.selectValue}
+        disabled={optionsToUse.length === 0}
         onChange={(e) => {
           const value = e.target.value;          
-          const matchingOption = initialOptions.find(opt => opt.value == value);
+          const matchingOption = optionsToUse.find(opt => opt.value == value);
           const currentPrice = matchingOption?.currentPrice || '';
           
           setFieldstock(prev => {
@@ -278,8 +343,8 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
           });
         }}
       >
-        <option value="">Select a stock/ETF</option>
-        {initialOptions.map(option => (
+        <option value="">{placeholderText}</option>
+        {optionsToUse.map(option => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>
@@ -287,6 +352,7 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
       </select>
     );
   };
+
   const validateWeights = (category: string) => {
     const fieldsWeight = calculateCategoryWeight(fieldstock[category] || []);
     return fieldsWeight === 100;
@@ -328,8 +394,24 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
         }, {} as { [key: number]: number });
 
         const idsSet = new Set(idsArr);
-        // Filter initialOptions based on idsArr
-        const filteredOptions = initialOptions.filter(option => idsSet.has(parseInt(option.value, 10)));
+        
+        // Determine which options to use based on main category selection
+        const isStockCategory = selectedMainCategories.includes('Stocks');
+        const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
+        let optionsToFilter: (StockOption | MutualFundOption)[] = [];
+        
+        if (isStockCategory && !isMutualFundCategory) {
+          optionsToFilter = initialOptions;
+        } else if (isMutualFundCategory && !isStockCategory) {
+          optionsToFilter = initialMOptions;
+        } else {
+          // Handle mixed case - you might want to combine both arrays
+          optionsToFilter = [...initialOptions, ...initialMOptions];
+        }
+        
+        // Filter options based on idsArr
+        const filteredOptions = optionsToFilter.filter(option => idsSet.has(parseInt(option.value, 10)));
+        
         // Add weights to filteredOptions
         const enrichedOptions = filteredOptions.map(option => {
             const id = parseInt(option.value, 10);
@@ -343,10 +425,10 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
                 stock:0,
                 orderValue:0,
                 ltp:option.currentPrice,
-                weightNew: stockWeights[id] !== undefined ? stockWeights[id] / 100 : 0 // Use default weight if not found
+                weightNew: stockWeights[id] !== undefined ? stockWeights[id] / 100 : 0
             };
-        });
-                
+        });                
+        
         // Step 1: Find the stock with the highest LTP
         let highestLTP = -Infinity;
         let highestLTPItem = null;
@@ -357,46 +439,64 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
                 highestLTPItem = item;
             }
         }
+        
+        // Updated quantity calculation logic for both stocks and mutual funds
+
         if (highestLTPItem) {
             // Step 2: Calculate the minimum amount and quantity
-            // let totalOrderValue = 0;
-            // let totalMinAmountorderValue = 0;
-             
             for (const item of enrichedOptions) {
-                let amount =  0;
+                let amount = 0;
                 
                 const price = Number(item.currentPrice);
-                item.minimumamount = parseFloat(highestLTPItem.ltp)*item.weightNew/highestLTPItem.weightNew;
+                item.minimumamount = parseFloat(highestLTPItem.ltp) * item.weightNew / highestLTPItem.weightNew;
                 amount = item.minimumamount;
 
                 // Calculate the quantity and order value
                 const divisionResult = amount / price;
-                const roundedResult = Math.round(divisionResult);
-                item.quantity = roundedResult;
-                item.stock = divisionResult; 
-                if (item.quantity === 0) {
-                    item.quantity = 1;
+                
+                // Check if this is a mutual fund (has switchMultiples property)
+                const isMutualFund = 'switchMultiples' in item && item.switchMultiples !== undefined;
+                
+                if (isMutualFund) {
+                    // For mutual funds, use exact division result (no rounding)
+                    const switchMultiples = Number(item.switchMultiples);
+                    item.quantity = divisionResult*switchMultiples;                    
+                    item.orderValue = item.quantity * price;
+                    item.stock = item.quantity;
+                } else {
+                    // For stocks, round to whole numbers
+                    const roundedResult = Math.round(divisionResult);
+                    item.quantity = Math.max(roundedResult, 1); // Minimum 1 stock
+                    // For stocks, order value is quantity * price
+                    item.orderValue = item.quantity * price;
+                    item.stock = divisionResult;
                 }
-                item.orderValue = item.quantity * price;
-                // totalOrderValue += item.orderValue;  
+                
+                // item.stock = divisionResult;
 
-                let minamount =  0;
-                item.MinAmountminimumamount =  item.weightNew*parseFloat(portfolioDetails.minimumInvestment);
+                // Calculate minimum investment quantity
+                let minamount = 0;
+                item.MinAmountminimumamount = item.weightNew * parseFloat(portfolioDetails.minimumInvestment);
                 minamount = item.MinAmountminimumamount;
-
 
                 // Calculate the quantity on minimum amount and order value
                 const MindivisionResult = minamount / price;
-                const MinroundedResult = Math.round(MindivisionResult);
-                item.MinAmountquantity = MinroundedResult;
                 
-                if (item.MinAmountquantity === 0) {
-                    item.MinAmountquantity = 1;
+                if (isMutualFund) {
+                    // For mutual funds, use exact division result for minimum amount calculation
+                    const switchMultiples = Number(item.switchMultiples);
+                    item.MinAmountquantity = MindivisionResult*switchMultiples;
+                    // For mutual funds, order value should be based on the allocated minimum amount
+                    item.MinAmountorderValue = minamount;
+                } else {
+                    // For stocks, round to whole numbers
+                    const MinroundedResult = Math.round(MindivisionResult);
+                    item.MinAmountquantity = Math.max(MinroundedResult, 1);
+                    // For stocks, order value is quantity * price
+                    item.MinAmountorderValue = item.MinAmountquantity * price;
                 }
-                item.MinAmountorderValue = item.MinAmountquantity * price;
-                // totalMinAmountorderValue += item.MinAmountorderValue;
             }
-        }    
+        }
         
         const totalOrderAmount = enrichedOptions.reduce((sum, stock) => {
             return sum + (stock.orderValue ?? 0);
@@ -411,36 +511,33 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
         for (const key in dataInvst) {
             if (dataInvst.hasOwnProperty(key)) {
                 dataInvst[key] = dataInvst[key].map(item => {
-                    // Find matching item in the second array map
                     const match = secondArrayMap.get(item.selectValue);
                     if (match) {
-                        // Update the item with data from the second array map
                         return {
                             ...item,
                             ...match, 
                         };
                     }
-                    // Return item unchanged if no match found
                     return item;
                 });
             }
         } 
     }
-};
+  };
 
-const handleCategoryWeightChange = (category: string, event: React.ChangeEvent<HTMLInputElement>) => {
-  const { value } = event.target;
-  const weight = parseFloat(value) || 0; // Default to 0 if parsing fails
-  updateTotalWeight(category, weight);
-};
+  const handleCategoryWeightChange = (category: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = event.target;
+    const weight = parseFloat(value) || 0;
+    updateTotalWeight(category, weight);
+  };
 
-const updateTotalWeight = (category: string, weight: number) => {
-  setTotalWeights(prevTotalWeights => {
-      const updatedTotalWeights = { ...prevTotalWeights, [category]: weight };
-      calculateOrderValue(fieldstock, updatedTotalWeights, portfolioDetails);
-      return updatedTotalWeights;
-  });
-};
+  const updateTotalWeight = (category: string, weight: number) => {
+    setTotalWeights(prevTotalWeights => {
+        const updatedTotalWeights = { ...prevTotalWeights, [category]: weight };
+        calculateOrderValue(fieldstock, updatedTotalWeights, portfolioDetails);
+        return updatedTotalWeights;
+    });
+  };
 
   const handleCheckboxChange = (category: string) => {
     setSelectedCategories((prev) => {
@@ -453,10 +550,29 @@ const updateTotalWeight = (category: string, weight: number) => {
         calculateOrderValue(newFields, totalWeights, portfolioDetails);
         return newSelectedCategories;
       } else {
+        // Determine which options to use
+        const isStockCategory = selectedMainCategories.includes('Stocks');
+        const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
+        let optionsToUse: (StockOption | MutualFundOption)[] = [];
+        
+        if (isStockCategory && !isMutualFundCategory) {
+          optionsToUse = initialOptions;
+        } else if (isMutualFundCategory && !isStockCategory) {
+          optionsToUse = initialMOptions;
+        }
+
         setFieldstock((prevFields) => {
             const newFields = {
                 ...prevFields,
-                [category]: [{ id: 1, selectValue: '', weight: '', currentPrice: '', options: initialOptions, MinAmountquantity: 0, MinAmountorderValue: 0 }],
+                [category]: [{ 
+                  id: 1, 
+                  selectValue: '', 
+                  weight: '', 
+                  currentPrice: '', 
+                  options: optionsToUse, 
+                  MinAmountquantity: 0, 
+                  MinAmountorderValue: 0 
+                }],
             };
             calculateOrderValue(newFields, totalWeights, portfolioDetails);
             return newFields;
@@ -466,9 +582,26 @@ const updateTotalWeight = (category: string, weight: number) => {
     });
   }; 
 
+  const handleCheckboxChangeMainCategory = (mcategory: string) => {
+    setSelectedMainCategories((prev) => {
+      const isSelected = prev.includes(mcategory);
+      if (isSelected) {
+        const newSelectedMainCategories = prev.filter((cat) => cat !== mcategory);
+        // Clear all sub-category selections when main category is deselected
+        setSelectedCategories([]);
+        setFieldstock({});
+        setTotalWeights({});
+        return newSelectedMainCategories;
+      } else {
+        return [...prev, mcategory];
+      }
+    });
+  };
+
   const resetForm = () => {
     setPortfolioDetails(DEFAULT_PORTFOLIO_DATA);
     setSelectedCategories([]);
+    setSelectedMainCategories([]);
     setFieldstock({});
     setTotalWeights({});
   };
@@ -479,7 +612,27 @@ const updateTotalWeight = (category: string, weight: number) => {
         const newId = categoryFields.length > 0 
                         ? Math.max(...categoryFields.map(field => field.id)) + 1 
                         : 1;
-        const newField: Field = { id: newId, selectValue: '', weight: '', currentPrice: '', options: initialOptions, MinAmountquantity: 0, MinAmountorderValue: 0 };
+        
+        // Determine which options to use
+        const isStockCategory = selectedMainCategories.includes('Stocks');
+        const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
+        let optionsToUse: (StockOption | MutualFundOption)[] = [];
+        
+        if (isStockCategory && !isMutualFundCategory) {
+          optionsToUse = initialOptions;
+        } else if (isMutualFundCategory && !isStockCategory) {
+          optionsToUse = initialMOptions;
+        }
+
+        const newField: Field = { 
+          id: newId, 
+          selectValue: '', 
+          weight: '', 
+          currentPrice: '', 
+          options: optionsToUse, 
+          MinAmountquantity: 0, 
+          MinAmountorderValue: 0 
+        };
         
         const updatedFields = {
           ...prevFields,
@@ -534,8 +687,21 @@ const updateTotalWeight = (category: string, weight: number) => {
     const stockTypeWeightMap: { [stockType: string]: number } = {};
     let totalWeight = 0;
     
+    // Use appropriate options based on main category selection
+    const isStockCategory = selectedMainCategories.includes('Stocks');
+    const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
+    let optionsToUse: (StockOption | MutualFundOption)[] = [];
+    
+    if (isStockCategory && !isMutualFundCategory) {
+      optionsToUse = initialOptions;
+    } else if (isMutualFundCategory && !isStockCategory) {
+      optionsToUse = initialMOptions;
+    } else {
+      optionsToUse = [...initialOptions, ...initialMOptions];
+    }
+    
     allFields.forEach(field => {
-        const selectedOption = initialOptions.find(option => option.value.toString() === field.selectValue.toString());
+        const selectedOption = optionsToUse.find(option => option.value.toString() === field.selectValue.toString());
       
         if (selectedOption) { 
             const stockType = selectedOption.stockType;
@@ -563,9 +729,22 @@ const updateTotalWeight = (category: string, weight: number) => {
     const capTypeWeightMap: { [capType: string]: number } = {};
     let totalWeight = 0;
 
+    // Use appropriate options based on main category selection
+    const isStockCategory = selectedMainCategories.includes('Stocks');
+    const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
+    let optionsToUse: (StockOption | MutualFundOption)[] = [];
+    
+    if (isStockCategory && !isMutualFundCategory) {
+      optionsToUse = initialOptions;
+    } else if (isMutualFundCategory && !isStockCategory) {
+      optionsToUse = initialMOptions;
+    } else {
+      optionsToUse = [...initialOptions, ...initialMOptions];
+    }
+
     Object.values(fields).forEach((categoryFields) => {
       categoryFields.forEach((field) => {
-        const selectedOption = initialOptions.find(
+        const selectedOption = optionsToUse.find(
             (option) => option.value.toString() === field.selectValue.toString()
         );
         if (selectedOption) {
@@ -767,6 +946,20 @@ const updateTotalWeight = (category: string, weight: number) => {
               onChange={(e) => setPortfolioDetails({ ...portfolioDetails, orderAmount: e.target.value })}
             />
           </div>
+
+          <div className="flex gap-2 items-center">
+              {Object.keys(maincategory).map((mcategory) => (
+              <div key={mcategory} >
+                  <input
+                  type="checkbox"
+                  id={mcategory}
+                  checked={selectedMainCategories.includes(mcategory)}
+                  onChange={() => handleCheckboxChangeMainCategory(mcategory)}
+                  />
+                  <label htmlFor={mcategory}>{maincategory[mcategory]}</label>
+              </div>
+              ))}
+          </div>
   
           <div className="flex gap-2 items-center">
               {Object.keys(stock).map((category) => (
@@ -795,7 +988,7 @@ const updateTotalWeight = (category: string, weight: number) => {
               />
               {fieldstock[category]?.map((field) => (
                 <div key={field.id} className="flex gap-2 items-center mb-1">
-                  {renderStockDropdown(category, field)}                 
+                  {renderDropdown(category, field)}                 
                   <Input
                     value={field.currentPrice}
                     readOnly

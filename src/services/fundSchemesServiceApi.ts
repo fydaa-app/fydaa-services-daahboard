@@ -20,6 +20,7 @@ export interface FundScheme {
   scheme_code: string;
   amc_id: number;
   active: boolean;
+  switch_multiples: number;
 }
 
 interface FundSchemesResponse {
