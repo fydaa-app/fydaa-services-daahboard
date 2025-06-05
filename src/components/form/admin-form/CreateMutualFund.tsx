@@ -116,7 +116,7 @@ export default function CreateMutualFund({
         StockType: mapFundCategoryToStockType(prefilledData.fund_category || ''),
         CapType: mapFundCategoryToCapType(prefilledData.fund_category || ''),
         sector: mapFundCategoryToSector(prefilledData.fund_category || ''),
-        switchMultiples: prefilledData.min_switch_out_amount?.toString() || ''
+        switchMultiples: prefilledData.switch_multiples?.toString() || ''
       };
       
       setMutualFundData(mappedData);

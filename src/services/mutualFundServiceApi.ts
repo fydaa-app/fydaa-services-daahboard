@@ -21,6 +21,29 @@ export interface AMCResponse {
   amcs: AMC[];
 }
 
+interface MutualFund {
+  id: string;
+  scriptcode: number;
+  stockName: string;
+  ticker: string;
+  currentPrice: string;
+  yesterdayPrice: string;
+  StockType: string;
+  CapType: string;
+  sector: number;
+  switchMultiples: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+interface MutualFundAPIResponse {
+  data: MutualFund[];
+  totalStocks?: number;
+  limit?: number;
+  error?: string | null;
+}
+
 class AMCService {
   private baseUrl: string;
 
@@ -47,8 +70,6 @@ class AMCService {
       throw new Error('Unauthorized');
     }
     
-    console.log("res:", response);
-
     if (response.status === 500) {
       throw new Error('Server error: The API is currently experiencing issues. Please try again later.');
     }
@@ -102,18 +123,35 @@ class AMCService {
     return { amcs: validatedAmcs, error: null };
   }
   
-  // Additional method to check API health
-  async checkAPIHealth(): Promise<boolean> {
+  async getMutualFundList(): Promise<MutualFundAPIResponse> {
     try {
-      const response = await fetch(this.baseUrl.replace('/amcs', '/health'), {
-        method: 'GET',
+      const response = await fetch(`${process.env.NEXT_PUBLIC_STOCK_API_URL}${process.env.NEXT_PUBLIC_MUTUAL_FUND_LIST_ENDPOINT}`, {
         headers: {
-          'Authorization': `Bearer ${this.getAuthToken()}`,
-        },
+          Authorization: `Bearer ${this.getAuthToken()}`,
+          'Content-Type': 'application/json',
+        }
       });
-      return response.ok;
-    } catch {
-      return false;
+
+      // Handle different response structures
+      const data = await this.handleResponse(response);
+
+      // Normalize the response to always have a data array
+      const mutualFunds = Array.isArray(data) 
+        ? data 
+        : Array.isArray(data?.data) 
+          ? data.data 
+          : [];
+
+      return {
+        data: mutualFunds,
+        error: null
+      };
+    } catch (error) {
+      console.error("Error fetching mutual fund data:", error);
+      return {
+        data: [],
+        error: error instanceof Error ? error.message : "Error fetching stock data"
+      };
     }
   }
 }
