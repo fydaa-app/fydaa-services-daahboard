@@ -8,14 +8,16 @@ import CreatePortfolio from "@/components/form/admin-form/CreatePortfolio"
 import Cookies from 'js-cookie';
 import { useRouter, useSearchParams } from "next/navigation";
 import Pagination from "@/components/tables/Pagination";
+import { goalManagementServiceApi } from "@/services/goalManagementServiceApi";
+import { packagesManagementServiceApi } from "@/services/packagesManagementServiceApi";
 
 interface AssetClass {    
     [key: string]: number; 
-  }
-  
-  interface AssetClassStock {   
+}
+
+interface AssetClassStock {   
     [key: string]: [];
-  }
+}
 
 interface Portfolio {
     id: number;
@@ -51,6 +53,38 @@ interface ApiError {
     errorType: 'auth' | 'server' | 'network' | 'unknown';
 }
 
+interface Goal {
+    id: number;
+    goalName: string;
+}
+
+interface Package {
+    id: number;
+    packageName: string;
+}
+
+interface FilterState {
+    goalId: string;
+    packageId: string;
+    planId: string;
+    termId: string;
+}
+
+// Add these interfaces for API responses
+interface GoalApiResponse {
+    goals?: Array<{
+        id: number;
+        name: string;
+    }>;
+}
+
+interface PackageApiResponse {
+    packages?: Array<{
+        id: number;
+        packagesName: string;
+    }>;
+}
+
 const planNames: { [key: number]: string } = {
     1: 'Saving',
     2: 'Investment',
@@ -64,16 +98,43 @@ const planTermNames: { [key: number]: string } = {
     3: 'Long Term',
 };
 
+const planOptions = Object.entries(planNames).map(([id, name]) => ({
+    id: parseInt(id),
+    name
+}));
+
+const termOptions = Object.entries(planTermNames).map(([id, name]) => ({
+    id: parseInt(id),
+    name
+}));
+
 async function fetchPortfolios(
     page: number = 1, 
     limit: number = 10, 
-    searchQuery: string = ""
+    searchQuery: string = "",
+    filters: FilterState = { goalId: '', packageId: '', planId: '', termId: '' }
 ): Promise<ApiResponse | ApiError> {
     try {
         let url = `${process.env.NEXT_PUBLIC_STOCK_API_URL}${process.env.NEXT_PUBLIC_PORTFOLIO_ENDPOINT}?page=${page}&limit=${limit}`;
         
         if (searchQuery) {
             url += `&search=${encodeURIComponent(searchQuery)}`;
+        }
+        
+        if (filters.goalId) {
+            url += `&goalId=${filters.goalId}`;
+        }
+        
+        if (filters.packageId) {
+            url += `&packageId=${filters.packageId}`;
+        }
+        
+        if (filters.planId) {
+            url += `&planId=${filters.planId}`;
+        }
+        
+        if (filters.termId) {
+            url += `&termId=${filters.termId}`;
         }
         
         const token = Cookies.get('authToken') || "";
@@ -135,17 +196,61 @@ export default function PortfolioTablesPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearching, setIsSearching] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
+    const [goals, setGoals] = useState<Goal[]>([]);
+    const [packages, setPackages] = useState<Package[]>([]);
+    const [filters, setFilters] = useState<FilterState>({
+        goalId: '',
+        packageId: '',
+        planId: '',
+        termId: ''
+    });
+    const [showFilters, setShowFilters] = useState(false);
     const limit = 10;
 
     const router = useRouter();
     const searchParams = useSearchParams();
     const inputRef = useRef<HTMLInputElement>(null);
 
+    // Load filter data on component mount
+    useEffect(() => {
+        const loadFilterData = async () => {
+            try {
+                const [goalsResponse, packagesResponse] = await Promise.all([
+                    goalManagementServiceApi.getGoalList(),
+                    packagesManagementServiceApi.getPackageList()
+                ]);
+                
+                setGoals(
+                    ((goalsResponse as GoalApiResponse).goals || []).map((g) => ({
+                        id: g.id,
+                        goalName: g.name
+                    }))
+                );
+                setPackages(
+                    ((packagesResponse as PackageApiResponse).packages || []).map((pkg) => ({
+                        id: pkg.id,
+                        packageName: pkg.packagesName
+                    }))
+                );
+            } catch (error) {
+                console.error('Failed to load filter data:', error);
+            }
+        };
+        
+        loadFilterData();
+    }, []);
+
     useEffect(() => {
         const query = searchParams.get('search') || "";
         const page = parseInt(searchParams.get('page') || "1");
+        const goalId = searchParams.get('goalId') || "";
+        const packageId = searchParams.get('packageId') || "";
+        const planId = searchParams.get('planId') || "";
+        const termId = searchParams.get('termId') || "";
+        
         setSearchQuery(query);
         setCurrentPage(page);
+        setFilters({ goalId, packageId, planId, termId });
     }, [searchParams]);
 
     const fetchData = useCallback(async () => {
@@ -153,7 +258,7 @@ export default function PortfolioTablesPage() {
             setIsSearching(true);
             setError(null);
             
-            const result = await fetchPortfolios(currentPage, limit, searchQuery);
+            const result = await fetchPortfolios(currentPage, limit, searchQuery, filters);
             console.log("API Response:", result);
             // Check if result is an error object
             if ('errorType' in result) {
@@ -177,41 +282,65 @@ export default function PortfolioTablesPage() {
         } finally {
             setIsSearching(false);
         }
-    }, [currentPage, searchQuery]);
+    }, [currentPage, searchQuery, filters]);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    const updateUrlParams = (newFilters: FilterState, newPage: number = 1, newSearch: string = searchQuery) => {
+        const params = new URLSearchParams();
+        
+        if (newSearch) {
+            params.set('search', newSearch);
+        }
+        
+        if (newFilters.goalId) {
+            params.set('goalId', newFilters.goalId);
+        }
+        
+        if (newFilters.packageId) {
+            params.set('packageId', newFilters.packageId);
+        }
+        
+        if (newFilters.planId) {
+            params.set('planId', newFilters.planId);
+        }
+        
+        if (newFilters.termId) {
+            params.set('termId', newFilters.termId);
+        }
+        
+        params.set('page', newPage.toString());
+        
+        router.push(`?${params.toString()}`, { scroll: false });
+    };
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         
         // Reset to first page when searching
         setCurrentPage(1);
-        
-        // Update URL with search query and page
-        const params = new URLSearchParams();
-        if (searchQuery) {
-            params.set('search', searchQuery);
-        } else {
-            params.delete('search');
-        }
-        params.set('page', '1');
-        
-        router.push(`?${params.toString()}`, { scroll: false });
+        updateUrlParams(filters, 1, searchQuery);
+    };
+
+    const handleFilterChange = (filterKey: keyof FilterState, value: string) => {
+        const newFilters = { ...filters, [filterKey]: value };
+        setFilters(newFilters);
+        setCurrentPage(1);
+        updateUrlParams(newFilters, 1);
+    };
+
+    const handleClearFilters = () => {
+        const clearedFilters = { goalId: '', packageId: '', planId: '', termId: '' };
+        setFilters(clearedFilters);
+        setCurrentPage(1);
+        updateUrlParams(clearedFilters, 1);
     };
 
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
-        
-        // Update URL with new page
-        const params = new URLSearchParams();
-        if (searchQuery) {
-            params.set('search', searchQuery);
-        }
-        params.set('page', page.toString());
-        
-        router.push(`?${params.toString()}`, { scroll: false });
+        updateUrlParams(filters, page);
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -272,59 +401,183 @@ export default function PortfolioTablesPage() {
         );
     };
 
+    const hasActiveFilters = filters.goalId || filters.packageId || filters.planId || filters.termId;
+
     return (
         <div>
             <PageBreadcrumb pageTitle="Portfolios" />
             <div className="space-y-6">
                 <ComponentCard title="Portfolio List">
-                    <div className="flex items-center justify-end gap-2">
-                        <form onSubmit={handleSearch} className="flex-1 max-w-md">
-                            <div className="relative">
-                                <span className="absolute -translate-y-1/2 left-4 top-1/2 pointer-events-none">
-                                    <svg
-                                        className="fill-gray-500 dark:fill-gray-400"
-                                        width="20"
-                                        height="20"
-                                        viewBox="0 0 20 20"
-                                        fill="none"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                    >
-                                        <path
-                                            fillRule="evenodd"
-                                            clipRule="evenodd"
-                                            d="M3.04175 9.37363C3.04175 5.87693 5.87711 3.04199 9.37508 3.04199C12.8731 3.04199 15.7084 5.87693 15.7084 9.37363C15.7084 12.8703 12.8731 15.7053 9.37508 15.7053C5.87711 15.7053 3.04175 12.8703 3.04175 9.37363ZM9.37508 1.54199C5.04902 1.54199 1.54175 5.04817 1.54175 9.37363C1.54175 13.6991 5.04902 17.2053 9.37508 17.2053C11.2674 17.2053 13.003 16.5344 14.357 15.4176L17.177 18.238C17.4699 18.5309 17.9448 18.5309 18.2377 18.238C18.5306 17.9451 18.5306 17.4703 18.2377 17.1774L15.418 14.3573C16.5365 13.0033 17.2084 11.2669 17.2084 9.37363C17.2084 5.04817 13.7011 1.54199 9.37508 1.54199Z"
-                                            fill=""
-                                        />
-                                    </svg>
-                                </span>
-                                <input
-                                    ref={inputRef}
-                                    type="text"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder="Search portfolios..."
-                                    className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-12 pr-14 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:bg-white/[0.03] dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                                />
-                                {isSearching && (
-                                    <span className="absolute -translate-y-1/2 right-4 top-1/2">
-                                        <svg className="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <div className="space-y-4">
+                        {/* Search and Filter Controls */}
+                        <div className="flex items-center justify-between gap-4">
+                            <form onSubmit={handleSearch} className="flex-1 max-w-md">
+                                <div className="relative">
+                                    <span className="absolute -translate-y-1/2 left-4 top-1/2 pointer-events-none">
+                                        <svg
+                                            className="fill-gray-500 dark:fill-gray-400"
+                                            width="20"
+                                            height="20"
+                                            viewBox="0 0 20 20"
+                                            fill="none"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                        >
+                                            <path
+                                                fillRule="evenodd"
+                                                clipRule="evenodd"
+                                                d="M3.04175 9.37363C3.04175 5.87693 5.87711 3.04199 9.37508 3.04199C12.8731 3.04199 15.7084 5.87693 15.7084 9.37363C15.7084 12.8703 12.8731 15.7053 9.37508 15.7053C5.87711 15.7053 3.04175 12.8703 3.04175 9.37363ZM9.37508 1.54199C5.04902 1.54199 1.54175 5.04817 1.54175 9.37363C1.54175 13.6991 5.04902 17.2053 9.37508 17.2053C11.2674 17.2053 13.003 16.5344 14.357 15.4176L17.177 18.238C17.4699 18.5309 17.9448 18.5309 18.2377 18.238C18.5306 17.9451 18.5306 17.4703 18.2377 17.1774L15.418 14.3573C16.5365 13.0033 17.2084 11.2669 17.2084 9.37363C17.2084 5.04817 13.7011 1.54199 9.37508 1.54199Z"
+                                                fill=""
+                                            />
                                         </svg>
                                     </span>
+                                    <input
+                                        ref={inputRef}
+                                        type="text"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        placeholder="Search portfolios..."
+                                        className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-12 pr-14 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:bg-white/[0.03] dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                                    />
+                                    {isSearching && (
+                                        <span className="absolute -translate-y-1/2 right-4 top-1/2">
+                                            <svg className="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        </span>
+                                    )}
+                                </div>
+                            </form>
+                            
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setShowFilters(!showFilters)}
+                                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                                        hasActiveFilters 
+                                            ? 'bg-brand-50 border-brand-200 text-brand-700 dark:bg-brand-900/20 dark:border-brand-800 dark:text-brand-300' 
+                                            : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]'
+                                    }`}
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+                                    </svg>
+                                    Filters
+                                    {hasActiveFilters && (
+                                        <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-brand-500 rounded-full">
+                                            {Object.values(filters).filter(Boolean).length}
+                                        </span>
+                                    )}
+                                </button>
+                                
+                                <button
+                                    onClick={() => setIsModalOpen(true)}
+                                    className="shrink-0 bg-brand-500 text-white hover:bg-brand-600 
+                                    focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 px-4 py-2 
+                                    rounded-lg text-sm font-medium disabled:opacity-70 disabled:cursor-not-allowed"
+                                >
+                                    Add New Portfolio
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Filter Dropdowns */}
+                        {showFilters && (
+                            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    {/* Goal Filter */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Goal
+                                        </label>
+                                        <select
+                                            value={filters.goalId}
+                                            onChange={(e) => handleFilterChange('goalId', e.target.value)}
+                                            className="w-full h-10 px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                                        >
+                                            <option value="">All Goals</option>
+                                            {goals.map((goal) => (
+                                                <option key={goal.id} value={goal.id}>
+                                                    {goal.goalName}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Package Filter */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Package
+                                        </label>
+                                        <select
+                                            value={filters.packageId}
+                                            onChange={(e) => handleFilterChange('packageId', e.target.value)}
+                                            className="w-full h-10 px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                                        >
+                                            <option value="">All Packages</option>
+                                            {packages.map((pkg) => (
+                                                <option key={pkg.id} value={pkg.id}>
+                                                    {pkg.packageName}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Plan Filter */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Plan
+                                        </label>
+                                        <select
+                                            value={filters.planId}
+                                            onChange={(e) => handleFilterChange('planId', e.target.value)}
+                                            className="w-full h-10 px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                                        >
+                                            <option value="">All Plans</option>
+                                            {planOptions.map((plan) => (
+                                                <option key={plan.id} value={plan.id}>
+                                                    {plan.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Term Filter */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Term
+                                        </label>
+                                        <select
+                                            value={filters.termId}
+                                            onChange={(e) => handleFilterChange('termId', e.target.value)}
+                                            className="w-full h-10 px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                                        >
+                                            <option value="">All Terms</option>
+                                            {termOptions.map((term) => (
+                                                <option key={term.id} value={term.id}>
+                                                    {term.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Clear Filters Button */}
+                                {hasActiveFilters && (
+                                    <div className="mt-4 flex justify-end">
+                                        <button
+                                            onClick={handleClearFilters}
+                                            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                            Clear all filters
+                                        </button>
+                                    </div>
                                 )}
                             </div>
-                        </form>
-                        
-                        <button
-                            onClick={() => setIsModalOpen(true)}
-                            className="shrink-0 bg-brand-500 text-white hover:bg-brand-600 
-                            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 px-4 py-2 
-                            rounded-lg text-sm font-medium disabled:opacity-70 disabled:cursor-not-allowed"
-                        >
-                            Add New Portfolio
-                        </button>
-                    </div>                    
+                        )}
+                    </div>
                     
                     {renderErrorState()}
                     
@@ -339,6 +592,7 @@ export default function PortfolioTablesPage() {
                             error={error}
                             getPlanName={getPlanName}
                             getPlanTermName={getPlanTermName}
+                            onRefresh={fetchData}
                         />
                     )}
 
