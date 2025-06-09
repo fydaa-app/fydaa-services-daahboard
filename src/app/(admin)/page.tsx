@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import React from "react";
-import ComponentCard from "@/components/common/ComponentCard";
-import PageBreadcrumb from "@/components/common/PageBreadCrumb";
-import ComingSoon from "@/components/common/ComingSoon";
+import Dashboard from "@/components/ecommerce/Dashboard"; 
 
 export const metadata: Metadata = {
   title: "Fydaa - Admin Dashboard",
@@ -11,13 +9,10 @@ export const metadata: Metadata = {
 
 export default function Ecommerce() {
   return (
-     <div>
-        <PageBreadcrumb pageTitle="Dashboard" />
-        <div className="space-y-6">
-            <ComponentCard title="Dashboard">
-                <ComingSoon></ComingSoon>
-            </ComponentCard>
-        </div>
+    <div className="grid grid-cols-12 gap-4 md:gap-6">
+      <div className="col-span-12">
+        <Dashboard /> 
+      </div>      
     </div>
   );
 }
