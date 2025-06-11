@@ -35,6 +35,7 @@ export interface Portfolio {
   weights: string; 
   assetClass: AssetClass;
   assetClassStock: AssetClassStock;  
+  portfolioType: string; 
 } 
 
 export interface PortfolioTableProps {

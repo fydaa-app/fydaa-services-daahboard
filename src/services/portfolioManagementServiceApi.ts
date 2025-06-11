@@ -38,6 +38,7 @@ export interface PortfolioData {
   assetClassStock: FieldsState;
   investMentType: string;
   fundType: number;
+  portfolioType: string;
 }
 
 export interface PortfolioRequestData {

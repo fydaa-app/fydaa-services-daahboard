@@ -101,6 +101,7 @@ interface PortfolioData {
   assetClassStock: string;
   investMentType: string;
   fundType:number;
+  portfolioType: string; 
 }
 
 interface StockOption {
@@ -163,7 +164,8 @@ const DEFAULT_PORTFOLIO_DATA: PortfolioData = {
   assetClass: '',
   assetClassStock: '',
   investMentType: '',
-  fundType: 0
+  fundType: 0,
+  portfolioType: 'STOCK',
 };
 
 export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddStockProps) {
@@ -263,6 +265,13 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
                 });
             }
         }
+        let portfolioType = 'STOCK';
+        if (selectedMainCategories.includes('Stocks') ) {
+          portfolioType = 'STOCK';
+        }else if (selectedMainCategories.includes('MutualFunds') ) {
+          portfolioType = 'MUTUALFUND';
+        }
+
       const assetClassStock    = fieldstock;
       const params = {
             ...portfolioDetails,
@@ -270,6 +279,7 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
             weights,
             assetClass,
             assetClassStock,
+            portfolioType
         };
 
       const response = await portfolioManagementServiceApi.createPortfolio(params);          

@@ -37,6 +37,7 @@ interface Portfolio {
     weights: string; 
     assetClass: AssetClass;
     assetClassStock: AssetClassStock;  
+    portfolioType: string;
 }
 
 interface ApiResponse {
@@ -259,7 +260,6 @@ export default function PortfolioTablesPage() {
             setError(null);
             
             const result = await fetchPortfolios(currentPage, limit, searchQuery, filters);
-            console.log("API Response:", result);
             // Check if result is an error object
             if ('errorType' in result) {
                 setError(result);

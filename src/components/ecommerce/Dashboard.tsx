@@ -20,7 +20,7 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        let url = `${process.env.NEXT_PUBLIC_STOCK_API_URL}${process.env.NEXT_PUBLIC_DASHBOARD_LIST_ENDPOINT}`;
+        const url = `${process.env.NEXT_PUBLIC_STOCK_API_URL}${process.env.NEXT_PUBLIC_DASHBOARD_LIST_ENDPOINT}`;
         const token = Cookies.get('authToken') || "";
         const response = await fetch(url, {
             headers: {
