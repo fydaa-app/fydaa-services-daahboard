@@ -88,7 +88,6 @@ export default function SignInForm() {
           secure: process.env.NODE_ENV === "production",
           sameSite: "strict" as const // Change here: use 'as const'
         };
-       console.log('ssadasdasda===',data.data);
         // Store auth token
         setCookie("authToken", data.data.accessToken, cookieOptions);
         // Store employee data in cookies
