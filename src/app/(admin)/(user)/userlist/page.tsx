@@ -4,26 +4,46 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import UserListTable from "@/components/tables/UserListTable";
-import { useGlobalContext } from "@/context/GlobalState";
 import Cookies from 'js-cookie';
 import Pagination from "@/components/tables/Pagination";
 import { useRouter, useSearchParams } from "next/navigation";
 
 interface User {
-  userId:number;
-  userName: string;
+  id: number;
+  fullName: string;
+  firstName: string;
+  lastName: string;
   mobileNumber: string;
-  planName: string;
-  managerName: string;
-  onboardingDate: string;
-  netWorth: number;
-  status:string;
+  email: string;
+  isOtpVerified: boolean;
+  isEmailVerified: boolean;
+  isEsignVerified: boolean;
+  isPANVerificationCompleted: boolean;
+  isPersonalDetailCompleted: boolean;
+  total_investment: number;
+  current_balance: number;
+  createdAt: string;
+  referralCode: string;
+  callingCode: string;
+  panStatus: string;
+  userRole: string;
+  country: string;
+  state: string;
+  city: string;
+  pincode: string;
+  gender: string;
+  dob: string;
+  isNRI: boolean;
+}
+
+interface ApiResponse {
+  users: User[];
+  total?: number;
+  limit?: number;
 }
 
 async function fetchUsers(
     page: number, 
-    selectedOption: string, 
-    customDates: { start: string; end: string },
     searchQuery: string = ""
 ): 
     Promise<{ 
@@ -33,14 +53,8 @@ async function fetchUsers(
         limit?: number;
     }> {
     try {
-        let url = `${process.env.NEXT_PUBLIC_API_URL}${process.env.NEXT_PUBLIC_USER_LIST_ENDPOINT}?page=${page}`;
+        let url = `${process.env.NEXT_PUBLIC_AUTH_URL}${process.env.NEXT_PUBLIC_KYC_USER_LIST_ENDPOINT}?page=${page}`;
     
-        if (selectedOption === 'custom') {
-          url += `&timeframe=custom&startDate=${customDates.start}&endDate=${customDates.end}`;
-        } else {
-          url += `&timeframe=${selectedOption || "yearly"}`;
-        }
-
         if (searchQuery) {
             url += `&search=${encodeURIComponent(searchQuery)}`;
         }
@@ -61,8 +75,14 @@ async function fetchUsers(
             throw new Error("Failed to fetch");
         }
 
-        const data = await response.json();
-        return { users: Array.isArray(data.users) ? data.users : [], error: null,totalUsers: data.totalUsers,limit: data.limit };
+        const apiResponse: ApiResponse = await response.json();
+
+        return { 
+            users: Array.isArray(apiResponse.users) ? apiResponse.users : [],
+            error: null,
+            totalUsers: apiResponse.total || apiResponse.users?.length || 0,
+            limit: apiResponse.limit || 10
+        };
     } catch (err) {
         console.error("Error fetching data:", err);
         return { users: [], error: "Error fetching data" };
@@ -72,7 +92,6 @@ async function fetchUsers(
 export default function UserTablesPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [error, setError] = useState<string | null>(null);
-    const { selectedOption, customDates } = useGlobalContext();
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalUsers, setTotalUsers] = useState(0);
@@ -90,7 +109,7 @@ export default function UserTablesPage() {
 
     const fetchData = useCallback(async () => {
         try {
-            const { users, error, totalUsers: apiTotalUsers, limit } = await fetchUsers(page, selectedOption, customDates, searchQuery);
+            const { users, error, totalUsers: apiTotalUsers, limit } = await fetchUsers(page, searchQuery);
             setUsers(users);
             setError(error);
             
@@ -103,7 +122,7 @@ export default function UserTablesPage() {
             console.error("Error in fetchData:", err);
             setError("Failed to load data");
         }
-    }, [page, selectedOption, customDates, searchQuery]);
+    }, [page, searchQuery]);
 
     useEffect(() => {
         fetchData();
@@ -111,7 +130,7 @@ export default function UserTablesPage() {
 
     useEffect(() => {
         setPage(1);
-    }, [selectedOption, customDates, searchQuery]);
+    }, [searchQuery]);
 
     const handlePageChange = (newPage: number) => {
         setPage(newPage);
@@ -133,6 +152,9 @@ export default function UserTablesPage() {
         
         // Reset to first page when searching
         setPage(1);
+        
+        // Reset searching state after a delay
+        setTimeout(() => setIsSearching(false), 1000);
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
