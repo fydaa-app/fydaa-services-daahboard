@@ -9,7 +9,7 @@ interface DashboardData {
   TotalGoal: number;
   TotalPackages: number;
   TotalMutualFund: number;
-}
+}  
 
 const Dashboard = () => {
   const [data, setData] = useState<DashboardData | null>(null);

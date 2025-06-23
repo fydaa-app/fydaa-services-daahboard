@@ -124,6 +124,7 @@ class AMCService {
   }
   
   async getMutualFundList(): Promise<MutualFundAPIResponse> {
+    
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_STOCK_API_URL}${process.env.NEXT_PUBLIC_MUTUAL_FUND_LIST_ENDPOINT}`, {
         headers: {
