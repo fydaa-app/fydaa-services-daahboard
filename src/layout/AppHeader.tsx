@@ -6,24 +6,10 @@ import { useSidebar } from "@/context/SidebarContext";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useState, useEffect, useRef } from "react";
-import Select from "@/components/form/Select";
-import { ChevronDownIcon } from "@/icons";
-import { useGlobalContext } from "../context/GlobalState";
-import { useModal } from "@/hooks/useModal";
-import { Modal } from "@/components/ui/modal";
-import Label from "@/components/form/Label";
-import Input from "@/components/form/input/InputField";
-import Button from "@/components/ui/button/Button";
 
 const AppHeader: React.FC = () => {
-  const { isOpen, openModal, closeModal } = useModal();
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
-
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
-  const { selectedOption, setSelectedOption } = useGlobalContext();
-  const { customDates, setCustomDates, validateDates } = useGlobalContext();
 
   const handleToggle = () => {
     if (window.innerWidth >= 991) {
@@ -38,38 +24,6 @@ const AppHeader: React.FC = () => {
   };
 
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const options = [
-    { value: "daily", label: "Daily" },
-    { value: "weekly", label: "Weekly" },
-    { value: "monthly", label: "Monthly" },
-    { value: "yearly", label: "Yearly" },
-    { value: "till_date", label: "Till Date" },
-    { value: "custom", label: "Custom Date" },
-  ];
-
-  const handleSelectChange = (option: { value: string; label: string } | null) => {     
-    if (option) {
-      setSelectedOption(option.value);
-      if (option.value === "custom") {
-        openModal();
-      }else{
-        setCustomDates({ start: "", end: "" });
-      }
-    }    
-  };
-
-  const handleSaveDates = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (validateDates(startDate, endDate)) {      
-      setCustomDates({ start: startDate, end: endDate });
-    } else {
-      alert("Invalid date range: Start date must be before end date");
-    }
-    
-    closeModal();
-  };
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -86,12 +40,6 @@ const AppHeader: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (isOpen) {
-      setStartDate(customDates.start);
-      setEndDate(customDates.end);
-    }
-  }, [isOpen, customDates]);
   return (
     <header className="sticky top-0 flex w-full bg-white border-gray-200 z-99999 dark:border-gray-800 dark:bg-gray-900 lg:border-b">
       <div className="flex flex-col items-center justify-between grow lg:flex-row lg:px-6">
@@ -174,69 +122,17 @@ const AppHeader: React.FC = () => {
         </div>
         
         <div
-          className={`${
-            isApplicationMenuOpen ? "flex" : "hidden"
-          } items-center justify-between w-full gap-4 px-5 py-4 lg:flex shadow-theme-md lg:justify-end lg:px-0 lg:shadow-none`}
-        >
-           <div className="relative">
-        <Select 
-          options={options}
-          placeholder="Select Option"
-          onChange={handleSelectChange}
-          value={selectedOption}
-          className="dark:bg-dark-900"
-        />
-          <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
-          <ChevronDownIcon/>
-        </span>
-      </div>
-          <div className="flex items-center gap-2 2xsm:gap-3">            
-            <ThemeToggleButton />           
-            <NotificationDropdown />            
-          </div>
+            className={`${
+              isApplicationMenuOpen ? "flex" : "hidden"
+            } items-center justify-between w-full gap-4 px-5 py-4 lg:flex shadow-theme-md lg:justify-end lg:px-0 lg:shadow-none`}
+          >            
+            <div className="flex items-center gap-2 2xsm:gap-3">            
+              <ThemeToggleButton />           
+              <NotificationDropdown />            
+            </div>
             <UserDropdown /> 
         </div>
-      </div>
-      <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[700px] m-4">
-      <div className="relative w-full p-4 overflow-y-auto bg-white no-scrollbar rounded-3xl dark:bg-gray-900 lg:p-11">
-        <div className="px-2 pr-14">
-          <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
-            Select Custom Date Range
-          </h4>
-          <p className="mb-6 text-sm text-gray-500 dark:text-gray-400 lg:mb-7">
-            Please choose your custom start and end dates.
-          </p>
-        </div>
-        <form className="flex flex-col" onSubmit={handleSaveDates}>
-          <div className="px-2 overflow-y-auto custom-scrollbar">
-            <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
-              <div>
-                <Label>Start Date</Label>
-                <Input 
-                  type="date" 
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label>End Date</Label>
-                <Input 
-                  type="date" 
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
-            <Button size="sm" variant="outline" onClick={closeModal}>
-              Cancel
-            </Button>            
-            <Button size="sm" type="submit">Save Dates</Button>
-          </div>
-        </form>
-      </div>
-    </Modal>
+      </div>      
     </header>
   );
 };

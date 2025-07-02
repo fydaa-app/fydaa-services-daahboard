@@ -95,7 +95,7 @@ const Dashboard = () => {
               <SalesIcon />
               <h2 className="numbers-sale">{data.TotalStock}</h2>
               <p className="total-sale-text">Total Stocks</p>
-              <span className="total-yes">Active in portfolio</span>
+              <a  href="/stock" ><span className="total-yes">Active in portfolio</span></a>
             </div>
           </div>
           
@@ -104,7 +104,7 @@ const Dashboard = () => {
               <OrderIcon /> 
               <h2 className="numbers-sale">{data.TotalPortfolio}</h2>
               <p className="total-sale-text">Total Portfolios</p>
-              <span className="total-yes">Managed portfolios</span>
+              <a  href="/portfolio" ><span className="total-yes">Managed portfolios</span></a>
             </div>
           </div>
           
@@ -113,7 +113,7 @@ const Dashboard = () => {
               <DiscIcon />
               <h2 className="numbers-sale">{data.TotalGoal}</h2>
               <p className="total-sale-text">Total Goals</p>
-              <span className="total-yes">Investment goals</span>
+              <a  href="/goal" ><span className="total-yes">Investment goals</span></a>
             </div>
           </div>
           
@@ -122,7 +122,7 @@ const Dashboard = () => {
               <NewCustomerIcon />
               <h2 className="numbers-sale">{data.TotalPackages}</h2>
               <p className="total-sale-text">Total Packages</p>
-              <span className="total-yes">Available packages</span>
+              <a  href="/packages" ><span className="total-yes">Available packages</span></a>
             </div>
           </div>
           
@@ -131,7 +131,7 @@ const Dashboard = () => {
               <SalesIcon />
               <h2 className="numbers-sale">{data.TotalMutualFund}</h2>
               <p className="total-sale-text">Mutual Funds</p>
-              <span className="total-yes">Available funds</span>
+              <a  href="/my-mutual-fund" ><span className="total-yes">Available funds</span></a>
             </div>
           </div>
         </div>

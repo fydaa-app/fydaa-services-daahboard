@@ -269,7 +269,7 @@ export default function UserTab({
         ?.split("=")[1] || "";
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SUBSCRIPTION_API_URL || 'http://localhost:3002'}/subscription/getUserPaymentDetails/${userDetails.id}`,
+        `${process.env.NEXT_PUBLIC_PAYMENT_API_URL}/subscription/getUserPaymentDetails/${userDetails.id}`,
         {
           headers: {
             Authorization: `Bearer ${authToken}`,
