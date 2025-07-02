@@ -115,6 +115,29 @@ interface UserTabProps {
   stockOrders: StockOrder[];
 }
 
+interface Payment {
+  id: number;
+  user_id: number;
+  orderId: string;
+  paymentId: string;
+  amount: string; // This comes as string from API
+  paymentStatus: string;
+  type: string;
+  createdAt: string;
+  paymentData: {
+    method: string;
+    status: string;
+    vpa?: string;
+    // Add other payment data fields as needed
+  };
+}
+
+interface PaymentDetails {
+  payments: Payment[];
+  totalPayments: number;
+  totalAmount: number;
+}
+
 export default function UserTab({
   userDetails,
   portfolioDetails,
@@ -124,6 +147,10 @@ export default function UserTab({
 }: UserTabProps) {
   const [activeTab, setActiveTab] = useState<string>('Portfolio');
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+  const [processingDownload, setProcessingDownload] = useState<string | null>(null);
+  const [sendingEmail, setSendingEmail] = useState<string | null>(null);
 
   // Format currency values
   const formatCurrency = (value: number) => 
@@ -215,6 +242,160 @@ export default function UserTab({
       setDownloading(null);
     }
   };
+
+  const getPaymentMethodDisplay = (payment: Payment): string => {
+    const method = payment.paymentData?.method || 'Unknown';
+    switch (method.toLowerCase()) {
+      case 'upi':
+        return `UPI${payment.paymentData?.vpa ? ` (${payment.paymentData.vpa})` : ''}`;
+      case 'card':
+        return 'Card';
+      case 'netbanking':
+        return 'Net Banking';
+      case 'wallet':
+        return 'Wallet';
+      default:
+        return method.charAt(0).toUpperCase() + method.slice(1);
+    }
+  };
+  
+  // Enhanced fetch payment details function
+  const fetchPaymentDetails = async () => {
+    try {
+      setLoadingPayments(true);
+      const authToken = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("authToken="))
+        ?.split("=")[1] || "";
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUBSCRIPTION_API_URL || 'http://localhost:3002'}/subscription/getUserPaymentDetails/${userDetails.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch payment details');
+      }
+
+      const result = await response.json();
+      if (result.success && result.data && result.data.payments) {
+        // Process and calculate totals properly
+        const payments = result.data.payments;
+        const totalPayments = payments.length;
+        const totalAmount = payments.reduce((sum: number, payment: Payment) => {
+          return sum + parseFloat(payment.amount);
+        }, 0);
+
+        setPaymentDetails({
+          payments,
+          totalPayments,
+          totalAmount,
+        });
+      } else {
+        throw new Error(result.message || 'No payment data found');
+      }
+    } catch (error) {
+      console.error('Error fetching payment details:', error);
+      alert('Failed to fetch payment details. Please try again.');
+    } finally {
+      setLoadingPayments(false);
+    }
+  };
+
+  // Enhanced download invoice PDF function
+  const downloadInvoicePDF = async (paymentId: number) => {
+    try {
+      setProcessingDownload(`invoice-${paymentId}`);
+      const authToken = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("authToken="))
+        ?.split("=")[1] || "";
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_PAYMENT_API_URL}/subscription/download-invoice-pdf/${userDetails.id}/${paymentId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to download invoice PDF');
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `invoice_${userDetails.id}_${paymentId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      // Show success message
+      alert('Invoice PDF downloaded successfully!');
+      
+    } catch (error) {
+      console.error('Error downloading invoice PDF:', error);
+      alert(`Failed to download invoice PDF: ${error}`);
+    } finally {
+      setProcessingDownload(null);
+    }
+  };
+
+  // Enhanced send invoice email function
+  const sendInvoiceEmail = async (paymentId: number) => {
+    try {
+      setSendingEmail(`email-${paymentId}`);
+      const authToken = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("authToken="))
+        ?.split("=")[1] || "";
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_PAYMENT_API_URL}/subscription/send-invoice-email/${userDetails.id}/${paymentId}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to send invoice email');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        alert('Invoice email sent successfully!');
+      } else {
+        throw new Error(result.message || 'Failed to send invoice email');
+      }
+    } catch (error) {
+      console.error('Error sending invoice email:', error);
+      alert(`Failed to send invoice email: ${error}`);
+    } finally {
+      setSendingEmail(null);
+    }
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (tab === 'Payments' && !paymentDetails) {
+      fetchPaymentDetails();
+    }
+  };
   
   return (
     <div className="grid grid-cols-12 gap-4 md:gap-6">
@@ -265,11 +446,11 @@ export default function UserTab({
         <div className="flex flex-col gap-5">
           {/* Tabs Navigation */}
           <div className="flex gap-2 overflow-x-auto">
-            {['Portfolio', 'Transaction', 'Subscription', 'Stock', 'Profile', 'Reports'].map((tab) => (
+            {['Portfolio', 'Transaction', 'Subscription', 'Stock', 'Payments', 'Profile', 'Reports'].map((tab) => (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
+                onClick={() => handleTabChange(tab)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap
                   ${
                     activeTab === tab 
                       ? 'bg-primary dark:bg-primary-dark bg-gray-100 text-gray-500'
@@ -436,8 +617,8 @@ export default function UserTab({
               </div>
             )}
 
-             {/* Reports Tab */}
-             {activeTab === 'Reports' && (
+            {/* Reports Tab */}
+            {activeTab === 'Reports' && (
               <div className="p-6">
                 <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Download Reports</h3>
@@ -520,7 +701,140 @@ export default function UserTab({
                   </div>
                 </div>
               </div>
-               )}
+            )}
+
+            {/* NEW PAYMENTS TAB */}
+            {activeTab === 'Payments' && (
+              <div className="p-4">
+                {loadingPayments ? (
+                  <div className="flex justify-center items-center py-8">
+                    <svg className="w-8 h-8 animate-spin text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span className="ml-2 text-gray-600 dark:text-gray-400">Loading payment details...</span>
+                  </div>
+                ) : paymentDetails && paymentDetails.payments.length > 0 ? (
+                  <>
+                    {/* Payment Summary */}
+                    <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Payment Summary</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Total Payments</p>
+                          <p className="font-medium text-2xl text-blue-600 dark:text-blue-400">{paymentDetails.totalPayments}</p>
+                        </div>
+                        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Total Amount</p>
+                          <p className="font-medium text-2xl text-green-600 dark:text-green-400">{formatCurrency(paymentDetails.totalAmount)}</p>
+                        </div>
+                        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Average Payment</p>
+                          <p className="font-medium text-2xl text-purple-600 dark:text-purple-400">
+                            {formatCurrency(paymentDetails.totalAmount / paymentDetails.totalPayments)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Payments Table */}
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+                          <TableRow>
+                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-sm dark:text-gray-100">Payment ID</TableCell>
+                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-sm dark:text-gray-100">Date</TableCell>
+                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-sm dark:text-gray-100">Amount</TableCell>
+                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-sm dark:text-gray-100">Status</TableCell>
+                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-sm dark:text-gray-100">Method</TableCell>
+                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-sm dark:text-gray-100">Type</TableCell>
+                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-sm dark:text-gray-100">Actions</TableCell>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+                          {paymentDetails.payments.map((payment) => (
+                            <TableRow key={payment.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                              <TableCell className="px-4 py-3 text-gray-900 dark:text-gray-100 text-start text-sm font-medium">
+                                #{payment.id}
+                              </TableCell>
+                              <TableCell className="px-4 py-3 text-gray-500 text-start text-sm dark:text-gray-400">
+                                {new Date(payment.createdAt).toLocaleDateString('en-IN', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
+                              </TableCell>
+                              <TableCell className="px-4 py-3 text-gray-900 dark:text-gray-100 text-start text-sm font-medium">
+                                {formatCurrency(Number(payment.amount))}
+                              </TableCell>
+                              <TableCell className="px-4 py-3 text-start text-sm">
+                                <Badge color="success">
+                                  {payment.paymentStatus}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="px-4 py-3 text-gray-500 text-start text-sm dark:text-gray-400">
+                                {getPaymentMethodDisplay(payment)}
+                              </TableCell>
+                              <TableCell className="px-4 py-3 text-gray-500 text-start text-sm dark:text-gray-400">
+                                <span className="capitalize">{payment.type}</span>
+                              </TableCell>
+                              <TableCell className="px-4 py-3 text-start text-sm">
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => downloadInvoicePDF(payment.id)}
+                                    disabled={processingDownload === `invoice-${payment.id}`}
+                                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white text-xs rounded transition-colors flex items-center gap-1"
+                                    title="Download Invoice PDF"
+                                  >
+                                    {processingDownload === `invoice-${payment.id}` ? (
+                                      <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                      </svg>
+                                    ) : (
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                      </svg>
+                                    )}
+                                    <span>Invoice</span>
+                                  </button>
+                                  <button
+                                    onClick={() => sendInvoiceEmail(payment.id)}
+                                    disabled={sendingEmail === `email-${payment.id}`}
+                                    className="px-3 py-1 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white text-xs rounded transition-colors flex items-center gap-1"
+                                    title="Send Invoice Email"
+                                  >
+                                    {sendingEmail === `email-${payment.id}` ? (
+                                      <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                      </svg>
+                                    ) : (
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                      </svg>
+                                    )}
+                                    <span>Email</span>
+                                  </button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex justify-center items-center py-12">
+                    <div className="text-center">
+                      <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Payments Found</h3>
+                      <p className="text-gray-500 dark:text-gray-400">You havenot made any payments yet.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
         </div>
       </div>
