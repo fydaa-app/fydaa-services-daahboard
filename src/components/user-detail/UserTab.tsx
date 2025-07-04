@@ -45,7 +45,6 @@ interface UserDetails {
   dob: string;
   address: Address;
   userGoal: UserGoal;
-  // Add these missing properties
   subscription_date: string;
   main_subscription_status: number;
 }
@@ -115,25 +114,74 @@ interface UserTabProps {
   stockOrders: StockOrder[];
 }
 
-interface Payment {
+interface OrderData {
+  id?: string;
+  entity?: string;
+  amount?: number;
+  currency?: string;
+  status?: string;
+  created_at?: number;
+  token?: {
+    method?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+interface PaymentData {
+  id?: string;
+  entity?: string;
+  amount?: number;
+  currency?: string;
+  status?: string;
+  method?: string;
+  vpa?: string;
+  created_at?: number;
+  [key: string]: unknown;
+}
+
+// Updated Payment interfaces for the new API structure
+interface OneTimePayment {
   id: number;
   user_id: number;
   orderId: string;
-  paymentId: string;
-  amount: string; // This comes as string from API
+  paymentId: string | null;
+  amount: string;
   paymentStatus: string;
   type: string;
   createdAt: string;
-  paymentData: {
-    method: string;
-    status: string;
-    vpa?: string;
-    // Add other payment data fields as needed
-  };
+  orderData: OrderData;
+  paymentData: PaymentData;
+}
+
+interface PaymentOrder {
+  id: number;
+  userId: number;
+  orderId: string;
+  paymentId: string | null;
+  amount: number;
+  paymentStatus: string;
+  createdAt: string;
+  orderData: OrderData;
+  paymentData: PaymentData;
+}
+
+// Combined payment interface for display
+interface CombinedPayment {
+  id: number;
+  orderId: string;
+  paymentId: string | null;
+  amount: number;
+  paymentStatus: string;
+  type: string;
+  paymentType: 'one_time' | 'subscription';
+  createdAt: string;
+  paymentData: PaymentData;
+  orderData: OrderData;
 }
 
 interface PaymentDetails {
-  payments: Payment[];
+  payments: CombinedPayment[];
   totalPayments: number;
   totalAmount: number;
 }
@@ -182,7 +230,6 @@ export default function UserTab({
         throw new Error('Failed to download risk profile PDF');
       }
 
-      // Create blob and download
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -224,7 +271,6 @@ export default function UserTab({
         throw new Error('Failed to download esign agreement PDF');
       }
 
-      // Create blob and download
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -243,8 +289,8 @@ export default function UserTab({
     }
   };
 
-  const getPaymentMethodDisplay = (payment: Payment): string => {
-    const method = payment.paymentData?.method || 'Unknown';
+  const getPaymentMethodDisplay = (payment: CombinedPayment): string => {
+    const method = payment.paymentData?.method || payment.orderData?.token?.method || 'Unknown';
     switch (method.toLowerCase()) {
       case 'upi':
         return `UPI${payment.paymentData?.vpa ? ` (${payment.paymentData.vpa})` : ''}`;
@@ -254,10 +300,13 @@ export default function UserTab({
         return 'Net Banking';
       case 'wallet':
         return 'Wallet';
+      case 'emandate':
+        return 'E-Mandate';
       default:
         return method.charAt(0).toUpperCase() + method.slice(1);
     }
   };
+
   
   // Enhanced fetch payment details function
   const fetchPaymentDetails = async () => {
@@ -282,16 +331,55 @@ export default function UserTab({
       }
 
       const result = await response.json();
-      if (result.success && result.data && result.data.payments) {
-        // Process and calculate totals properly
-        const payments = result.data.payments;
-        const totalPayments = payments.length;
-        const totalAmount = payments.reduce((sum: number, payment: Payment) => {
-          return sum + parseFloat(payment.amount);
-        }, 0);
+      
+      if (result.success && result.data) {
+        // Combine both payment types
+        const combinedPayments: CombinedPayment[] = [];
+        
+        // Add one-time payments
+        if (result.data.one_time_payments) {
+          result.data.one_time_payments.forEach((payment: OneTimePayment) => {
+            combinedPayments.push({
+              id: payment.id,
+              orderId: payment.orderId,
+              paymentId: payment.paymentId,
+              amount: parseFloat(payment.amount),
+              paymentStatus: payment.paymentStatus,
+              type: payment.type,
+              paymentType: 'one_time',
+              createdAt: payment.createdAt,
+              paymentData: payment.paymentData,
+              orderData: payment.orderData
+            });
+          });
+        }
+
+        // Add subscription payments
+        if (result.data.payments_order) {
+          result.data.payments_order.forEach((payment: PaymentOrder) => {
+            combinedPayments.push({
+              id: payment.id,
+              orderId: payment.orderId,
+              paymentId: payment.paymentId,
+              amount: payment.amount,
+              paymentStatus: payment.paymentStatus,
+              type: 'subscription',
+              paymentType: 'subscription',
+              createdAt: payment.createdAt,
+              paymentData: payment.paymentData,
+              orderData: payment.orderData
+            });
+          });
+        }
+
+        // Sort by date (newest first)
+        combinedPayments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+        const totalPayments = combinedPayments.length;
+        const totalAmount = combinedPayments.reduce((sum, payment) => sum + payment.amount, 0);
 
         setPaymentDetails({
-          payments,
+          payments: combinedPayments,
           totalPayments,
           totalAmount,
         });
@@ -307,7 +395,7 @@ export default function UserTab({
   };
 
   // Enhanced download invoice PDF function
-  const downloadInvoicePDF = async (paymentId: number) => {
+  const downloadInvoicePDF = async (paymentId: number, paymentType: string) => {
     try {
       setProcessingDownload(`invoice-${paymentId}`);
       const authToken = document.cookie
@@ -316,7 +404,7 @@ export default function UserTab({
         ?.split("=")[1] || "";
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_PAYMENT_API_URL}/subscription/download-invoice-pdf/${userDetails.id}/${paymentId}`,
+        `${process.env.NEXT_PUBLIC_PAYMENT_API_URL}/subscription/download-invoice-pdf/${userDetails.id}/${paymentId}/${paymentType}`,
         {
           headers: {
             Authorization: `Bearer ${authToken}`,
@@ -329,18 +417,16 @@ export default function UserTab({
         throw new Error(errorData.message || 'Failed to download invoice PDF');
       }
 
-      // Create blob and download
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `invoice_${userDetails.id}_${paymentId}.pdf`;
+      link.download = `invoice_${userDetails.id}_${paymentId}_${paymentType}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       
-      // Show success message
       alert('Invoice PDF downloaded successfully!');
       
     } catch (error) {
@@ -352,7 +438,7 @@ export default function UserTab({
   };
 
   // Enhanced send invoice email function
-  const sendInvoiceEmail = async (paymentId: number) => {
+  const sendInvoiceEmail = async (paymentId: number, paymentType: string) => {
     try {
       setSendingEmail(`email-${paymentId}`);
       const authToken = document.cookie
@@ -361,7 +447,7 @@ export default function UserTab({
         ?.split("=")[1] || "";
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_PAYMENT_API_URL}/subscription/send-invoice-email/${userDetails.id}/${paymentId}`,
+        `${process.env.NEXT_PUBLIC_PAYMENT_API_URL}/subscription/send-invoice-email/${userDetails.id}/${paymentId}/${paymentType}`,
         {
           method: 'POST',
           headers: {
@@ -780,7 +866,7 @@ export default function UserTab({
                               <TableCell className="px-4 py-3 text-start text-sm">
                                 <div className="flex gap-2">
                                   <button
-                                    onClick={() => downloadInvoicePDF(payment.id)}
+                                    onClick={() => downloadInvoicePDF(payment.id,payment.paymentType)}
                                     disabled={processingDownload === `invoice-${payment.id}`}
                                     className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white text-xs rounded transition-colors flex items-center gap-1"
                                     title="Download Invoice PDF"
@@ -797,7 +883,7 @@ export default function UserTab({
                                     <span>Invoice</span>
                                   </button>
                                   <button
-                                    onClick={() => sendInvoiceEmail(payment.id)}
+                                    onClick={() => sendInvoiceEmail(payment.id,payment.paymentType)}
                                     disabled={sendingEmail === `email-${payment.id}`}
                                     className="px-3 py-1 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white text-xs rounded transition-colors flex items-center gap-1"
                                     title="Send Invoice Email"
