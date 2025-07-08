@@ -34,6 +34,11 @@ const navItems: NavItem[] = [
     path: "/userlist",
   },
   {
+    icon: <UserCircleIcon />,
+    name: "Payments",
+    path: "/payment-list",
+  },
+  {
     icon: <LeaderboardIcon />,
     name: "Goals",
     path: "/goal",
