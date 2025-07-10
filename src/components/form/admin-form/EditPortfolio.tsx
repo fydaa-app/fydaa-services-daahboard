@@ -147,8 +147,9 @@ interface Package {
 interface EditStockProps {
   isOpen: boolean;
   onClose: () => void;
-  PortfolioData?: PortfolioData;
+  PortfolioData?: PortfolioData | null;
   type?: 'add' | 'update' | 'clone';
+  onRefresh?: () => void;
 }
 
 const DEFAULT_PORTFOLIO_DATA: PortfolioData = {
@@ -189,7 +190,15 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
   const [captypeWeights, setCaptypeWeights] = useState<{ [capType: string]: number }>({});
   const [summary, setSummary] = useState({ totalStocks: 0, top3Weight: 0, top5Weight: 0, top10Weight: 0 });
   const [isLoading, setIsLoading] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    if (!isOpen) {
+      setDataLoaded(false);
+      resetForm();
+    }
+  }, [isOpen]);
 
   // Fetch goals and packages on component mount
   useEffect(() => {
@@ -259,6 +268,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
                   });
               }
           }
+          
           setFieldstock(newFields1);
           setSelectedCategories(Object.keys(PortfolioData?.assetClass));
           setTotalWeights(PortfolioData?.assetClass);
@@ -267,6 +277,8 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
           calculateCapTypeWeights(newFields1);
           calculateStockTypeWeights(newFields1);
           calculateSummary(newFields1);
+          setSelectedMainCategories(PortfolioData.portfolioType == "MUTUALFUND" ? ['MutualFunds'] : ['Stocks']);
+          
           const portfolioDetails: PortfolioData = {
               id: PortfolioData?.id || 0,
               portfolioName: PortfolioData?.portfolioName || '',
@@ -287,12 +299,12 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
               packageName: PortfolioData?.packageName || null,
               portfolioType: PortfolioData.portfolioType || 'STOCK',
           };
-          setSelectedMainCategories(PortfolioData.portfolioType == "MUTUALFUND" ? ['MutualFunds'] : ['Stocks']);
+                    
           setPortfolioDetails(portfolioDetails);
           calculateOrderValue(newFields1,PortfolioData?.assetClass,portfolioDetails);
           setTimeout(() => {
               calculateOrderValue(newFields1,PortfolioData?.assetClass,portfolioDetails);
-          }, 1000);
+          }, 1000);          
       } else {
           setFields([{ id: 1, selectValue: '', weight: '',currentPrice:'', options , MinAmountquantity:0,MinAmountorderValue:0}]);
       }
@@ -305,13 +317,12 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
     fetchData();
   }, [PortfolioData, type]);
 
+  
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
-       console.log(fields);
-       console.log(sectorWeights);
       if (!portfolioDetails.portfolioName.trim()) {
         toast.error('Portfolio name is required');
         setIsLoading(false);
@@ -384,7 +395,6 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
   const calculateSectorWeights = (fields: FieldsState) => {
     const sectorWeightMap: { [sector: string]: number } = {};
     let totalWeight = 0;
-  console.log('fields',fields);
     Object.values(fields).forEach((categoryFields) => {
       categoryFields.forEach((field) => {
         const selectedOption = initialOptions.find(
@@ -411,7 +421,6 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
     }
     setSectorWeights(sectorWeights);
   };
-
 
   const renderStockDropdown = (category: string, field: Field) => { 
     const isStockCategory = selectedMainCategories.includes('Stocks');

@@ -57,13 +57,18 @@ const formatCurrency = (value: string | number): string => {
   }).format(numValue);
 };
 
-export default function PortfolioListTable({ portfolios, error, getPlanName, getPlanTermName,onRefresh}: PortfolioTableProps) {
+export default function PortfolioListTable({ portfolios, error, getPlanName, getPlanTermName, onRefresh }: PortfolioTableProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentPortfolio, setCurrentPortfolio] = useState<Portfolio>();
+  const [currentPortfolio, setCurrentPortfolio] = useState<Portfolio | null>(null);
 
-  const handleEdit = (portfolio: Portfolio) => {
-    setCurrentPortfolio(portfolio);   
+  const handleEdit = (portfolio: Portfolio) => { 
+    setCurrentPortfolio({ ...portfolio }); 
     setIsModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setCurrentPortfolio(null); // Reset the current portfolio
   };
 
   const getAuthToken = () => {
@@ -78,7 +83,7 @@ export default function PortfolioListTable({ portfolios, error, getPlanName, get
     };
   
     const handleDelete = async (id: number) => {
-      if (!confirm('Are you sure you want to delete this package?')) return;
+      if (!confirm('Are you sure you want to delete this portfolio?')) return;
       
       try {
         const apiUrl = process.env.NEXT_PUBLIC_STOCK_API_URL;
@@ -98,13 +103,13 @@ export default function PortfolioListTable({ portfolios, error, getPlanName, get
         
   
         if (!response.ok) {
-          throw new Error('Failed to delete package');
+          throw new Error('Failed to delete portfolio');
         }
         
-        toast.success('Package deleted successfully');
+        toast.success('Portfolio deleted successfully');
         onRefresh?.(); // Call refresh callback if provided
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Failed to delete package');
+        toast.error(error instanceof Error ? error.message : 'Failed to delete portfolio');
       }
     }
 
@@ -146,49 +151,51 @@ export default function PortfolioListTable({ portfolios, error, getPlanName, get
               </TableHeader>
               {/* Table Body */}
               <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                {portfolios.map((portfolio, index) => (                  
-                  <TableRow key={index}>
-                    <TableCell className="px-5 py-4 sm:px-6 text-start">
-                      {portfolio.portfolioName || 'N/A'}
-                    </TableCell>
-                    <TableCell className="px-5 py-4 sm:px-6 text-start">
-                      {portfolio.goalName || 'N/A'}
-                    </TableCell>
-                    <TableCell className="px-5 py-4 sm:px-6 text-start">
-                      {portfolio.packageName || 'N/A'}
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                      {getPlanName(Number(portfolio.planId))}
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                      {getPlanTermName(Number(portfolio.termId))}
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                      {formatCurrency(portfolio.minimumInvestment)}
-                    </TableCell>                      
-                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">                        
-                      {formatCurrency(portfolio.orderAmount)}
-                    </TableCell>                   
-                    <TableCell className="px-4 py-3">
-                      <div className="flex gap-2">                        
-                        <button
-                          onClick={() => handleEdit(portfolio)} 
-                          className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-theme-sm font-medium text-blue-600 shadow-theme-xs hover:bg-gray-50 hover:text-blue-800 dark:border-gray-700 dark:bg-gray-800 dark:text-blue-400 dark:hover:bg-white/[0.03] dark:hover:text-blue-300"
-                          aria-label={`Edit ${portfolio.portfolioName}`}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(portfolio.id)} 
-                          className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-theme-sm font-medium text-red-600 shadow-theme-xs hover:bg-gray-50 hover:text-red-800 dark:border-gray-700 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-white/[0.03] dark:hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                          aria-label={`Delete ${portfolio.portfolioName}`}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {portfolios.map((portfolio, index) => {
+                  return (
+                    <TableRow key={portfolio.id || index}>
+                      <TableCell className="px-5 py-4 sm:px-6 text-start">
+                        {portfolio.portfolioName || 'N/A'}
+                      </TableCell>
+                      <TableCell className="px-5 py-4 sm:px-6 text-start">
+                        {portfolio.goalName || 'N/A'}
+                      </TableCell>
+                      <TableCell className="px-5 py-4 sm:px-6 text-start">
+                        {portfolio.packageName || 'N/A'}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                        {getPlanName(Number(portfolio.planId))}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                        {getPlanTermName(Number(portfolio.termId))}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                        {formatCurrency(portfolio.minimumInvestment)}
+                      </TableCell>                      
+                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">                        
+                        {formatCurrency(portfolio.orderAmount)}
+                      </TableCell>                   
+                      <TableCell className="px-4 py-3">
+                        <div className="flex gap-2">                        
+                          <button
+                            onClick={() => handleEdit(portfolio)} 
+                            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-theme-sm font-medium text-blue-600 shadow-theme-xs hover:bg-gray-50 hover:text-blue-800 dark:border-gray-700 dark:bg-gray-800 dark:text-blue-400 dark:hover:bg-white/[0.03] dark:hover:text-blue-300"
+                            aria-label={`Edit ${portfolio.portfolioName}`}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(portfolio.id)} 
+                            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-theme-sm font-medium text-red-600 shadow-theme-xs hover:bg-gray-50 hover:text-red-800 dark:border-gray-700 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-white/[0.03] dark:hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                            aria-label={`Delete ${portfolio.portfolioName}`}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           ) : (
@@ -200,10 +207,12 @@ export default function PortfolioListTable({ portfolios, error, getPlanName, get
           )}
         </div>
       </div>
+      {/* Pass data to EditPortfolio component */}
       <EditPortfolio
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleModalClose}
         PortfolioData={currentPortfolio}
+        onRefresh={onRefresh} // Pass refresh function if needed
       />
     </div>
   );
