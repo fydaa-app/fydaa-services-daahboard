@@ -42,10 +42,19 @@ const termOptions = [
   { value: "4", label: "Emergency" }
 ];
 
-const riskScoreOptions = Array.from({ length: 10 }, (_, i) => ({
-  value: `${i * 10}`,
-  label: `${i * 10 + 1} to ${(i + 1) * 10}`
-}));
+const riskScoreOptions =[
+    { value: "0", label: "0 to 10" },
+    { value: "10", label: "11 to 20" },
+    { value: "20", label: "21 to 30" },
+    { value: "30", label: "31 to 40" },
+    { value: "40", label: "41 to 50" },
+    { value: "50", label: "51 to 60" },
+    { value: "60", label: "61 to 70" },
+    { value: "70", label: "71 to 80" },
+    { value: "80", label: "81 to 90" },
+    { value: "90", label: "91 to 100" },
+    { value: "100", label: "0 to 100" },
+]
 
 const stock: Record<string | number, string> = {
   'IndianStock': 'Indian Stock',
@@ -190,15 +199,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
   const [captypeWeights, setCaptypeWeights] = useState<{ [capType: string]: number }>({});
   const [summary, setSummary] = useState({ totalStocks: 0, top3Weight: 0, top5Weight: 0, top10Weight: 0 });
   const [isLoading, setIsLoading] = useState(false);
-  const [dataLoaded, setDataLoaded] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    if (!isOpen) {
-      setDataLoaded(false);
-      resetForm();
-    }
-  }, [isOpen]);
 
   // Fetch goals and packages on component mount
   useEffect(() => {
@@ -223,6 +224,8 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
           currentPrice: stock.currentPrice,
         }));      
        
+        console.log(fields);
+        console.log(sectorWeights);
         setInitialOptions(options);
 
         const mutualFundListData = await amcService.getMutualFundList();    
@@ -238,7 +241,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
           
           setInitialMOptions(moptions);
        
-        if ((type === "update" ||  type === "clone" ) && PortfolioData) {
+        if ((type === "update") && PortfolioData) {
          
           const stockIdsArray = PortfolioData?.stockIds?.replace(/'/g, "").split(",") || [];
           const weightsArray = PortfolioData?.weights?.replace(/'/g, "").split(",") || [];
@@ -305,9 +308,9 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
           setTimeout(() => {
               calculateOrderValue(newFields1,PortfolioData?.assetClass,portfolioDetails);
           }, 1000);          
-      } else {
-          setFields([{ id: 1, selectValue: '', weight: '',currentPrice:'', options , MinAmountquantity:0,MinAmountorderValue:0}]);
-      }
+        } else {
+            setFields([{ id: 1, selectValue: '', weight: '',currentPrice:'', options , MinAmountquantity:0,MinAmountorderValue:0}]);
+        }
       } catch (error) {
         toast.error('Failed to fetch data');
         console.error('Error fetching data:', error);
@@ -921,7 +924,7 @@ const updateTotalWeight = (category: string, weight: number) => {
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl dark:bg-gray-800">
         <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
           <h2 className="text-xl font-semibold dark:text-white">
-            {type === 'add' || type === 'clone' ? 'Add Portfolio' : 'Edit Portfolio'}
+           Edit Portfolio
           </h2>
           <button
             onClick={() => {

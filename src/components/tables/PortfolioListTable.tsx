@@ -9,6 +9,7 @@ import {
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import EditPortfolio from '@/components/form/admin-form/EditPortfolio';
+import ClonePortfolio from '@/components/form/admin-form/ClonePortfolio';
 
 interface AssetClass {    
   [key: string]: number; 
@@ -62,6 +63,11 @@ export default function PortfolioListTable({ portfolios, error, getPlanName, get
   const [currentPortfolio, setCurrentPortfolio] = useState<Portfolio | null>(null);
 
   const handleEdit = (portfolio: Portfolio) => { 
+    setCurrentPortfolio({ ...portfolio }); 
+    setIsModalOpen(true);
+  };
+
+  const handleClone = (portfolio: Portfolio) => { 
     setCurrentPortfolio({ ...portfolio }); 
     setIsModalOpen(true);
   };
@@ -185,6 +191,13 @@ export default function PortfolioListTable({ portfolios, error, getPlanName, get
                             Edit
                           </button>
                           <button
+                            onClick={() => handleClone(portfolio)} 
+                            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-theme-sm font-medium text-blue-600 shadow-theme-xs hover:bg-gray-50 hover:text-blue-800 dark:border-gray-700 dark:bg-gray-800 dark:text-blue-400 dark:hover:bg-white/[0.03] dark:hover:text-blue-300"
+                            aria-label={`Clone ${portfolio.portfolioName}`}
+                          >
+                            Clone
+                          </button>
+                          <button
                             onClick={() => handleDelete(portfolio.id)} 
                             className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-theme-sm font-medium text-red-600 shadow-theme-xs hover:bg-gray-50 hover:text-red-800 dark:border-gray-700 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-white/[0.03] dark:hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
                             aria-label={`Delete ${portfolio.portfolioName}`}
@@ -209,6 +222,12 @@ export default function PortfolioListTable({ portfolios, error, getPlanName, get
       </div>
       {/* Pass data to EditPortfolio component */}
       <EditPortfolio
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        PortfolioData={currentPortfolio}
+        onRefresh={onRefresh} // Pass refresh function if needed
+      />
+      <ClonePortfolio
         isOpen={isModalOpen}
         onClose={handleModalClose}
         PortfolioData={currentPortfolio}
