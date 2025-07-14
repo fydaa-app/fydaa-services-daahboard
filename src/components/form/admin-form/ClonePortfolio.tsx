@@ -17,11 +17,9 @@ const capTypeMapping: Record<string, string> = {
   "Smallcap": "Small Cap",
   "ETF": "ETF",
 };
-
 interface FieldW {
   weight: string; 
 }
-
 const investmentTypeOptions = [
   { value: "", label: "Select Investment Type" },
   { value: "1", label: "Buy" },
@@ -98,18 +96,20 @@ type WeightsState = {
 interface PortfolioData {
   portfolioName: string;
   planId: string;
-  termId: string;
   goalId: string;
   packageId: string;
-  stockIds: string[];
-  weights: number[];
+  termId: string;
   riskScore: string;
-  minimumInvestment: string;
-  orderAmount: string;
-  assetClass: string;
-  assetClassStock: string;
   investMentType: string;
-  fundType:number;
+  minimumInvestment: string;
+  fundType: number;
+  orderAmount: string;
+  goalName: string | null;
+  packageName: string | null;  
+  stockIds: string;
+  weights: string; 
+  assetClass: WeightsState;
+  assetClassStock: FieldsState;
   portfolioType: string; 
 }
 
@@ -139,8 +139,7 @@ interface Field {
   currentPrice: string;
   MinAmountquantity: number;
   MinAmountorderValue: number;
-  options?: StockOption[] | MutualFundOption[];
-  mainCategory?: string; // Add this to track which main category this field belongs to
+  options?: StockOption[];
 }
 
 interface Goal {
@@ -153,10 +152,12 @@ interface Package {
   packagesName: string;
 }
 
-interface AddStockProps {
+interface EditStockProps {
   isOpen: boolean;
   onClose: () => void;
-  type?: 'add' | 'edit' | 'clone';
+  PortfolioData?: PortfolioData | null;
+  type?: 'add' | 'update' | 'clone';
+  onRefresh?: () => void;
 }
 
 const DEFAULT_PORTFOLIO_DATA: PortfolioData = {
@@ -165,20 +166,26 @@ const DEFAULT_PORTFOLIO_DATA: PortfolioData = {
   termId: '',
   goalId: '',
   packageId: '',
-  stockIds: [],
-  weights: [],
+  stockIds: "",
+  weights: "",
   riskScore: '',
   minimumInvestment: '',
   orderAmount: '',
-  assetClass: '',
-  assetClassStock: '',
+  assetClass: {},
+  assetClassStock: {},
   investMentType: '',
   fundType: 0,
+  goalName: null,
+  packageName: null,
   portfolioType: 'STOCK',
 };
 
-export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddStockProps) {
+export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = 'clone'}: EditStockProps) {
   const [portfolioDetails, setPortfolioDetails] = useState<PortfolioData>(DEFAULT_PORTFOLIO_DATA);  
+  const [fields, setFields] = useState<Field[]>([
+    { id: 1, selectValue: '', weight: '',currentPrice:'', options: [],MinAmountquantity:0,MinAmountorderValue:0 }
+  ]);
+  const [sectorWeights, setSectorWeights] = useState<{ [sector: string]: number }>({});
   const [goalListData, setGoalListData] = useState<Goal[]>([]);
   const [packageListData, setPackageListData] = useState<Package[]>([]);
   const [fieldstock, setFieldstock] = useState<FieldsState>({});
@@ -194,6 +201,7 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
 
   // Fetch goals and packages on component mount
   useEffect(() => {
+   
     const fetchData = async () => {
       try {
         const [goalsResponse, packagesResponse] = await Promise.all([
@@ -203,32 +211,102 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
         
         if (goalsResponse.goals) setGoalListData(goalsResponse.goals);
         if (packagesResponse.packages) setPackageListData(packagesResponse.packages);
-        
+
         const stockListData = await stockManagementServiceApi.getStockList();    
         const options = stockListData.data.map((stock: Stock) => ({
           value: stock.id,
           label: stock.stockName,
-          sector: stock.sector.toString(),
+          sector: stock.sector.toString(), // Convert number to string if needed
           capType: stock.CapType,
           stockType: stock.StockType,
           currentPrice: stock.currentPrice,
         }));      
-       
-        setInitialOptions(options); 
+        console.log(fields);
+        console.log(sectorWeights);
+        setInitialOptions(options);
 
         const mutualFundListData = await amcService.getMutualFundList();    
-        const moptions = mutualFundListData.data.map((mutualFund: MutualFund) => ({
-          value: mutualFund.id,
-          label: mutualFund.stockName,
-          sector: mutualFund.sector.toString(),
-          capType: mutualFund.CapType,
-          stockType: mutualFund.StockType,
-          currentPrice: mutualFund.currentPrice,
-          switchMultiples: mutualFund.switchMultiples,
-        }));      
+          const moptions = mutualFundListData.data.map((mutualFund: MutualFund) => ({
+            value: mutualFund.id,
+            label: mutualFund.stockName,
+            sector: mutualFund.sector.toString(),
+            capType: mutualFund.CapType,
+            stockType: mutualFund.StockType,
+            currentPrice: mutualFund.currentPrice,
+            switchMultiples: mutualFund.switchMultiples,
+          }));      
+          
+          setInitialMOptions(moptions);
        
-        setInitialMOptions(moptions);  
+        if ((type === "clone" ) && PortfolioData) {
+         
+          const stockIdsArray = PortfolioData?.stockIds?.replace(/'/g, "").split(",") || [];
+          const weightsArray = PortfolioData?.weights?.replace(/'/g, "").split(",") || [];
+          const newFields = stockIdsArray.map((id: string, index: number) => ({
+              id: index + 1,
+              selectValue: id,
+              weight: weightsArray[index] || '',
+              currentPrice: '',
+              MinAmountquantity: 0,
+              MinAmountorderValue: 0,
+              options,
+          }));
+          setFields(newFields);
+                   
+          const newFields1 =   PortfolioData?.assetClassStock;
 
+          for (const category in newFields1) {
+              if (newFields1.hasOwnProperty(category)) {
+                  newFields1[category].forEach((item: Field) => {
+                      const stock  =  options.find((option: { value: string; }) => parseInt(option.value) === parseInt(item.selectValue));
+                      item.options =  options;  // Replace with the new option(s)
+                      if (stock) {
+                          item.currentPrice = stock.currentPrice;                          
+                      } else {
+                          console.warn(`No stock found for selectValue: ${item.selectValue}`);
+                      }
+                  });
+              }
+          }
+          
+          setFieldstock(newFields1);
+          setSelectedCategories(Object.keys(PortfolioData?.assetClass));
+          setTotalWeights(PortfolioData?.assetClass);
+          calculateSectorWeights(newFields1);   
+          setFieldstock(newFields1);
+          calculateCapTypeWeights(newFields1);
+          calculateStockTypeWeights(newFields1);
+          calculateSummary(newFields1);
+          setSelectedMainCategories(PortfolioData.portfolioType == "MUTUALFUND" ? ['MutualFunds'] : ['Stocks']);
+          
+          const portfolioDetails: PortfolioData = {
+              portfolioName: PortfolioData?.portfolioName || '',
+              planId: PortfolioData?.planId || '',
+              termId: PortfolioData?.termId || '',
+              goalId: PortfolioData?.goalId || '',
+              packageId: PortfolioData?.packageId || '',
+              stockIds: stockIdsArray.join(','),
+              weights: weightsArray.join(','),
+              riskScore: PortfolioData?.riskScore || '',
+              minimumInvestment: PortfolioData?.minimumInvestment || '',
+              orderAmount: PortfolioData?.orderAmount || '',
+              assetClass: PortfolioData?.assetClass || {},
+              assetClassStock: PortfolioData?.assetClassStock || {},
+              investMentType: PortfolioData?.investMentType || '',
+              fundType: PortfolioData?.fundType || 0,
+              goalName: PortfolioData?.goalName || null,
+              packageName: PortfolioData?.packageName || null,
+              portfolioType: PortfolioData.portfolioType || 'STOCK',
+          };
+                    
+          setPortfolioDetails(portfolioDetails);
+          calculateOrderValue(newFields1,PortfolioData?.assetClass,portfolioDetails);
+          setTimeout(() => {
+              calculateOrderValue(newFields1,PortfolioData?.assetClass,portfolioDetails);
+          }, 1000);          
+      } else {
+          setFields([{ id: 1, selectValue: '', weight: '',currentPrice:'', options , MinAmountquantity:0,MinAmountorderValue:0}]);
+      }
       } catch (error) {
         toast.error('Failed to fetch data');
         console.error('Error fetching data:', error);
@@ -236,8 +314,9 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
     };
 
     fetchData();
-  }, []);
+  }, [PortfolioData, type]);
 
+  
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -274,33 +353,43 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
                 });
             }
         }
-        let portfolioType = 'STOCK';
+      const assetClassStock    = fieldstock;
+
+      let portfolioType = 'STOCK';
         if (selectedMainCategories.includes('Stocks') ) {
           portfolioType = 'STOCK';
         }else if (selectedMainCategories.includes('MutualFunds') ) {
           portfolioType = 'MUTUALFUND';
         }
 
-      const assetClassStock    = fieldstock;
       const params = {
             ...portfolioDetails,
             stockIds,
             weights,
             assetClass,
             assetClassStock,
-            portfolioType
+            portfolioType,
         };
 
-      const response = await portfolioManagementServiceApi.createPortfolio(params);          
-      if (response.status !== 201) {
-        toast.error('Failed to create portfolio');
-        setIsLoading(false);
-        return;
-      }      
-      toast.success('Portfolio created successfully');
-      resetForm();
-      onClose();
-      router.refresh();
+        try {
+            console.log('Creating portfolio with params',params)
+            const response = await portfolioManagementServiceApi.createPortfolio(params);  
+            if (response.status !== 201) {
+                toast.error('Failed to create portfolio');
+                setIsLoading(false);
+                return;
+            }      
+            toast.success('Portfolio created successfully');
+            resetForm();
+            onClose();
+            router.refresh();          
+        } catch (error) {          
+            toast.error('Failed to create portfolio');
+            console.error('Error creating portfolio:', error);
+            setIsLoading(false);
+            return;
+        }
+
     } catch (error) {
       toast.error('Failed to create portfolio');
       console.error('Error creating portfolio:', error);
@@ -308,9 +397,37 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
       setIsLoading(false);
     }
   };
+  const calculateSectorWeights = (fields: FieldsState) => {
+    const sectorWeightMap: { [sector: string]: number } = {};
+    let totalWeight = 0;
+    Object.values(fields).forEach((categoryFields) => {
+      categoryFields.forEach((field) => {
+        const selectedOption = initialOptions.find(
+          (option) => option.value.toString() === field.selectValue.toString()
+        );
+        if (selectedOption) {
+          const sector = selectedOption.sector;
+            if(selectedOption.stockType==='IndianStock')
+            {
+                const weight = parseFloat(field.weight) || 0;
+                if (!sectorWeightMap[sector]) {
+                    sectorWeightMap[sector] = 0;
+                }
+                sectorWeightMap[sector] += weight;
+                totalWeight += weight;
+            }
+        }
+      });
+    });
+  
+    const sectorWeights: { [sector: string]: number } = {};
+    for (const sector in sectorWeightMap) {
+      sectorWeights[sector] = (sectorWeightMap[sector] / totalWeight) * 100;
+    }
+    setSectorWeights(sectorWeights);
+  };
 
-  // Updated dropdown render function to handle both stocks and mutual funds
-  const renderDropdown = (category: string, field: Field) => { 
+  const renderStockDropdown = (category: string, field: Field) => { 
     const isStockCategory = selectedMainCategories.includes('Stocks');
     const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
     
@@ -328,12 +445,10 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
       // Both or neither selected - show appropriate message
       placeholderText = "Please select main category first";
     }
-
-    return (      
+    return (
       <select
         className="form-select text-sm shadow-theme-xs text-gray-800 border-gray-300 h-11 w-full border rounded px-4 py-2.5"
         value={field.selectValue}
-        disabled={optionsToUse.length === 0}
         onChange={(e) => {
           const value = e.target.value;          
           const matchingOption = optionsToUse.find(opt => opt.value == value);
@@ -371,7 +486,6 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
       </select>
     );
   };
-
   const validateWeights = (category: string) => {
     const fieldsWeight = calculateCategoryWeight(fieldstock[category] || []);
     return fieldsWeight === 100;
@@ -544,19 +658,19 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
     }
   };
 
-  const handleCategoryWeightChange = (category: string, event: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = event.target;
-    const weight = parseFloat(value) || 0;
-    updateTotalWeight(category, weight);
-  };
+const handleCategoryWeightChange = (category: string, event: React.ChangeEvent<HTMLInputElement>) => {
+  const { value } = event.target;
+  const weight = parseFloat(value) || 0; // Default to 0 if parsing fails
+  updateTotalWeight(category, weight);
+};
 
-  const updateTotalWeight = (category: string, weight: number) => {
-    setTotalWeights(prevTotalWeights => {
-        const updatedTotalWeights = { ...prevTotalWeights, [category]: weight };
-        calculateOrderValue(fieldstock, updatedTotalWeights, portfolioDetails);
-        return updatedTotalWeights;
-    });
-  };
+const updateTotalWeight = (category: string, weight: number) => {
+  setTotalWeights(prevTotalWeights => {
+      const updatedTotalWeights = { ...prevTotalWeights, [category]: weight };
+      calculateOrderValue(fieldstock, updatedTotalWeights, portfolioDetails);
+      return updatedTotalWeights;
+  });
+};
 
   const handleCheckboxChange = (category: string) => {
     setSelectedCategories((prev) => {
@@ -569,8 +683,7 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
         calculateOrderValue(newFields, totalWeights, portfolioDetails);
         return newSelectedCategories;
       } else {
-        // Determine which options to use
-        const isStockCategory = selectedMainCategories.includes('Stocks');
+       const isStockCategory = selectedMainCategories.includes('Stocks');
         const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
         let optionsToUse: (StockOption | MutualFundOption)[] = [];
         
@@ -620,9 +733,9 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
   const resetForm = () => {
     setPortfolioDetails(DEFAULT_PORTFOLIO_DATA);
     setSelectedCategories([]);
-    setSelectedMainCategories([]);
     setFieldstock({});
     setTotalWeights({});
+    setSelectedMainCategories([]);
   };
  
   const addField1 = (category: string) => {
@@ -662,7 +775,7 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
         return updatedFields;
     });
   };
-
+  
   const removeField1 = (category: string, id: number) => {
     setFieldstock((prevFields) => {
       const updatedCategoryFields = prevFields[category].filter((field) => field.id !== id);
@@ -813,7 +926,7 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl dark:bg-gray-800">
         <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
           <h2 className="text-xl font-semibold dark:text-white">
-            {type === 'add' || type === 'clone' ? 'Add Portfolio' : 'Edit Portfolio'}
+            Add Portfolio
           </h2>
           <button
             onClick={() => {
@@ -1007,7 +1120,7 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
               />
               {fieldstock[category]?.map((field) => (
                 <div key={field.id} className="flex gap-2 items-center mb-1">
-                  {renderDropdown(category, field)}                 
+                  {renderStockDropdown(category, field)}                 
                   <Input
                     value={field.currentPrice}
                     readOnly

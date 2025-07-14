@@ -70,7 +70,6 @@ class GoalManagementServiceApi extends API {
       const data = await this.handleResponse<Goal[] | { data: Goal[] }>(response);
 
       const goals = data || [];
-      console.log("Goals data:", goals); 
       
       return {
         goals: Array.isArray(goals) ? goals : [],       
