@@ -8,11 +8,12 @@ import { useSidebar } from "../context/SidebarContext";
 import {
   GridIcon,
   PieChartIcon,
-  // TableIcon,
+  TableIcon,
   UserCircleIcon,
   LeaderboardIcon,
   SettingIcon,
   ShoppingCartIcon,
+  CheckCircleIcon,
 } from "../icons/index";
 
 type NavItem = {
@@ -37,6 +38,16 @@ const navItems: NavItem[] = [
     icon: <UserCircleIcon />,
     name: "Payments",
     path: "/payment-list",
+  },
+  {
+    icon: <TableIcon />,
+    name: "Account Ledger",
+    path: "/account-ledger",
+  },
+  {
+    icon: <CheckCircleIcon />,
+    name: "Payment Approval",
+    path: "/payment-approval",
   },
   {
     icon: <LeaderboardIcon />,
