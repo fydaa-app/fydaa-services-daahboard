@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import ComponentCard from "@/components/common/ComponentCard";
+import React, { useState, useEffect, useCallback } from "react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import AccountLedgerTable from "@/components/tables/AccountLedgerTable";
 import Cookies from 'js-cookie';

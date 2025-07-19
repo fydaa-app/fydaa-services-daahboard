@@ -1,19 +1,18 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import ComponentCard from "@/components/common/ComponentCard";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import PaymentApproveTable from "@/components/tables/PaymentApproveTable"; 
 import Cookies from 'js-cookie';
 import { useRouter, useSearchParams } from "next/navigation";
 import Pagination from "@/components/tables/Pagination";
 
-// Custom debounce function
-const debounce = (func: Function, delay: number) => {
+// Custom debounce function with proper typing
+const debounce = <T extends unknown[]>(func: (...args: T) => void, delay: number) => {
     let timeoutId: NodeJS.Timeout;
-    const debouncedFunc = (...args: any[]) => {
+    const debouncedFunc = (...args: T) => {
         clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => func.apply(null, args), delay);
+        timeoutId = setTimeout(() => func(...args), delay);
     };
     
     debouncedFunc.cancel = () => {
@@ -152,17 +151,15 @@ export default function PaymentApprovalPage() {
     };
 
     const handlePageChange = (page: number) => {
-        const pageNum = Number(page);
-        // if (pageNum !== Number(currentPage)) {
-        //     updateUrlParams(searchQuery, pageNum);
-        // }
+        setCurrentPage(page);
+        updateUrlParams(searchQuery, page);
     };
 
     // 🔁 Debounced live search
     useEffect(() => {
         const debouncedSearch = debounce(() => {
             setCurrentPage(1);
-            // updateUrlParams(searchQuery, 1);
+            updateUrlParams(searchQuery, 1);
         }, 400);
 
         debouncedSearch();
