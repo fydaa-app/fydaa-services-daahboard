@@ -19,6 +19,7 @@ interface Payment {
   firstName: string;
   lastName: string;
   mobile: string;
+  emandate_status: number;
 }
 
 export interface PaymentApproveTableProps {
@@ -242,6 +243,9 @@ export default function PaymentApproveTable({ payments, error, onRefresh }: Paym
                     Status
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
+                    Emandate Status
+                  </TableCell>
+                  <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Date
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
@@ -292,6 +296,11 @@ export default function PaymentApproveTable({ payments, error, onRefresh }: Paym
                       <TableCell className="px-4 py-3 text-start">
                         <Badge color={balanceStatus.isNegative ? "error" : balanceStatus.isPositive ? "success" : "light"}>
                           {balanceStatus.isNegative ? "Deficit" : balanceStatus.isPositive ? "Credit" : "Zero"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-start">
+                        <Badge color={payment.emandate_status === 1 ? "success" : "error"}>
+                          {payment.emandate_status === 1 ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
