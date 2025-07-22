@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import AccountLedgerTable from "@/components/tables/AccountLedgerTable";
 import Cookies from 'js-cookie';
@@ -109,39 +109,40 @@ export default function AccountLedgerPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Parse URL parameters on mount and when they change
+  // Parse URL parameters and fetch data when they change
   useEffect(() => {
     const query = searchParams.get('search') || "";
     const pageParam = searchParams.get('page') || "1";
     const page = parseInt(pageParam, 10);
+    const finalPage = isNaN(page) ? 1 : page;
     
+    // Update state
     setSearchQuery(query);
-    setCurrentPage(isNaN(page) ? 1 : page);
+    setCurrentPage(finalPage);
+    
+    // Fetch data immediately with the new parameters
+    const loadData = async () => {
+      try {
+        const data = await fetchAccountLedgers(finalPage, limit, query);
+        setApiResponse(data);
+        setError(null);
+      } catch (err) {
+        console.error("Error loading data:", err);
+        setError("Failed to load account ledger data");
+        setApiResponse({
+          data: [],
+          meta: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        });
+      }
+    };
+
+    loadData();
   }, [searchParams]);
-
-  const fetchData = useCallback(async () => {
-    try {
-      const data = await fetchAccountLedgers(currentPage, limit, searchQuery);
-      setApiResponse(data);
-      setError(null);
-    } catch (err) {
-      console.error("Error in fetchData:", err);
-      setError("Failed to load account ledger data");
-      setApiResponse({
-        data: [],
-        meta: {
-          total: 0,
-          page: 1,
-          limit: 10,
-          totalPages: 0
-        }
-      });
-    }
-  }, [currentPage, searchQuery]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   // Function to update URL parameters and trigger navigation
   const updateUrlParams = (search: string, page: number) => {
@@ -158,7 +159,6 @@ export default function AccountLedgerPage() {
   // Handle search input change
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setSearchQuery(value);
     // Reset to page 1 when searching
     updateUrlParams(value, 1);
   };
@@ -210,6 +210,7 @@ export default function AccountLedgerPage() {
           
           {/* Card Body */}
           <div className="p-4 sm:p-6">
+            {/* <p className="text-sm text-gray-500 mb-4">Debug: API Response Data Length: {apiResponse.data.length}, Total: {apiResponse.meta.total}</p> */}
             <AccountLedgerTable ledgers={apiResponse.data} error={error} />
             
             {apiResponse.meta.total > 0 && (

@@ -53,6 +53,12 @@ export default function PaymentApproveTable({ payments, error, onRefresh }: Paym
   const [selectedPayments, setSelectedPayments] = useState<Set<number>>(new Set());
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
 
+  // Function to handle opening Account Ledger page for a specific user
+  const handleLedgerClick = (userId: number) => {
+    const url = `/account-ledger?search=${userId}`;
+    window.open(url, '_blank');
+  };
+
   // Handle individual checkbox selection
   const handleRowSelect = (ledgerId: number) => {
     const newSelected = new Set(selectedPayments);
@@ -306,8 +312,14 @@ export default function PaymentApproveTable({ payments, error, onRefresh }: Paym
                       <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                         {new Date(payment.date).toLocaleString()}
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        #{payment.ledgerId}
+                      <TableCell className="px-4 py-3 text-start">
+                        <button
+                          onClick={() => handleLedgerClick(payment.userId)}
+                          className="text-blue-600 hover:text-blue-800 hover:underline font-medium text-theme-sm dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200"
+                          title={`View all ledger entries for ${payment.firstName} ${payment.lastName} (User ID: ${payment.userId})`}
+                        >
+                          #{payment.ledgerId}
+                        </button>
                       </TableCell>
                       <TableCell className="px-4 py-3">
                         <div className="flex gap-2">                       
