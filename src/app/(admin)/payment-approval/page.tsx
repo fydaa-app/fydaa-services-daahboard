@@ -30,6 +30,7 @@ interface Payment {
     firstName: string;
     lastName: string;
     mobile: string;
+    emandate_status: number;
 }
 
 interface ApiResponse {
@@ -139,7 +140,7 @@ export default function PaymentApprovalPage() {
         fetchData();
     }, [fetchData]);
 
-    const updateUrlParams = (search: string, page: number) => {
+    const updateUrlParams = useCallback((search: string, page: number) => {
         const params = new URLSearchParams();
         
         if (search) {
@@ -148,7 +149,7 @@ export default function PaymentApprovalPage() {
 
         params.set('page', String(page));
         router.push(`?${params.toString()}`, { scroll: false });
-    };
+    }, [router]);
 
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
@@ -167,7 +168,7 @@ export default function PaymentApprovalPage() {
         return () => {
             debouncedSearch.cancel();
         };
-    }, [searchQuery]);
+    }, [searchQuery, updateUrlParams]);
 
     const handleKeyDown = (event: KeyboardEvent) => {
         if ((event.metaKey || event.ctrlKey) && event.key === "k") {
