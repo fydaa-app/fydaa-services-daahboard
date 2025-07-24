@@ -7,6 +7,8 @@ import {
   TableRow,
 } from "../ui/table";
 import Badge from "../ui/badge/Badge";
+import ConfirmationDialog from "../ui/dialog/ConfirmationDialog";
+import ResultDialog from "../ui/dialog/ResultDialog";
 import { toast } from "react-hot-toast";
 import Cookies from 'js-cookie';
 
@@ -52,12 +54,39 @@ export default function PaymentApproveTable({ payments, error, onRefresh }: Paym
   const [actionType, setActionType] = useState<'approve' | 'disapprove' | null>(null);
   const [selectedPayments, setSelectedPayments] = useState<Set<number>>(new Set());
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  
+  // Confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    type: 'single' | 'bulk';
+    action: 'approve' | 'disapprove';
+    ledgerId?: number;
+    paymentName?: string;
+    count?: number;
+  }>({
+    isOpen: false,
+    type: 'single',
+    action: 'approve'
+  });
+
+  // Result dialog state
+  const [resultDialog, setResultDialog] = useState<{
+    isOpen: boolean;
+    result: any;
+    isSuccess: boolean;
+  }>({
+    isOpen: false,
+    result: null,
+    isSuccess: false
+  });
 
   // Function to handle opening Account Ledger page for a specific user
   const handleLedgerClick = (userId: number) => {
     const url = `/account-ledger?search=${userId}`;
     window.open(url, '_blank');
   };
+
+
 
   // Handle individual checkbox selection
   const handleRowSelect = (ledgerId: number) => {
@@ -83,11 +112,24 @@ export default function PaymentApproveTable({ payments, error, onRefresh }: Paym
   const isAllSelected = selectedPayments.size === payments.length && payments.length > 0;
   const isIndeterminate = selectedPayments.size > 0 && selectedPayments.size < payments.length;
 
-  const handlePaymentAction = async (ledgerId: number, action: 'approve' | 'disapprove') => {
-    if (!confirm(`Are you sure you want to ${action} this payment?`)) {
-      return;
-    }
+  // Check if any selected payments have inactive emandate status
+  const hasInactiveEmandate = Array.from(selectedPayments).some(ledgerId => {
+    const payment = payments.find(p => p.ledgerId === ledgerId);
+    return payment && payment.emandate_status !== 1;
+  });
 
+  const handlePaymentAction = (ledgerId: number, action: 'approve' | 'disapprove') => {
+    const payment = payments.find(p => p.ledgerId === ledgerId);
+    setConfirmDialog({
+      isOpen: true,
+      type: 'single',
+      action,
+      ledgerId,
+      paymentName: payment ? `${payment.firstName} ${payment.lastName}` : 'Unknown User'
+    });
+  };
+
+  const executePaymentAction = async (ledgerId: number, action: 'approve' | 'disapprove') => {
     setIsProcessing(ledgerId);
     setActionType(action);
     
@@ -117,11 +159,45 @@ export default function PaymentApproveTable({ payments, error, onRefresh }: Paym
         throw new Error(`Failed to ${action} payment`);
       }
 
-      toast.success(`Payment ${action}d successfully`);
+      const result = await response.json();
+      
+      // Check if there are any failures - if so, treat as error
+      const hasFailures = result.failed && result.failed.length > 0;
+      
+      if (hasFailures) {
+        // Show error dialog for any failures
+        setResultDialog({
+          isOpen: true,
+          result: {
+            status: 'error',
+            message: result.message || `Failed to process ${result.failed.length} payment(s)`,
+            error: `${result.failed.length} payment(s) failed to process. Please try again or contact support.`
+          },
+          isSuccess: false
+        });
+      } else {
+        // Show success dialog only if everything succeeded
+        setResultDialog({
+          isOpen: true,
+          result: result,
+          isSuccess: true
+        });
+      }
+      
       onRefresh?.();
     } catch (err) {
       console.error(`Error ${action}ing payment:`, err);
-      toast.error(err instanceof Error ? err.message : `Failed to ${action} payment`);
+      
+      // Show error result dialog
+      setResultDialog({
+        isOpen: true,
+        result: {
+          status: 'error',
+          message: `Failed to process payment: ${err instanceof Error ? err.message : 'Unknown error'}`,
+          error: err instanceof Error ? err.stack : String(err)
+        },
+        isSuccess: false
+      });
     } finally {
       setIsProcessing(null);
       setActionType(null);
@@ -129,16 +205,21 @@ export default function PaymentApproveTable({ payments, error, onRefresh }: Paym
   };
 
   // Handle bulk payment actions
-  const handleBulkPaymentAction = async (action: 'approve' | 'disapprove') => {
+  const handleBulkPaymentAction = (action: 'approve' | 'disapprove') => {
     if (selectedPayments.size === 0) {
       toast.error('Please select at least one payment');
       return;
     }
 
-    if (!confirm(`Are you sure you want to ${action} ${selectedPayments.size} selected payment(s)?`)) {
-      return;
-    }
+    setConfirmDialog({
+      isOpen: true,
+      type: 'bulk',
+      action,
+      count: selectedPayments.size
+    });
+  };
 
+  const executeBulkPaymentAction = async (action: 'approve' | 'disapprove') => {
     setIsBulkProcessing(true);
     setActionType(action);
     
@@ -168,17 +249,93 @@ export default function PaymentApproveTable({ payments, error, onRefresh }: Paym
         throw new Error(`Failed to ${action} payments`);
       }
 
-      toast.success(`${selectedPayments.size} payment(s) ${action}d successfully`);
+      const result = await response.json();
+      
+      // Check if there are any failures - if so, treat as error
+      const hasFailures = result.failed && result.failed.length > 0;
+      
+      if (hasFailures) {
+        // Show error dialog for any failures
+        setResultDialog({
+          isOpen: true,
+          result: {
+            status: 'error',
+            message: result.message || `Failed to process ${result.failed.length} payment(s)`,
+            error: `${result.failed.length} payment(s) failed to process. Please try again or contact support.`
+          },
+          isSuccess: false
+        });
+      } else {
+        // Show success dialog only if everything succeeded
+        setResultDialog({
+          isOpen: true,
+          result: result,
+          isSuccess: true
+        });
+      }
+      
       setSelectedPayments(new Set()); // Clear selection after successful action
       onRefresh?.();
     } catch (err) {
       console.error(`Error ${action}ing payments:`, err);
-      toast.error(err instanceof Error ? err.message : `Failed to ${action} payments`);
+      
+      // Show error result dialog
+      setResultDialog({
+        isOpen: true,
+        result: {
+          status: 'error',
+          message: `Failed to process payments: ${err instanceof Error ? err.message : 'Unknown error'}`,
+          error: err instanceof Error ? err.stack : String(err)
+        },
+        isSuccess: false
+      });
     } finally {
       setIsBulkProcessing(false);
       setActionType(null);
     }
   };
+
+  // Handle confirmation dialog actions
+  const handleConfirmAction = () => {
+    if (confirmDialog.type === 'single' && confirmDialog.ledgerId) {
+      executePaymentAction(confirmDialog.ledgerId, confirmDialog.action);
+    } else if (confirmDialog.type === 'bulk') {
+      executeBulkPaymentAction(confirmDialog.action);
+    }
+    setConfirmDialog({ ...confirmDialog, isOpen: false });
+  };
+
+  const handleCancelAction = () => {
+    setConfirmDialog({ ...confirmDialog, isOpen: false });
+  };
+
+  const handleResultDialogClose = () => {
+    setResultDialog({ ...resultDialog, isOpen: false });
+  };
+
+  // Generate dialog content
+  const getDialogContent = () => {
+    const action = confirmDialog.action;
+    const actionText = action === 'approve' ? 'approve' : 'disapprove';
+    
+    if (confirmDialog.type === 'single') {
+      return {
+        title: `${action === 'approve' ? 'Approve' : 'Disapprove'} Payment`,
+        message: `Are you sure you want to ${actionText} the payment for ${confirmDialog.paymentName}? This action cannot be undone.`,
+        confirmText: action === 'approve' ? 'Approve Payment' : 'Disapprove Payment',
+        variant: action === 'approve' ? 'info' as const : 'danger' as const
+      };
+    } else {
+      return {
+        title: `${action === 'approve' ? 'Approve' : 'Disapprove'} Multiple Payments`,
+        message: `Are you sure you want to ${actionText} ${confirmDialog.count} selected payment(s)? This action cannot be undone.`,
+        confirmText: action === 'approve' ? 'Approve All' : 'Disapprove All',
+        variant: action === 'approve' ? 'info' as const : 'danger' as const
+      };
+    }
+  };
+
+  const dialogContent = getDialogContent();
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
@@ -192,8 +349,9 @@ export default function PaymentApproveTable({ payments, error, onRefresh }: Paym
             <div className="flex gap-2">
               <button
                 onClick={() => handleBulkPaymentAction('approve')}
-                disabled={isBulkProcessing}
+                disabled={isBulkProcessing || hasInactiveEmandate}
                 className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                title={hasInactiveEmandate ? 'Cannot approve: Some selected payments have inactive emandate status' : 'Approve selected payments'}
               >
                 {isBulkProcessing && actionType === 'approve' ? 'Approving...' : 'Approve Selected'}
               </button>
@@ -325,9 +483,10 @@ export default function PaymentApproveTable({ payments, error, onRefresh }: Paym
                         <div className="flex gap-2">                       
                           <button
                             onClick={() => handlePaymentAction(payment.ledgerId, 'approve')}
-                            disabled={isProcessing === payment.ledgerId || isBulkProcessing}
+                            disabled={isProcessing === payment.ledgerId || isBulkProcessing || payment.emandate_status !== 1}
                             className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-theme-sm font-medium text-green-600 shadow-theme-xs hover:bg-gray-50 hover:text-green-800 dark:border-gray-700 dark:bg-gray-800 dark:text-green-400 dark:hover:bg-white/[0.03] dark:hover:text-green-300 disabled:opacity-50 disabled:cursor-not-allowed"
                             aria-label={`Approve payment for ${payment.firstName} ${payment.lastName}`}
+                            title={payment.emandate_status !== 1 ? 'Cannot approve: Emandate status is inactive' : `Approve payment for ${payment.firstName} ${payment.lastName}`}
                           >
                             {isProcessing === payment.ledgerId && actionType === 'approve' ? 'Approving...' : 'Approve'}
                           </button>
@@ -355,6 +514,26 @@ export default function PaymentApproveTable({ payments, error, onRefresh }: Paym
           )}
         </div>
       </div>
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={handleCancelAction}
+        onConfirm={handleConfirmAction}
+        title={dialogContent.title}
+        message={dialogContent.message}
+        confirmText={dialogContent.confirmText}
+        variant={dialogContent.variant}
+        isLoading={isProcessing !== null || isBulkProcessing}
+      />
+
+      {/* Result Dialog */}
+      <ResultDialog
+        isOpen={resultDialog.isOpen}
+        onClose={handleResultDialogClose}
+        result={resultDialog.result}
+        isSuccess={resultDialog.isSuccess}
+      />
     </div>
   );
 } 
