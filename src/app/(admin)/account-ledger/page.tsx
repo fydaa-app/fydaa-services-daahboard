@@ -124,7 +124,29 @@ export default function AccountLedgerPage() {
     const loadData = async () => {
       try {
         const data = await fetchAccountLedgers(finalPage, limit, query);
-        setApiResponse(data);
+        
+        // Sort ledger entries: entries with credit/debit on top, zero amounts at bottom
+        const sortedData = {
+          ...data,
+          data: data.data.sort((a, b) => {
+            const aCredit = parseFloat(a.credit || '0');
+            const aDebit = parseFloat(a.debit || '0');
+            const bCredit = parseFloat(b.credit || '0');
+            const bDebit = parseFloat(b.debit || '0');
+            
+            const aHasAmount = aCredit > 0 || aDebit > 0;
+            const bHasAmount = bCredit > 0 || bDebit > 0;
+            
+            // If one has amount and other doesn't, prioritize the one with amount
+            if (aHasAmount && !bHasAmount) return -1;
+            if (!aHasAmount && bHasAmount) return 1;
+            
+            // If both have amounts or both don't have amounts, sort by date (newest first)
+            return new Date(b.date).getTime() - new Date(a.date).getTime();
+          })
+        };
+        
+        setApiResponse(sortedData);
         setError(null);
       } catch (err) {
         console.error("Error loading data:", err);

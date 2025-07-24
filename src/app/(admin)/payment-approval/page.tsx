@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import PaymentApproveTable from "@/components/tables/PaymentApproveTable"; 
+import { LedgerDetailsModal } from "@/components/ui/modal/LedgerDetailsModal";
 import Cookies from 'js-cookie';
 import { useRouter, useSearchParams } from "next/navigation";
 import Pagination from "@/components/tables/Pagination";
@@ -100,9 +101,31 @@ export default function PaymentApprovalPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const limit = 10;
 
+    // Ledger Details Modal State
+    const [isLedgerModalOpen, setIsLedgerModalOpen] = useState(false);
+    const [selectedUserInfo, setSelectedUserInfo] = useState<{
+        name: string;
+        userId: number;
+        mobile: string;
+    }>({
+        name: '',
+        userId: 0,
+        mobile: ''
+    });
+
     const router = useRouter();
     const searchParams = useSearchParams();
     const inputRef = useRef<HTMLInputElement>(null);
+
+    // Handle ledger details modal
+    const handleLedgerClick = useCallback((userInfo: { name: string; userId: number; mobile: string }) => {
+        setSelectedUserInfo(userInfo);
+        setIsLedgerModalOpen(true);
+    }, []);
+
+    const handleCloseLedgerModal = useCallback(() => {
+        setIsLedgerModalOpen(false);
+    }, []);
 
     // Parse URL parameters on mount and when they change
     useEffect(() => {
@@ -237,6 +260,7 @@ export default function PaymentApprovalPage() {
                             payments={apiResponse.data} 
                             error={error} 
                             onRefresh={fetchData}
+                            onLedgerClick={handleLedgerClick}
                         />
                         
                         {apiResponse.meta.total > 0 && (
@@ -251,6 +275,13 @@ export default function PaymentApprovalPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Ledger Details Modal */}
+            <LedgerDetailsModal
+                isOpen={isLedgerModalOpen}
+                onClose={handleCloseLedgerModal}
+                userInfo={selectedUserInfo}
+            />
         </div>
     );
 }

@@ -43,6 +43,7 @@ export interface PaymentApproveTableProps {
   payments: Payment[];
   error: string | null;
   onRefresh?: () => void;
+  onLedgerClick?: (userInfo: { name: string; userId: number; mobile: string }) => void;
 }
 
 const formatCurrency = (value: string): string => {
@@ -64,7 +65,7 @@ const getBalanceStatus = (balance: string) => {
   };
 };
 
-export default function PaymentApproveTable({ payments, error, onRefresh }: PaymentApproveTableProps) {
+export default function PaymentApproveTable({ payments, error, onRefresh, onLedgerClick }: PaymentApproveTableProps) {
   const [isProcessing, setIsProcessing] = useState<number | null>(null);
   const [actionType, setActionType] = useState<'approve' | 'disapprove' | null>(null);
   const [selectedPayments, setSelectedPayments] = useState<Set<number>>(new Set());
@@ -95,10 +96,15 @@ export default function PaymentApproveTable({ payments, error, onRefresh }: Paym
     isSuccess: false
   });
 
-  // Function to handle opening Account Ledger page for a specific user
-  const handleLedgerClick = (userId: number) => {
-    const url = `/account-ledger?search=${userId}`;
-    window.open(url, '_blank');
+  // Function to handle opening ledger details modal for a specific user
+  const handleLedgerClick = (payment: Payment) => {
+    if (onLedgerClick) {
+      onLedgerClick({
+        name: `${payment.firstName} ${payment.lastName}`,
+        userId: payment.userId,
+        mobile: payment.mobile
+      });
+    }
   };
 
 
@@ -487,9 +493,9 @@ export default function PaymentApproveTable({ payments, error, onRefresh }: Paym
                       </TableCell>
                       <TableCell className="px-4 py-3 text-start">
                         <button
-                          onClick={() => handleLedgerClick(payment.userId)}
+                          onClick={() => handleLedgerClick(payment)}
                           className="text-blue-600 hover:text-blue-800 hover:underline font-medium text-theme-sm dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200"
-                          title={`View all ledger entries for ${payment.firstName} ${payment.lastName} (User ID: ${payment.userId})`}
+                          title={`View ledger details for ${payment.firstName} ${payment.lastName} (User ID: ${payment.userId})`}
                         >
                           #{payment.ledgerId}
                         </button>
