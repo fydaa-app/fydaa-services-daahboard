@@ -3,9 +3,16 @@ import React from "react";
 import { Modal } from "../modal";
 import Button from "../button/Button";
 
+interface PaymentResult {
+  ledgerId: number;
+  userId?: number;
+  status?: string;
+  [key: string]: unknown;
+}
+
 interface ResultData {
-  success?: any[];
-  failed?: any[];
+  success?: PaymentResult[];
+  failed?: PaymentResult[];
   message: string;
   status?: string;
   error?: string;

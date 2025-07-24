@@ -24,6 +24,21 @@ interface Payment {
   emandate_status: number;
 }
 
+interface PaymentResult {
+  ledgerId: number;
+  userId?: number;
+  status?: string;
+  [key: string]: unknown;
+}
+
+interface ResultData {
+  success?: PaymentResult[];
+  failed?: PaymentResult[];
+  message: string;
+  status?: string;
+  error?: string;
+}
+
 export interface PaymentApproveTableProps {
   payments: Payment[];
   error: string | null;
@@ -72,7 +87,7 @@ export default function PaymentApproveTable({ payments, error, onRefresh }: Paym
   // Result dialog state
   const [resultDialog, setResultDialog] = useState<{
     isOpen: boolean;
-    result: any;
+    result: ResultData | null;
     isSuccess: boolean;
   }>({
     isOpen: false,
