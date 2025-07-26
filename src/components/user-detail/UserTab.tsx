@@ -289,6 +289,92 @@ export default function UserTab({
     }
   };
 
+  const downloadPortfolioReport = async () => {
+    try {
+      setDownloading('portfolioReport');
+      
+      const authToken = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("authToken="))
+        ?.split("=")[1] || "";
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_STOCK_API_URL}portfolio/downloadUserPortfolioPdf/${userDetails.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to download portfolio report PDF');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `portfolio-report-${userDetails.firstName}-${Date.now()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      alert('Portfolio report PDF downloaded successfully!');
+      
+    } catch (error) {
+      console.error('Error downloading portfolio report:', error);
+      alert(`Failed to download portfolio report PDF: ${error}`);
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  // Single function to send portfolio report email
+  const sendPortfolioReportEmail = async () => {
+    try {
+      setSendingEmail('portfolioEmail');
+      
+      const authToken = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("authToken="))
+        ?.split("=")[1] || "";
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_STOCK_API_URL}portfolio/send-email`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json',
+          },
+           body:JSON.stringify({ 
+           userId: userDetails.id 
+        })
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to send portfolio report email');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        alert('Portfolio report email sent successfully!');
+      } else {
+        throw new Error(result.message || 'Failed to send portfolio report email');
+      }
+    } catch (error) {
+      console.error('Error sending portfolio report email:', error);
+      alert(`Failed to send portfolio report email: ${error}`);
+    } finally {
+      setSendingEmail(null);
+    }
+  };
+
   const getPaymentMethodDisplay = (payment: CombinedPayment): string => {
     const method = payment.paymentData?.method || payment.orderData?.token?.method || 'Unknown';
     switch (method.toLowerCase()) {
@@ -306,7 +392,6 @@ export default function UserTab({
         return method.charAt(0).toUpperCase() + method.slice(1);
     }
   };
-
   
   // Enhanced fetch payment details function
   const fetchPaymentDetails = async () => {
@@ -552,43 +637,104 @@ export default function UserTab({
           <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
             
             {/* Portfolio Tab */}
-            {activeTab === 'Portfolio' && portfolioDetails?.map((portfolio) => (
-              <div key={portfolio.portfolioId} className="p-4">
-                <div className="border-b border-gray-100 dark:border-white/[0.05]">
-                    <h3 className="text-lg font-semibold mb-4 dark:text-gray-400">{portfolio.portfolioName}</h3>
-                </div>                               
-                <div className="mt-4 grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Invested Amount</p>
-                    <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.totalInvestedValue)}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Current Value</p>
-                    <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.currentValue)}</p>
+            {activeTab === 'Portfolio' && (
+              <div className="p-4">
+                {/* Single Portfolio Action Buttons at Top */}
+                <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-semibold dark:text-gray-400">Portfolio Overview</h3>
+                    
+                    {/* Single Portfolio Action Buttons */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={downloadPortfolioReport}
+                        disabled={downloading === 'portfolioReport'}
+                        className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+                        title="Download Portfolio Report PDF"
+                      >
+                        {downloading === 'portfolioReport' ? (
+                          <>
+                            <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Downloading...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Download PDF
+                          </>
+                        )}
+                      </button>
+                      
+                      <button
+                        onClick={sendPortfolioReportEmail}
+                        disabled={sendingEmail === 'portfolioEmail'}
+                        className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+                        title="Send Portfolio Report via Email"
+                      >
+                        {sendingEmail === 'portfolioEmail' ? (
+                          <>
+                            <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            Email Report
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Realised Profit</p>
-                    <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.realizedReturn)}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Unrealised Profit</p>
-                    <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.unrealizedReturn)}</p>
-                  </div>
-                </div>                
-                <div className="mt-4 grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Absolute Return </p>
-                    <p className="font-medium dark:text-gray-400">{(((portfolio.currentValue - portfolio.totalInvestedValue) / portfolio.totalInvestedValue) * 100).toFixed(2)}%</p>
-                  </div> 
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Total Profit </p>
-                    <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.totalProfit)}</p>
-                  </div>                  
-                </div>
+
+                {/* Portfolio Details */}
+                {portfolioDetails?.map((portfolio) => (
+                  <div key={portfolio.portfolioId} className="mb-6">
+                    <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
+                      <h4 className="text-md font-medium dark:text-gray-400">{portfolio.portfolioName}</h4>
+                    </div>                               
+                    <div className="mt-4 grid grid-cols-2 gap-4">
+                      <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Invested Amount</p>
+                        <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.totalInvestedValue)}</p>
+                      </div>
+                      <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Current Value</p>
+                        <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.currentValue)}</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-4">
+                      <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Realised Profit</p>
+                        <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.realizedReturn)}</p>
+                      </div>
+                      <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Unrealised Profit</p>
+                        <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.unrealizedReturn)}</p>
+                      </div>
+                    </div>                
+                    <div className="mt-4 grid grid-cols-2 gap-4">
+                      <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Absolute Return </p>
+                        <p className="font-medium dark:text-gray-400">{(((portfolio.currentValue - portfolio.totalInvestedValue) / portfolio.totalInvestedValue) * 100).toFixed(2)}%</p>
+                      </div> 
+                      <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Total Profit </p>
+                        <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.totalProfit)}</p>
+                      </div>                  
+                    </div>
+                  </div>             
+                ))}
               </div>
-            ))}
+            )}
 
             {/* Transaction Tab */}
             {activeTab === 'Transaction' && (
@@ -785,6 +931,7 @@ export default function UserTab({
                       )}
                     </button>
                   </div>
+
                 </div>
               </div>
             )}
