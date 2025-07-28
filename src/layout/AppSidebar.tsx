@@ -65,6 +65,11 @@ const navItems: NavItem[] = [
     path: "/stock",
   },
   {
+    icon: <UserCircleIcon />,
+    name: "US Stocks",
+    path: "/us-stock",
+  },
+  {
     icon: <PieChartIcon />,
     name: "Portfolio",
     path: "/portfolio",

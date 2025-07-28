@@ -20,7 +20,7 @@ interface StockData {
   StockType: string;
   CapType: string;
   sector: string;
-  mainStockType?: string; // Optional 
+  mainStockType?: string;
 }
 
 const DEFAULT_STOCK_DATA: StockData = {
@@ -60,9 +60,11 @@ export default function CreateStock({
     }
   
     setIsLoading(true);
+    stockData.mainStockType = 'USSTOCK'; // Set type for US
+    console.log('Submitting stock data:', stockData);
     try {
       const url = `${process.env.NEXT_PUBLIC_STOCK_API_URL}${process.env.NEXT_PUBLIC_ADD_STOCK_ENDPOINT}`;
-       stockData.mainStockType = 'STOCK';
+      
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -98,7 +100,7 @@ export default function CreateStock({
     <div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md dark:bg-gray-800">
         <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
-          <h2 className="text-xl font-semibold dark:text-white">Add New Stock</h2>
+          <h2 className="text-xl font-semibold dark:text-white">Add New US Stock</h2>
           <button
             onClick={closeModal}
             className="text-gray-500 hover:text-gray-700 dark:text-gray-300"
@@ -240,7 +242,7 @@ export default function CreateStock({
               disabled={isLoading}
               className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
-              {isLoading ? 'Adding...' : 'Add Stock'}
+              {isLoading ? 'Adding...' : 'Add US Stock'}
             </button>
           </div>
         </form>

@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
-import StockListTable from "@/components/tables/StockListTable"; 
-import CreateStock from "@/components/form/admin-form/CreateStock";
+import StockListTable from "@/components/tables/UsStockListTable"; 
+import CreateStock from "@/components/form/admin-form/CreateUsStock";
 import Cookies from 'js-cookie';
 import { useRouter, useSearchParams } from "next/navigation";
 import Pagination from "@/components/tables/Pagination";
@@ -18,7 +18,7 @@ interface Stock {
     yesterdayPrice: string;
     StockType: string;
     CapType: string;
-    sector: number;    
+    sector: number;
     createdAt: string;
     updatedAt: string;
     deletedAt: string | null;
@@ -38,7 +38,7 @@ async function fetchStocks(
     searchQuery: string = ""
 ): Promise<ApiResponse> {
     try {
-        let url = `${process.env.NEXT_PUBLIC_STOCK_API_URL}${process.env.NEXT_PUBLIC_STOCK_LIST_ENDPOINT}?type=STOCK&page=${page}&limit=${limit}`;
+        let url = `${process.env.NEXT_PUBLIC_STOCK_API_URL}${process.env.NEXT_PUBLIC_STOCK_LIST_ENDPOINT}?type=USSTOCK&page=${page}&limit=${limit}`;
         
         if (searchQuery) {
             url += `&search=${encodeURIComponent(searchQuery)}`;
@@ -180,9 +180,9 @@ export default function StockTablesPage() {
 
     return (
         <div>
-            <PageBreadcrumb pageTitle="Stocks" />
+            <PageBreadcrumb pageTitle="US Stocks" />
             <div className="space-y-6">
-                <ComponentCard title="Stock List">
+                <ComponentCard title="US Stock List">
                     <div className="flex items-center justify-end gap-2">
                         <form onSubmit={handleSearch} className="flex-1 max-w-md">
                             <div className="relative">
