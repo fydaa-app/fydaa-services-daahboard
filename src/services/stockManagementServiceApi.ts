@@ -82,6 +82,42 @@ class StockManagementServiceApi extends API {
       };
     }
   }
+
+  private getUsStockEndpoint(): string {
+    return `${process.env.NEXT_PUBLIC_STOCK_API_URL}stock/getUsStock`;
+  }
+
+  async getUsStockList(): Promise<StockAPIResponse> {
+    try {
+      const response = await fetch(this.getUsStockEndpoint(), {
+        headers: {
+          Authorization: `Bearer ${this.getAuthToken()}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      // Handle different response structures
+      const data = await this.handleResponse<Stock[] | { data: Stock[] }>(response);
+
+      // Normalize the response to always have a data array
+      const stocks = Array.isArray(data) 
+        ? data 
+        : Array.isArray(data?.data) 
+          ? data.data 
+          : [];
+
+      return {
+        data: stocks,
+        error: null
+      };
+    } catch (error) {
+      console.error("Error fetching stock data:", error);
+      return {
+        data: [],
+        error: error instanceof Error ? error.message : "Error fetching stock data"
+      };
+    }
+  }
 }
 
 export const stockManagementServiceApi = new StockManagementServiceApi();
