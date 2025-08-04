@@ -1,5 +1,5 @@
 import Cookies from 'js-cookie';
-
+  
 export interface FundScheme {
   fund_scheme_id: number;
   name: string;
