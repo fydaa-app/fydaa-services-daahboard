@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import Input from '@/components/form/input/InputField';
 import Label from "@/components/form/Label";
 import Select from "@/components/form/Select";
+import MultiSelect from '@/components/form/MultiSelect';
 import { stockManagementServiceApi } from '@/services/stockManagementServiceApi'; 
 import { goalManagementServiceApi } from '@/services/goalManagementServiceApi';
 import { packagesManagementServiceApi } from '@/services/packagesManagementServiceApi';
@@ -297,8 +298,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
               goalName: PortfolioData?.goalName || null,
               packageName: PortfolioData?.packageName || null,
               portfolioType: PortfolioData.portfolioType || 'STOCK',
-          };
-                    
+          };                    
           setPortfolioDetails(portfolioDetails);
           calculateOrderValue(newFields1,PortfolioData?.assetClass,portfolioDetails);
           setTimeout(() => {
@@ -926,7 +926,7 @@ const updateTotalWeight = (category: string, weight: number) => {
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl dark:bg-gray-800">
         <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
           <h2 className="text-xl font-semibold dark:text-white">
-            Add Portfolio
+            Clone Portfolio
           </h2>
           <button
             onClick={() => {
@@ -987,30 +987,22 @@ const updateTotalWeight = (category: string, weight: number) => {
               options={termOptions}
             />
           </div>
-  
-          <div>
-            <Label htmlFor="goalId">Goals</Label>
-            <Select
-              value={portfolioDetails.goalId}
-              onChange={(selectedOption) => {
-                const selectedGoalId = selectedOption?.value;
-                if (!selectedGoalId) return;
-  
-                const currentGoals = portfolioDetails.goalId ? portfolioDetails.goalId.split(",") : [];
-                if (!currentGoals.includes(selectedGoalId)) {
-                  const newGoalIds = portfolioDetails.goalId
-                    ? `${portfolioDetails.goalId},${selectedGoalId}`
-                    : selectedGoalId;
-                  setPortfolioDetails({ ...portfolioDetails, goalId: newGoalIds });
-                }
+           <div>
+            <MultiSelect
+              label="Goals"
+              options={goalListData.map(goal => ({
+                value: goal.id.toString(),
+                text: goal.name,
+                selected: portfolioDetails.goalId 
+                  ? portfolioDetails.goalId.split(",").includes(goal.id.toString())
+                  : false
+              }))}
+              defaultSelected={portfolioDetails.goalId ? portfolioDetails.goalId.split(",") : []}
+              onChange={(selectedValues) => {
+                const newGoalIds = selectedValues.length > 0 ? selectedValues.join(",") : "";
+                setPortfolioDetails({ ...portfolioDetails, goalId: newGoalIds });
               }}
-              options={[
-                { value: "", label: "Select Goal" },
-                ...goalListData.map(goal => ({
-                  value: goal.id.toString(),
-                  label: goal.name
-                }))
-              ]}
+              disabled={false} // Set to true if you want to disable the component
             />
           </div>
   
