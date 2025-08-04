@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import Input from '@/components/form/input/InputField';
 import Label from "@/components/form/Label";
 import Select from "@/components/form/Select";
+import MultiSelect from '@/components/form/MultiSelect';
 import { stockManagementServiceApi } from '@/services/stockManagementServiceApi'; 
 import { goalManagementServiceApi } from '@/services/goalManagementServiceApi';
 import { packagesManagementServiceApi } from '@/services/packagesManagementServiceApi';
@@ -912,30 +913,23 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
           </div>
   
           <div>
-            <Label htmlFor="goalId">Goals</Label>
-            <Select
-              value={portfolioDetails.goalId}
-              onChange={(selectedOption) => {
-                const selectedGoalId = selectedOption?.value;
-                if (!selectedGoalId) return;
-  
-                const currentGoals = portfolioDetails.goalId ? portfolioDetails.goalId.split(",") : [];
-                if (!currentGoals.includes(selectedGoalId)) {
-                  const newGoalIds = portfolioDetails.goalId
-                    ? `${portfolioDetails.goalId},${selectedGoalId}`
-                    : selectedGoalId;
-                  setPortfolioDetails({ ...portfolioDetails, goalId: newGoalIds });
-                }
-              }}
-              options={[
-                { value: "", label: "Select Goal" },
-                ...goalListData.map(goal => ({
-                  value: goal.id.toString(),
-                  label: goal.name
-                }))
-              ]}
-            />
-          </div>
+  <MultiSelect
+    label="Goals"
+    options={goalListData.map(goal => ({
+      value: goal.id.toString(),
+      text: goal.name,
+      selected: portfolioDetails.goalId 
+        ? portfolioDetails.goalId.split(",").includes(goal.id.toString())
+        : false
+    }))}
+    defaultSelected={portfolioDetails.goalId ? portfolioDetails.goalId.split(",") : []}
+    onChange={(selectedValues) => {
+      const newGoalIds = selectedValues.length > 0 ? selectedValues.join(",") : "";
+      setPortfolioDetails({ ...portfolioDetails, goalId: newGoalIds });
+    }}
+    disabled={false} // Set to true if you want to disable the component
+  />
+</div>
   
           <div>
             <Label htmlFor="packageId">Packages</Label>
