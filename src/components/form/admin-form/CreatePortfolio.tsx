@@ -63,7 +63,8 @@ const stock: Record<string | number, string> = {
   'Gold': 'Gold',
   'RealEstate': 'Real Estate',
   'GlobalStock':'Global Stock',
-  'FixedIncomeBonds':'Fixed Bonds'
+  'FixedIncomeBonds':'Fixed Bonds',
+  'UsStocks':'Us Stocks'
 };
 
 const maincategory: Record<string | number, string> = {
@@ -1014,7 +1015,7 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
               </div>
               ))}
           </div>
-  
+           
           <div className="flex gap-2 items-center">
               {Object.keys(stock).map((category) => (
               <div key={category} >
@@ -1028,7 +1029,7 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
               </div>
               ))}
           </div>
-  
+          
           {selectedCategories.map((category) => (
             <div key={category}>
               <h3>{stock[category]}</h3> 
