@@ -913,23 +913,23 @@ export default function CreatePortfolio({ isOpen, onClose, type = 'add' }: AddSt
           </div>
   
           <div>
-  <MultiSelect
-    label="Goals"
-    options={goalListData.map(goal => ({
-      value: goal.id.toString(),
-      text: goal.name,
-      selected: portfolioDetails.goalId 
-        ? portfolioDetails.goalId.split(",").includes(goal.id.toString())
-        : false
-    }))}
-    defaultSelected={portfolioDetails.goalId ? portfolioDetails.goalId.split(",") : []}
-    onChange={(selectedValues) => {
-      const newGoalIds = selectedValues.length > 0 ? selectedValues.join(",") : "";
-      setPortfolioDetails({ ...portfolioDetails, goalId: newGoalIds });
-    }}
-    disabled={false} // Set to true if you want to disable the component
-  />
-</div>
+            <MultiSelect
+              label="Goals"
+              options={goalListData.map(goal => ({
+                value: goal.id.toString(),
+                text: goal.name,
+                selected: portfolioDetails.goalId 
+                  ? portfolioDetails.goalId.split(",").includes(goal.id.toString())
+                  : false
+              }))}
+              defaultSelected={portfolioDetails.goalId ? portfolioDetails.goalId.split(",") : []}
+              onChange={(selectedValues) => {
+                const newGoalIds = selectedValues.length > 0 ? selectedValues.join(",") : "";
+                setPortfolioDetails({ ...portfolioDetails, goalId: newGoalIds });
+              }}
+              disabled={false} // Set to true if you want to disable the component
+            />
+          </div>
   
           <div>
             <Label htmlFor="packageId">Packages</Label>

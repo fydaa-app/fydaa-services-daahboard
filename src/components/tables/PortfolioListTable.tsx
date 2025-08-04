@@ -47,7 +47,6 @@ export interface PortfolioTableProps {
   onRefresh?: () => void;
 }
 
-
 const formatCurrency = (value: string | number): string => {
   const numValue = typeof value === 'string' ? parseFloat(value) : value;
   return new Intl.NumberFormat("en-IN", {
@@ -59,22 +58,31 @@ const formatCurrency = (value: string | number): string => {
 };
 
 export default function PortfolioListTable({ portfolios, error, getPlanName, getPlanTermName, onRefresh }: PortfolioTableProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Separate state for each modal
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
   const [currentPortfolio, setCurrentPortfolio] = useState<Portfolio | null>(null);
 
   const handleEdit = (portfolio: Portfolio) => { 
     setCurrentPortfolio({ ...portfolio }); 
-    setIsModalOpen(true);
+    setIsEditModalOpen(true); // Open only edit modal
+    setIsCloneModalOpen(false);
   };
 
   const handleClone = (portfolio: Portfolio) => { 
     setCurrentPortfolio({ ...portfolio }); 
-    setIsModalOpen(true);
+    setIsCloneModalOpen(true); // Open only clone modal
+    setIsEditModalOpen(false);
   };
 
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setCurrentPortfolio(null); // Reset the current portfolio
+  const handleEditModalClose = () => {
+    setIsEditModalOpen(false);
+    setCurrentPortfolio(null);
+  };
+
+  const handleCloneModalClose = () => {
+    setIsCloneModalOpen(false);
+    setCurrentPortfolio(null);
   };
 
   const getAuthToken = () => {
@@ -107,7 +115,7 @@ export default function PortfolioListTable({ portfolios, error, getPlanName, get
           },
         });
         
-  
+
         if (!response.ok) {
           throw new Error('Failed to delete portfolio');
         }
@@ -183,19 +191,20 @@ export default function PortfolioListTable({ portfolios, error, getPlanName, get
                       </TableCell>                   
                       <TableCell className="px-4 py-3">
                         <div className="flex gap-2">                        
-                          <button
-                            onClick={() => handleEdit(portfolio)} 
-                            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-theme-sm font-medium text-blue-600 shadow-theme-xs hover:bg-gray-50 hover:text-blue-800 dark:border-gray-700 dark:bg-gray-800 dark:text-blue-400 dark:hover:bg-white/[0.03] dark:hover:text-blue-300"
-                            aria-label={`Edit ${portfolio.portfolioName}`}
-                          >
-                            Edit
-                          </button>
+                         
                           <button
                             onClick={() => handleClone(portfolio)} 
                             className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-theme-sm font-medium text-blue-600 shadow-theme-xs hover:bg-gray-50 hover:text-blue-800 dark:border-gray-700 dark:bg-gray-800 dark:text-blue-400 dark:hover:bg-white/[0.03] dark:hover:text-blue-300"
                             aria-label={`Clone ${portfolio.portfolioName}`}
                           >
                             Clone
+                          </button>
+                           <button
+                            onClick={() => handleEdit(portfolio)} 
+                            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-theme-sm font-medium text-blue-600 shadow-theme-xs hover:bg-gray-50 hover:text-blue-800 dark:border-gray-700 dark:bg-gray-800 dark:text-blue-400 dark:hover:bg-white/[0.03] dark:hover:text-blue-300"
+                            aria-label={`Edit ${portfolio.portfolioName}`}
+                          >
+                            Edit
                           </button>
                           <button
                             onClick={() => handleDelete(portfolio.id)} 
@@ -220,18 +229,21 @@ export default function PortfolioListTable({ portfolios, error, getPlanName, get
           )}
         </div>
       </div>
-      {/* Pass data to EditPortfolio component */}
+      
+      {/* Edit Portfolio Modal - only opens when isEditModalOpen is true */}
       <EditPortfolio
-        isOpen={isModalOpen}
-        onClose={handleModalClose}
+        isOpen={isEditModalOpen}
+        onClose={handleEditModalClose}
         PortfolioData={currentPortfolio}
-        onRefresh={onRefresh} // Pass refresh function if needed
+        onRefresh={onRefresh}
       />
+      
+      {/* Clone Portfolio Modal - only opens when isCloneModalOpen is true */}
       <ClonePortfolio
-        isOpen={isModalOpen}
-        onClose={handleModalClose}
+        isOpen={isCloneModalOpen}
+        onClose={handleCloneModalClose}
         PortfolioData={currentPortfolio}
-        onRefresh={onRefresh} // Pass refresh function if needed
+        onRefresh={onRefresh}
       />
     </div>
   );
