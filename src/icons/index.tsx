@@ -59,6 +59,9 @@ import SalesIcon from "./sales.svg";
 import LeaderboardIcon from "./leaderboard.svg";
 import SettingIcon from "./setting.svg";
 import ShoppingCartIcon from "./shopping-cart.svg";
+import MoneyIcon from "./money-icon.svg"; 
+import StockIcon from "./stock-icon.svg";
+import FundIcon from "./fund-icon.svg";
 export {
   DownloadIcon,
   BellIcon,
@@ -121,4 +124,7 @@ export {
   LeaderboardIcon,
   SettingIcon,
   ShoppingCartIcon,
+  MoneyIcon,
+  StockIcon,
+  FundIcon,
 };

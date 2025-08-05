@@ -12,27 +12,95 @@ const Pagination: React.FC<PaginationProps> = ({
   totalPages,
   onPageChange,
 }) => {
-  // Calculate the range of pages to show around the current page
-  const getVisiblePages = () => {
-    const visiblePages = [];
+  const renderPageNumbers = () => {
+    const pages = [];
     const maxVisible = 3; // Number of pages to show around current
     
-    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-    const end = Math.min(totalPages, start + maxVisible - 1);
-    
-    // Adjust if we're at the end
-    if (end - start + 1 < maxVisible) {
-      start = Math.max(1, end - maxVisible + 1);
+    // Always show first page
+    if (totalPages > 0) {
+      pages.push(
+        <button
+          key={1}
+          onClick={() => onPageChange(1)}
+          className={`px-4 py-2 rounded ${
+            currentPage === 1
+              ? "bg-brand-500 text-white"
+              : "text-gray-700 dark:text-gray-400"
+          } flex w-10 items-center justify-center h-10 rounded-lg text-sm font-medium hover:bg-blue-500/[0.08] hover:text-brand-500 dark:hover:text-brand-500`}
+        >
+          1
+        </button>
+      );
     }
     
+    // Calculate middle range
+    let start = Math.max(2, currentPage - Math.floor(maxVisible / 2));
+    let end = Math.min(totalPages - 1, currentPage + Math.floor(maxVisible / 2));
+    
+    // Adjust range if we're near the beginning or end
+    if (currentPage <= Math.floor(maxVisible / 2) + 1) {
+      end = Math.min(totalPages - 1, maxVisible + 1);
+    }
+    if (currentPage >= totalPages - Math.floor(maxVisible / 2)) {
+      start = Math.max(2, totalPages - maxVisible);
+    }
+    
+    // Add ellipsis after first page if needed
+    if (start > 2) {
+      pages.push(
+        <span key="start-ellipsis" className="px-2 text-gray-500">
+          ...
+        </span>
+      );
+    }
+    
+    // Add middle pages
     for (let i = start; i <= end; i++) {
-      visiblePages.push(i);
+      if (i > 1 && i < totalPages) {
+        pages.push(
+          <button
+            key={i}
+            onClick={() => onPageChange(i)}
+            className={`px-4 py-2 rounded ${
+              currentPage === i
+                ? "bg-brand-500 text-white"
+                : "text-gray-700 dark:text-gray-400"
+            } flex w-10 items-center justify-center h-10 rounded-lg text-sm font-medium hover:bg-blue-500/[0.08] hover:text-brand-500 dark:hover:text-brand-500`}
+          >
+            {i}
+          </button>
+        );
+      }
     }
     
-    return visiblePages;
+    // Add ellipsis before last page if needed
+    if (end < totalPages - 1) {
+      pages.push(
+        <span key="end-ellipsis" className="px-2 text-gray-500">
+          ...
+        </span>
+      );
+    }
+    
+    // Always show last page if it's different from first
+    if (totalPages > 1) {
+      pages.push(
+        <button
+          key={totalPages}
+          onClick={() => onPageChange(totalPages)}
+          className={`px-4 py-2 rounded ${
+            currentPage === totalPages
+              ? "bg-brand-500 text-white"
+              : "text-gray-700 dark:text-gray-400"
+          } flex w-10 items-center justify-center h-10 rounded-lg text-sm font-medium hover:bg-blue-500/[0.08] hover:text-brand-500 dark:hover:text-brand-500`}
+        >
+          {totalPages}
+        </button>
+      );
+    }
+    
+    return pages;
   };
-
-  const visiblePages = getVisiblePages();
 
   return (
     <div className="flex items-center">
@@ -43,23 +111,11 @@ const Pagination: React.FC<PaginationProps> = ({
       >
         Previous
       </button>
+      
       <div className="flex items-center gap-2">
-        {visiblePages[0] > 1 && <span className="px-2">...</span>}
-        {visiblePages.map((page) => (
-          <button
-            key={page}
-            onClick={() => onPageChange(page)}
-            className={`px-4 py-2 rounded ${
-              currentPage === page
-                ? "bg-brand-500 text-white"
-                : "text-gray-700 dark:text-gray-400"
-            } flex w-10 items-center justify-center h-10 rounded-lg text-sm font-medium hover:bg-blue-500/[0.08] hover:text-brand-500 dark:hover:text-brand-500`}
-          >
-            {page}
-          </button>
-        ))}
-        {visiblePages[visiblePages.length - 1] < totalPages && <span className="px-2">...</span>}
+        {renderPageNumbers()}
       </div>
+      
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}

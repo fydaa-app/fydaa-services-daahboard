@@ -5,8 +5,11 @@ export interface FundScheme {
   name: string;
   investment_option: 'GROWTH' | 'DIV_REINVESTMENT' | 'DIV_PAYOUT';
   min_initial_investment: number;
+  initial_investment_multiples: number;
+  additional_investment_multiples: number;
   min_additional_investment: number;
   min_withdrawal_amount: number;
+  min_withdrawal_units: number;
   sip_allowed: boolean;
   swp_allowed: boolean;
   stp_out_allowed: boolean;
@@ -21,6 +24,24 @@ export interface FundScheme {
   amc_id: number;
   active: boolean;
   switch_multiples: number;
+  close_ended: boolean;
+  sip_frequency_specific_data?: {
+    monthly: {
+      min_installment_amount: number;
+      max_installment_amount: number;
+      amount_multiples: number;
+      min_installments: number;
+    };
+  }
+  swp_frequency_specific_data?: {
+    monthly: {
+      min_withdrawal_amount: number;
+      max_withdrawal_amount: number;
+      amount_multiples: number;
+      min_withdrawals: number;
+    };
+  }
+
 }
 
 interface FundSchemesResponse {
