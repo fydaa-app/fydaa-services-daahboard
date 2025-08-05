@@ -2,8 +2,8 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation"; // Import useRouter for navigation
-import { deleteCookie } from "cookies-next"; // Import deleteCookie to handle cookie deletion
+import { usePathname, useRouter } from "next/navigation";
+import { deleteCookie } from "cookies-next";
 import { useSidebar } from "../context/SidebarContext";
 import {
   GridIcon,
@@ -14,6 +14,9 @@ import {
   SettingIcon,
   ShoppingCartIcon,
   CheckCircleIcon,
+  MoneyIcon, 
+  StockIcon, 
+  FundIcon, 
 } from "../icons/index";
 
 type NavItem = {
@@ -35,7 +38,7 @@ const navItems: NavItem[] = [
     path: "/userlist",
   },
   {
-    icon: <UserCircleIcon />,
+    icon: <MoneyIcon />, // New icon for Payments
     name: "Payments",
     path: "/payment-list",
   },
@@ -60,12 +63,12 @@ const navItems: NavItem[] = [
     path: "/packages",
   },
   {
-    icon: <UserCircleIcon />,
+    icon: <StockIcon />, // New icon for Stocks
     name: "Stocks",
     path: "/stock",
   },
   {
-    icon: <UserCircleIcon />,
+    icon: <StockIcon />, // Same icon but you might want a different one for US Stocks
     name: "US Stocks",
     path: "/us-stock",
   },
@@ -75,12 +78,12 @@ const navItems: NavItem[] = [
     path: "/portfolio",
   },  
   {
-    icon: <PieChartIcon />,
+    icon: <FundIcon />, // New icon for Mutual Funds
     name: "My Mutual Fund",
     path: "/my-mutual-fund",
   }, 
   {
-    icon: <PieChartIcon />,
+    icon: <FundIcon />, // Same icon for Mutual Fund
     name: "Mutual Fund",
     path: "/mutual-fund",
   },   
