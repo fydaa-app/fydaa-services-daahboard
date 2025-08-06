@@ -788,14 +788,18 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
     // Use appropriate options based on main category selection
     const isStockCategory = selectedMainCategories.includes('Stocks');
     const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
+    const isUsStockCategory = selectedMainCategories.includes('UsStocks');
     let optionsToUse: (StockOption | MutualFundOption)[] = [];
     
-    if (isStockCategory && !isMutualFundCategory) {
+    if (isStockCategory && !isMutualFundCategory && !isUsStockCategory) {
       optionsToUse = initialOptions;
-    } else if (isMutualFundCategory && !isStockCategory) {
+    } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory) {
       optionsToUse = initialMOptions;
-    } else {
-      optionsToUse = [...initialOptions, ...initialMOptions];
+    } else if (isUsStockCategory && !isStockCategory && !isMutualFundCategory) {
+      optionsToUse = initialUOptions;
+    }
+    else {
+      optionsToUse = [...initialOptions, ...initialMOptions, ...initialUOptions];
     }
 
     Object.values(fields).forEach((categoryFields) => {
