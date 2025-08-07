@@ -397,7 +397,6 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
         };
 
         try {
-            console.log('Creating portfolio with params',params)
             const response = await portfolioManagementServiceApi.createPortfolio(params);  
             if (response.status !== 201) {
                 toast.error('Failed to create portfolio');
@@ -558,21 +557,14 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
         const idsSet = new Set(idsArr);
         
         // Determine which options to use based on main category selection
-        const isStockCategory = selectedMainCategories.includes('Stocks');
-        const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
-        const isUsStockCategory = selectedMainCategories.includes('UsStocks');
         let optionsToFilter: (StockOption | MutualFundOption)[] = [];
-        
-        if (isStockCategory && !isMutualFundCategory && !isUsStockCategory) {
-          optionsToFilter = initialOptions;
-        } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory) {
-          optionsToFilter = initialMOptions;
-        } else if (isUsStockCategory && !isStockCategory && !isMutualFundCategory) {
+        if(portfolioDetails.portfolioType === 'USSTOCK') {
           optionsToFilter = initialUOptions;
-        } else {
-          // Handle mixed case - you might want to combine both arrays
-          optionsToFilter = [...initialOptions, ...initialMOptions, ...initialUOptions];
-        }
+        }else if(portfolioDetails.portfolioType === 'MUTUALFUND') {
+          optionsToFilter = initialMOptions;
+        }else if(portfolioDetails.portfolioType === 'STOCK') {
+          optionsToFilter = initialOptions;
+        }       
         
         // Filter options based on idsArr
         const filteredOptions = optionsToFilter.filter(option => idsSet.has(parseInt(option.value, 10)));
@@ -622,20 +614,20 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
                 // Check if this is a mutual fund (has switchMultiples property)
                 const isMutualFund = 'switchMultiples' in item && item.switchMultiples !== undefined;
                 
-                if (isMutualFund) {
-                    // For mutual funds, use exact division result (no rounding)
-                    const switchMultiples = Number(item.switchMultiples);
-                    item.quantity = divisionResult*switchMultiples;                    
-                    item.orderValue = item.quantity * price;
-                    item.stock = item.quantity;
-                } else {
+                // if (isMutualFund) {
+                //     // For mutual funds, use exact division result (no rounding)
+                //     const switchMultiples = Number(item.switchMultiples);
+                //     item.quantity = divisionResult*switchMultiples;                    
+                //     item.orderValue = item.quantity * price;
+                //     item.stock = item.quantity;
+                // } else {
                     // For stocks, round to whole numbers
                     const roundedResult = Math.round(divisionResult);
                     item.quantity = Math.max(roundedResult, 1); // Minimum 1 stock
                     // For stocks, order value is quantity * price
                     item.orderValue = item.quantity * price;
                     item.stock = divisionResult;
-                }
+                // }
                 
                 // item.stock = divisionResult;
 
@@ -649,8 +641,8 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
                 
                 if (isMutualFund) {
                     // For mutual funds, use exact division result for minimum amount calculation
-                    const switchMultiples = Number(item.switchMultiples);
-                    item.MinAmountquantity = MindivisionResult*switchMultiples;
+                    // const switchMultiples = Number(item.switchMultiples);
+                    item.MinAmountquantity = Number((MindivisionResult).toFixed(2));
                     // For mutual funds, order value should be based on the allocated minimum amount
                     item.MinAmountorderValue = minamount;
                 } else {
