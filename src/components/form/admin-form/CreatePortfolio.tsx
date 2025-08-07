@@ -509,6 +509,7 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
                     item.quantity = divisionResult*switchMultiples;                    
                     item.orderValue = item.quantity * price;
                     item.stock = item.quantity;
+                   
                 } else {
                     // For stocks, round to whole numbers
                     const roundedResult = Math.round(divisionResult);
@@ -530,8 +531,8 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
                 
                 if (isMutualFund) {
                     // For mutual funds, use exact division result for minimum amount calculation
-                    const switchMultiples = Number(item.switchMultiples);
-                    item.MinAmountquantity = MindivisionResult*switchMultiples;
+                    // const switchMultiples = Number(item.switchMultiples);
+                    item.MinAmountquantity = Number((MindivisionResult).toFixed(2));
                     // For mutual funds, order value should be based on the allocated minimum amount
                     item.MinAmountorderValue = minamount;
                 } else {
