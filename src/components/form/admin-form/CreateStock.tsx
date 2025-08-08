@@ -62,7 +62,11 @@ export default function CreateStock({
     setIsLoading(true);
     try {
       const url = `${process.env.NEXT_PUBLIC_STOCK_API_URL}${process.env.NEXT_PUBLIC_ADD_STOCK_ENDPOINT}`;
+      if(stockData.StockType === 'UsStock') {
+        stockData.mainStockType = 'USSTOCK';
+      }else{
        stockData.mainStockType = 'STOCK';
+      }
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -181,6 +185,7 @@ export default function CreateStock({
                 { value: "FixedIncomeBonds", label: "Fixed Income Bonds" },
                 { value: "RealEstate", label: "Real Estate" },
                 { value: "Gold", label: "Gold" },
+                { value: "UsStock", label: "US Stock" },
               ]}
             />
           </div>
