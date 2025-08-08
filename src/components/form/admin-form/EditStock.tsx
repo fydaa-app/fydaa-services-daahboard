@@ -99,7 +99,11 @@ export default function StockModal({
       
       const url = `${process.env.NEXT_PUBLIC_STOCK_API_URL}${endpoint}`;
       const method = isEditing ? "PATCH" : "POST";
-      stockData.mainStockType = 'STOCK';
+      if(stockData.StockType === 'UsStock') {
+        stockData.mainStockType = 'USSTOCK';
+      } else {
+        stockData.mainStockType = 'STOCK';
+      }
       const response = await fetch(url, {
         method,
         headers: {
