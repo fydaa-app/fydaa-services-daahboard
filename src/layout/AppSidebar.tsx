@@ -67,11 +67,11 @@ const navItems: NavItem[] = [
     name: "Stocks",
     path: "/stock",
   },
-  {
-    icon: <StockIcon />, // Same icon but you might want a different one for US Stocks
-    name: "US Stocks",
-    path: "/us-stock",
-  },
+  // {
+  //   icon: <StockIcon />, // Same icon but you might want a different one for US Stocks
+  //   name: "US Stocks",
+  //   path: "/us-stock",
+  // },
   {
     icon: <PieChartIcon />,
     name: "Portfolio",
