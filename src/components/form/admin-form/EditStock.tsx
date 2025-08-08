@@ -239,6 +239,7 @@ export default function StockModal({
                 { value: "FixedIncomeBonds", label: "Fixed Income Bonds" },
                 { value: "RealEstate", label: "Real Estate" },
                 { value: "Gold", label: "Gold" },
+                { value: "UsStock", label: "US Stock" },
               ]}
             />
           </div>
