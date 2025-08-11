@@ -38,7 +38,7 @@ async function fetchStocks(
     searchQuery: string = ""
 ): Promise<ApiResponse> {
     try {
-        let url = `${process.env.NEXT_PUBLIC_STOCK_API_URL}${process.env.NEXT_PUBLIC_STOCK_LIST_ENDPOINT}?type=STOCK&page=${page}&limit=${limit}`;
+        let url = `${process.env.NEXT_PUBLIC_STOCK_API_URL}${process.env.NEXT_PUBLIC_STOCK_LIST_ENDPOINT}?page=${page}&limit=${limit}`;
         
         if (searchQuery) {
             url += `&search=${encodeURIComponent(searchQuery)}`;
