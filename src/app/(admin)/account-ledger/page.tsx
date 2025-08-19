@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import AccountLedgerTable from "@/components/tables/AccountLedgerTable";
-import { DateRangePicker } from "@/components/ui/DateRangePicker";
 import { EmailModal } from "@/components/ui/modal/EmailModal";
 import Button from "@/components/ui/button/Button";
 import Cookies from 'js-cookie';
@@ -108,8 +107,7 @@ async function sendEmailReport(
   recipient: string,
   subject: string,
   startDate: string,
-  endDate: string,
-  searchQuery: string = ""
+  endDate: string
 ): Promise<boolean> {
   try {
     const url = `${process.env.NEXT_PUBLIC_PAYMENT_API_URL}/subscription/send-report`;
@@ -259,7 +257,6 @@ export default function AccountLedgerPage() {
         emailData.subject,
         emailData.startDate ? emailData.startDate.toISOString().split('T')[0] : '',
         emailData.endDate ? emailData.endDate.toISOString().split('T')[0] : '',
-        searchQuery
       );
       
       setEmailSuccess("Email report sent successfully!");
@@ -275,7 +272,6 @@ export default function AccountLedgerPage() {
     }
   };
 
-  const hasActiveFilters = searchQuery;
 
   return (
     <div>
