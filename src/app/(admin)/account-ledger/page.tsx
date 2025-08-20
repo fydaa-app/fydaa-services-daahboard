@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import AccountLedgerTable from "@/components/tables/AccountLedgerTable";
+import { EmailModal } from "@/components/ui/modal/EmailModal";
+import Button from "@/components/ui/button/Button";
 import Cookies from 'js-cookie';
 import { useRouter, useSearchParams } from "next/navigation";
 import Pagination from "@/components/tables/Pagination";
@@ -37,7 +39,9 @@ interface ApiResponse {
 async function fetchAccountLedgers(
   page: number = 1,
   limit: number = 10,
-  searchQuery: string = ""
+  searchQuery: string = "",
+  startDate: Date | null = null,
+  endDate: Date | null = null
 ): Promise<ApiResponse> {
   try {
     // Ensure page and limit are properly converted to numbers
@@ -48,6 +52,14 @@ async function fetchAccountLedgers(
     
     if (searchQuery) {
       url += `&search=${encodeURIComponent(searchQuery)}`;
+    }
+
+    // Add date filters if provided
+    if (startDate) {
+      url += `&startDate=${startDate.toISOString().split('T')[0]}`;
+    }
+    if (endDate) {
+      url += `&endDate=${endDate.toISOString().split('T')[0]}`;
     }
 
     const response = await fetch(url, {
@@ -91,6 +103,46 @@ async function fetchAccountLedgers(
   }
 }
 
+async function sendEmailReport(
+  recipient: string,
+  subject: string,
+  startDate: string,
+  endDate: string
+): Promise<boolean> {
+  try {
+    const url = `${process.env.NEXT_PUBLIC_PAYMENT_API_URL}/subscription/send-report`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${Cookies.get('authToken') || ''}`,
+      },
+      body: JSON.stringify({
+        startDate: startDate || null,
+        endDate: endDate || null,
+        email: recipient,
+        subject: subject || null
+      })
+    });
+
+    if (response.status === 401) {
+      Cookies.remove('authToken'); 
+      window.location.href = "/signin";
+      throw new Error("Unauthorized");
+    }
+
+    if (!response.ok) {
+      throw new Error("Failed to send email report");
+    }
+
+    return true;
+  } catch (err) {
+    console.error("Error sending email report:", err);
+    throw err;
+  }
+}
+
 export default function AccountLedgerPage() {
   const [apiResponse, setApiResponse] = useState<ApiResponse>({
     data: [],
@@ -104,6 +156,9 @@ export default function AccountLedgerPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [isEmailLoading, setIsEmailLoading] = useState(false);
+  const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
   const limit = 10;
 
   const router = useRouter();
@@ -121,50 +176,50 @@ export default function AccountLedgerPage() {
     setCurrentPage(finalPage);
     
     // Fetch data immediately with the new parameters
-    const loadData = async () => {
-      try {
-        const data = await fetchAccountLedgers(finalPage, limit, query);
-        
-        // Sort ledger entries: entries with credit/debit on top, zero amounts at bottom
-        const sortedData = {
-          ...data,
-          data: data.data.sort((a, b) => {
-            const aCredit = parseFloat(a.credit || '0');
-            const aDebit = parseFloat(a.debit || '0');
-            const bCredit = parseFloat(b.credit || '0');
-            const bDebit = parseFloat(b.debit || '0');
-            
-            const aHasAmount = aCredit > 0 || aDebit > 0;
-            const bHasAmount = bCredit > 0 || bDebit > 0;
-            
-            // If one has amount and other doesn't, prioritize the one with amount
-            if (aHasAmount && !bHasAmount) return -1;
-            if (!aHasAmount && bHasAmount) return 1;
-            
-            // If both have amounts or both don't have amounts, sort by date (newest first)
-            return new Date(b.date).getTime() - new Date(a.date).getTime();
-          })
-        };
-        
-        setApiResponse(sortedData);
-        setError(null);
-      } catch (err) {
-        console.error("Error loading data:", err);
-        setError("Failed to load account ledger data");
-        setApiResponse({
-          data: [],
-          meta: {
-            total: 0,
-            page: 1,
-            limit: 10,
-            totalPages: 0
-          }
-        });
-      }
-    };
-
-    loadData();
+    loadData(finalPage, query);
   }, [searchParams]);
+
+  const loadData = async (page: number, search: string) => {
+    try {
+      const data = await fetchAccountLedgers(page, limit, search);
+      
+      // Sort ledger entries: entries with credit/debit on top, zero amounts at bottom
+      const sortedData = {
+        ...data,
+        data: data.data.sort((a, b) => {
+          const aCredit = parseFloat(a.credit || '0');
+          const aDebit = parseFloat(a.debit || '0');
+          const bCredit = parseFloat(b.credit || '0');
+          const bDebit = parseFloat(b.debit || '0');
+          
+          const aHasAmount = aCredit > 0 || aDebit > 0;
+          const bHasAmount = bCredit > 0 || bDebit > 0;
+          
+          // If one has amount and other doesn't, prioritize the one with amount
+          if (aHasAmount && !bHasAmount) return -1;
+          if (!aHasAmount && bHasAmount) return 1;
+          
+          // If both have amounts or both don't have amounts, sort by date (newest first)
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        })
+      };
+      
+      setApiResponse(sortedData);
+      setError(null);
+    } catch (err) {
+      console.error("Error loading data:", err);
+      setError("Failed to load account ledger data");
+      setApiResponse({
+        data: [],
+        meta: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0
+        }
+      });
+    }
+  };
 
   // Function to update URL parameters and trigger navigation
   const updateUrlParams = (search: string, page: number) => {
@@ -192,47 +247,98 @@ export default function AccountLedgerPage() {
     }
   };
 
-    return (
+  const handleSendEmail = async (emailData: { recipient: string; subject: string; startDate: Date | null; endDate: Date | null }) => {
+    setIsEmailLoading(true);
+    setEmailSuccess(null);
+    
+    try {
+      await sendEmailReport(
+        emailData.recipient,
+        emailData.subject,
+        emailData.startDate ? emailData.startDate.toISOString().split('T')[0] : '',
+        emailData.endDate ? emailData.endDate.toISOString().split('T')[0] : '',
+      );
+      
+      setEmailSuccess("Email report sent successfully!");
+      setIsEmailModalOpen(false);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setEmailSuccess(null), 3000);
+    } catch (err) {
+      console.error("Error sending email:", err);
+      setError("Failed to send email report");
+    } finally {
+      setIsEmailLoading(false);
+    }
+  };
+
+
+  return (
     <div>
       <PageBreadcrumb pageTitle="Account Ledger" />
       <div className="space-y-6">
         <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-          {/* Header with title and search */}
+          {/* Header with title, search, and filters */}
           <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-medium text-gray-800 dark:text-white/90">
+              <h3 className="text-base font-medium text-gray-800 dark:text-white/90 whitespace-nowrap">
                 Account Ledger Management
               </h3>
-              <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                  <svg
-                    className="h-4 w-4 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              
+              {/* Filters Row - Keep search and date picker on same line */}
+              <div className="flex items-center gap-4">
+                {/* Search Input */}
+                <div className="flex-1 max-w-md">
+                  <div className="relative">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                      <svg
+                        className="h-4 w-4 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      placeholder="Search by User ID, Payment Type..."
+                      className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-brand-800"
                     />
-                  </svg>
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  placeholder="Search by User ID, Payment Type..."
-                  className="w-80 pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-brand-800"
-                />
+
+                {/* Send Email Button - Always visible, on right side of search bar */}
+                <Button
+                  onClick={() => setIsEmailModalOpen(true)}
+                  size="sm"
+                  className="px-4 h-10 bg-brand-600 hover:bg-brand-700 text-white whitespace-nowrap"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  Send Email Report
+                </Button>
               </div>
             </div>
+
+            {/* Success Message */}
+            {emailSuccess && (
+              <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                <p className="text-sm text-green-700 dark:text-green-300">{emailSuccess}</p>
+              </div>
+            )}
           </div>
           
           {/* Card Body */}
           <div className="p-4 sm:p-6">
-            {/* <p className="text-sm text-gray-500 mb-4">Debug: API Response Data Length: {apiResponse.data.length}, Total: {apiResponse.meta.total}</p> */}
             <AccountLedgerTable ledgers={apiResponse.data} error={error} />
             
             {apiResponse.meta.total > 0 && (
@@ -247,6 +353,14 @@ export default function AccountLedgerPage() {
           </div>
         </div>
       </div>
+
+      {/* Email Modal */}
+      <EmailModal
+        isOpen={isEmailModalOpen}
+        onClose={() => setIsEmailModalOpen(false)}
+        onSendEmail={handleSendEmail}
+        isLoading={isEmailLoading}
+      />
     </div>
   );
 } 
