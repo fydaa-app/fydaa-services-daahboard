@@ -63,6 +63,11 @@ const navItems: NavItem[] = [
     path: "/packages",
   },
   {
+    icon: <ShoppingCartIcon />,
+    name: "Services",
+    path: "/package-service",
+  },
+  {
     icon: <StockIcon />, // New icon for Stocks
     name: "Stocks",
     path: "/stock",
