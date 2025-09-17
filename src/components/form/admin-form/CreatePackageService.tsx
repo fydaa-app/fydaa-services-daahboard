@@ -22,6 +22,7 @@ interface PackageServiceData {
   description: string;
   points: Feature[];
   icon?: File | string;
+  price?: number;
 }
 
 const DEFAULT_PACKAGE_DATA: PackageServiceData = {
@@ -29,7 +30,8 @@ const DEFAULT_PACKAGE_DATA: PackageServiceData = {
   title: "",
   subtitle: "",
   description: "",
-  points: []
+  points: [],
+  price: 0,
 };
 
 const DEFAULT_FEATURE: Feature = {
@@ -61,6 +63,7 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
     if (!trimmedDescription) newErrors.description = 'Description is required';
     if (packageData.points.length === 0) newErrors.points = 'At least one feature is required';
     if (!skipFileUploads && !packageData.icon) newErrors.icon = 'Icon is required';
+
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -345,6 +348,23 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
               maxLength={150}
             />
             {errors.subtitle && <p className="text-red-500 text-sm mt-1">{errors.subtitle}</p>}
+          </div>
+
+          <div>
+            <Label htmlFor="price">Price</Label>
+            <Input
+              id="price"
+              value={packageData.price}
+              onChange={(e) => setPackageData(prev => ({
+                ...prev,
+                price: Number(e.target.value)
+              }))}
+              error={!!errors.price}
+              placeholder="Enter package price"
+              type="number"
+             
+            />
+            {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price}</p>}
           </div>
 
           <div>

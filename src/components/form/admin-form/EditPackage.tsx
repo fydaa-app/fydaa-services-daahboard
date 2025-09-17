@@ -14,35 +14,39 @@ interface EditPackageProps {
 
 interface Feature {
   text: string;
-  price: string;
-  description?: string;
-  icon?: string;
-  id?: string; // Add ID for existing features
+}
+
+interface Service {
+  id: number;
+  serviceName: string;
+  title: string;
 }
 
 interface PackageData {
   id?: number;
   packagesName: string;
-  targetAudience: string;
-  goals: string;
+  description: string;
+  price: string;
+  offer?: string;
+  suggestion?: string;
+  serviceIds?: string[];
   features: Feature[];
   image?: File | string;
   icon?: File | string;
-  imageUrl?: string; 
-  iconUrl?: string; 
 }
 
 const DEFAULT_PACKAGE_DATA: PackageData = {
   packagesName: "",
-  targetAudience: "",
-  goals: "",
+  description: "",
+  price: "",
+  offer: "",
+  suggestion: "",
+  serviceIds: [],
   features: []
 };
 
 const DEFAULT_FEATURE: Feature = {
   text: "",
-  price: "",
-  description: ""
 };
 
 export default function EditPackage({ isOpen, onClose, packageData: initialData }: EditPackageProps) {
@@ -52,23 +56,23 @@ export default function EditPackage({ isOpen, onClose, packageData: initialData 
   const [isLoading, setIsLoading] = useState(false);
   const [newFeature, setNewFeature] = useState<Feature>(DEFAULT_FEATURE);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [loadingServices, setLoadingServices] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const iconInputRef = useRef<HTMLInputElement>(null);
   const featureIconInputRef = useRef<HTMLInputElement>(null);
-  const [skipFileUploads, setSkipFileUploads] = useState(false);
 
   // Initialize with existing data when component mounts or initialData changes
   useEffect(() => {
     if (initialData) {
       setPackageData({
         ...initialData,
+        // Ensure serviceIds is an array
+        serviceIds: initialData.serviceIds || [],
         // Convert URLs to File objects if needed
         image: initialData.image || '',
         icon: initialData.icon || '',
-        features: initialData.features.map(f => ({
-          ...f,
-          icon: f.icon || ''
-        }))
+        features: initialData.features || []
       });
     } else {
       setPackageData(DEFAULT_PACKAGE_DATA);
@@ -78,8 +82,8 @@ export default function EditPackage({ isOpen, onClose, packageData: initialData 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     if (!packageData.packagesName) newErrors.packagesName = 'Package name is required';
-    if (!packageData.targetAudience) newErrors.targetAudience = 'Target audience is required';
-    if (!packageData.goals) newErrors.goals = 'Goals are required';
+    if (!packageData.description) newErrors.description = 'Description is required';
+    if (!packageData.price) newErrors.price = 'Package price is required';
     if (packageData.features.length === 0) newErrors.features = 'At least one feature is required';
 
     setErrors(newErrors);
@@ -87,6 +91,7 @@ export default function EditPackage({ isOpen, onClose, packageData: initialData 
   };
 
   const getAuthToken = () => {
+    // More robust token extraction
     const cookies = document.cookie.split(';');
     for (let i = 0; i < cookies.length; i++) {
       const cookie = cookies[i].trim();
@@ -97,7 +102,57 @@ export default function EditPackage({ isOpen, onClose, packageData: initialData 
     return '';
   };
 
-  const handleSubmitPackage = async (e: React.FormEvent) => {
+  // Fetch services from API
+  const fetchServices = async () => {
+    setLoadingServices(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_STOCK_API_URL;
+      const endpoint = 'package-service/all/services';
+      const url = `${apiUrl}${endpoint}`;
+      
+      const authToken = getAuthToken();
+      if (!authToken) {
+        toast.error('Authentication token not found. Please log in again.');
+        return;
+      }
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch services: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (data.success && data.data) {
+        setServices(data.data);
+      } else {
+        throw new Error(data.message || 'Failed to fetch services');
+      }
+    } catch (error) {
+      console.error('Error fetching services:', error);
+      toast.error('Failed to load services');
+    } finally {
+      setLoadingServices(false);
+    }
+  };
+
+  // Fetch services when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchServices();
+    }
+  }, [isOpen]);
+
+  // For temporarily skipping file uploads when S3 bucket issues occur
+  const [skipFileUploads, setSkipFileUploads] = useState(false);
+
+  const handleUpdatePackage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
     
@@ -109,16 +164,21 @@ export default function EditPackage({ isOpen, onClose, packageData: initialData 
       
       // Append basic fields
       formData.append('packagesName', packageData.packagesName);
-      formData.append('targetAudience', packageData.targetAudience);
-      formData.append('goals', packageData.goals);
+      formData.append('description', packageData.description);
+      formData.append('price', packageData.price);
       
-      // Append features as JSON
+      // Append optional fields
+      if (packageData.offer) formData.append('offer', packageData.offer);
+      if (packageData.suggestion) formData.append('suggestion', packageData.suggestion);
+      
+      // Append service IDs if selected
+      if (packageData.serviceIds && packageData.serviceIds.length > 0) {
+        formData.append('serviceIds', JSON.stringify(packageData.serviceIds));
+      }
+      
+      // Append features as JSON - ensure all features have valid properties
       const sanitizedFeatures = packageData.features.map(feature => ({
-        text: feature.text,
-        price: feature.price,
-        description: feature.description,
-        ...(feature.id ? { _id: feature.id } : {}),
-        ...(skipFileUploads ? {} : { icon: feature.icon })
+        text: feature.text,       
       }));
       
       formData.append('features', JSON.stringify(sanitizedFeatures));
@@ -133,7 +193,8 @@ export default function EditPackage({ isOpen, onClose, packageData: initialData 
         }
       }
 
-      const apiUrl = process.env.NEXT_PUBLIC_STOCK_API_URL;
+      // Get API URL with fallback
+      const apiUrl = process.env.NEXT_PUBLIC_STOCK_API_URL || 'http://localhost:3004';
       const endpoint = packageData.id 
         ? `${process.env.NEXT_PUBLIC_UPDATE_PACKAGE_ENDPOINT || '/packages'}/${packageData.id}`
         : process.env.NEXT_PUBLIC_ADD_PACKAGE_ENDPOINT || '/packages';
@@ -146,6 +207,11 @@ export default function EditPackage({ isOpen, onClose, packageData: initialData 
       }
 
       const method = packageData.id ? "PATCH" : "POST";
+      console.log('Submitting to URL:', url);
+      console.log('Method:', method);
+      console.log('Skip file uploads:', skipFileUploads);
+
+      console.log('Form Data Entries:',formData);
       
       const response = await fetch(url, {
         method,
@@ -154,22 +220,28 @@ export default function EditPackage({ isOpen, onClose, packageData: initialData 
         },
         body: formData
       });
+
+      console.log('Response status:', response.status);
       
       if (!response.ok) {
         let errorText = `Server error: ${response.status} ${response.statusText}`;
         let errorData;
         
         try {
+          // Try to get more detailed error message from response
           errorData = await response.json();
           errorText = errorData.message || errorText;
         } catch (e) {
+          // If we can't parse the JSON, use the status text
           console.error('Error parsing error response:', e);
         }
         
+        // Check for S3 bucket error specifically
         if (errorText.includes('Bucket') || (errorData && JSON.stringify(errorData).includes('Bucket'))) {
           setServerError(`${errorText}. There appears to be an S3 bucket configuration issue. Try submitting without images.`);
+          // Show option to skip image uploads
           if (!skipFileUploads) {
-            return;
+            return; // Don't throw error yet, give user chance to try without images
           }
         } else {
           setServerError(errorText);
@@ -196,70 +268,80 @@ export default function EditPackage({ isOpen, onClose, packageData: initialData 
     setPackageData(DEFAULT_PACKAGE_DATA);
     setErrors({});
     setServerError(null);
+    setSkipFileUploads(false);
     onClose();
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files && e.target.files[0]) {
-        setPackageData(prev => ({
-          ...prev,
-          image: e.target.files![0]
-        }));
-      }
-    };
-  
-    const handleIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files && e.target.files[0]) {
-        setPackageData(prev => ({
-          ...prev,
-          icon: e.target.files![0]
-        }));
-      }
-    };
-  
-    const handleFeatureIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files && e.target.files[0]) {
-        setNewFeature(prev => ({
-          ...prev,
-          icon: URL.createObjectURL(e.target.files![0])
-        }));
-      }
-    };
-  
-    const addFeature = () => {
-      if (newFeature.text && newFeature.price && newFeature.description) {
-        setPackageData(prev => ({
-          ...prev,
-          features: [...prev.features, { ...newFeature }]
-        }));
-        setNewFeature(DEFAULT_FEATURE);
-        if (featureIconInputRef.current) {
-          featureIconInputRef.current.value = "";
-        }
-      } else {
-        toast.error('Please fill all feature fields');
-      }
-    };
-  
-    const removeFeature = (index: number) => {
+    if (e.target.files && e.target.files[0]) {
       setPackageData(prev => ({
         ...prev,
-        features: prev.features.filter((_, i) => i !== index)
+        image: e.target.files![0]
       }));
-    };
-  
-    const updateFeatureField = (field: keyof Feature, value: string) => {
-      setNewFeature(prev => ({
+    }
+  };
+
+  const handleIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setPackageData(prev => ({
         ...prev,
-        [field]: value
+        icon: e.target.files![0]
       }));
-    };
-  
-    const getImageUrl = (image: File | string | undefined) => {
-      if (!image) return '';
-      if (typeof image === 'string') return image;
-      return URL.createObjectURL(image);
-    };
+    }
+  };
+
+  // const handleFeatureIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   if (e.target.files && e.target.files[0]) {
+  //     setNewFeature(prev => ({
+  //       ...prev,
+  //       icon: URL.createObjectURL(e.target.files![0])
+  //     }));
+  //   }
+  // };
+
+  const addFeature = () => {
+    if (newFeature.text) {
+      setPackageData(prev => ({
+        ...prev,
+        features: [...prev.features, { ...newFeature }]
+      }));
+      setNewFeature(DEFAULT_FEATURE);
+      if (featureIconInputRef.current) {
+        featureIconInputRef.current.value = "";
+      }
+    } else {
+      toast.error('Please fill all feature fields');
+    }
+  };
+
+  const removeFeature = (index: number) => {
+    setPackageData(prev => ({
+      ...prev,
+      features: prev.features.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateFeatureField = (field: keyof Feature, value: string) => {
+    setNewFeature(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleServiceSelection = (serviceId: string, checked: boolean) => {
+    setPackageData(prev => ({
+      ...prev,
+      serviceIds: checked 
+        ? [...(prev.serviceIds || []), serviceId]
+        : (prev.serviceIds || []).filter(id => id !== serviceId)
+    }));
+  };
+
+  const getImageUrl = (image: File | string | undefined) => {
+    if (!image) return '';
+    if (typeof image === 'string') return image;
+    return URL.createObjectURL(image);
+  };
 
   if (!isOpen) return null;
 
@@ -279,9 +361,8 @@ export default function EditPackage({ isOpen, onClose, packageData: initialData 
           </button>
         </div>
 
-        <form onSubmit={handleSubmitPackage} className="p-4 space-y-4 max-h-[80vh] overflow-y-auto">
-          
-        {serverError && (
+        <form onSubmit={handleUpdatePackage} className="p-4 space-y-4 max-h-[80vh] overflow-y-auto">
+          {serverError && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
               <strong className="font-bold">Error: </strong>
               <span className="block sm:inline">{serverError}</span>
@@ -303,31 +384,83 @@ export default function EditPackage({ isOpen, onClose, packageData: initialData 
           </div>
 
           <div>
-            <Label htmlFor="targetAudience">Target Audience *</Label>
+            <Label htmlFor="description">Description *</Label>
             <Input
-              id="targetAudience"
-              value={packageData.targetAudience}
+              id="description"
+              value={packageData.description}
               onChange={(e) => setPackageData(prev => ({
                 ...prev,
-                targetAudience: e.target.value
+                description: e.target.value
               }))}
-              error={!!errors.targetAudience}
+              error={!!errors.description}
             />
-            {errors.targetAudience && <p className="text-red-500 text-sm mt-1">{errors.targetAudience}</p>}
+            {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
           </div>
         
           <div>
-            <Label htmlFor="goals">Package Fees *</Label>
+            <Label htmlFor="price">Package Price *</Label>
             <Input
-              id="goals"
-              value={packageData.goals}
+              id="price"
+              type="number"
+              value={packageData.price}
               onChange={(e) => setPackageData(prev => ({
                 ...prev,
-                goals: e.target.value
+                price: e.target.value
               }))}
-              error={!!errors.goals}
+              error={!!errors.price}
             />
-            {errors.goals && <p className="text-red-500 text-sm mt-1">{errors.goals}</p>}
+            {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price}</p>}
+          </div>
+
+          <div>
+            <Label htmlFor="offer">Offer (Optional)</Label>
+            <Input
+              id="offer"
+              value={packageData.offer || ""}
+              onChange={(e) => setPackageData(prev => ({
+                ...prev,
+                offer: e.target.value
+              }))}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="suggestion">Suggestion (Optional)</Label>
+            <Input
+              id="suggestion"
+              value={packageData.suggestion || ""}
+              onChange={(e) => setPackageData(prev => ({
+                ...prev,
+                suggestion: e.target.value
+              }))}
+            />
+          </div>
+
+          {/* Services Selection */}
+          <div className="border rounded-lg p-4">
+            <Label>Services (Optional)</Label>
+            {loadingServices ? (
+              <p className="text-gray-500 text-sm mt-2">Loading services...</p>
+            ) : services.length > 0 ? (
+              <div className="mt-2 space-y-2 max-h-32 overflow-y-auto">
+                {services.map((service) => (
+                  <div key={service.id} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id={`service-${service.id}`}
+                      checked={(packageData.serviceIds || []).includes(service.id.toString())}
+                      onChange={(e) => handleServiceSelection(service.id.toString(), e.target.checked)}
+                      className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor={`service-${service.id}`} className="text-sm text-gray-700 dark:text-gray-300">
+                      {service.serviceName} - {service.title}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm mt-2">No services available</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -394,42 +527,10 @@ export default function EditPackage({ isOpen, onClose, packageData: initialData 
             <div className="space-y-3 mt-2">
               <div className="grid grid-cols-1 gap-3">
                 <div>
-                  <Label>Feature</Label>
                   <Input
                     value={newFeature.text}
                     onChange={(e) => updateFeatureField('text', e.target.value)}
                     placeholder="Feature text"
-                  />
-                </div>
-                <div>
-                  <Label>Price</Label>
-                  <Input
-                    value={newFeature.price}
-                    onChange={(e) => updateFeatureField('price', e.target.value)}
-                    placeholder="Price"
-                  />
-                </div>
-                <div>
-                  <Label>Description</Label>
-                  <Input
-                    value={newFeature.description}
-                    onChange={(e) => updateFeatureField('description', e.target.value)}
-                    placeholder="Description"
-                  />
-                </div>
-                <div>
-                  <Label>Feature Icon</Label>
-                  <input
-                    type="file"
-                    ref={featureIconInputRef}
-                    onChange={handleFeatureIconUpload}
-                    accept="image/*"
-                    className="block w-full text-sm text-gray-500
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-md file:border-0
-                      file:text-sm file:font-semibold
-                      file:bg-blue-50 file:text-blue-700
-                      hover:file:bg-blue-100"
                   />
                 </div>
               </div>
@@ -447,19 +548,8 @@ export default function EditPackage({ isOpen, onClose, packageData: initialData 
                 <div key={index} className="border p-3 rounded-lg">
                   <div className="flex justify-between items-start">
                     <div className="flex gap-3 items-center">
-                      {feature.icon && (
-                        <Image 
-                          src={feature.icon} 
-                          alt={feature.text} 
-                          className="h-10 w-10 object-cover rounded" 
-                          width={40}
-                          height={40}
-                        />
-                      )}
                       <div>
-                        <h4 className="font-medium">{feature.text}</h4>
-                        <p className="text-sm text-gray-600">{feature.description}</p>
-                        <p className="text-sm font-semibold">{feature.price}</p>
+                        <h4 className="font-medium">{feature.text}</h4>                       
                       </div>
                     </div>
                     <button
@@ -479,7 +569,7 @@ export default function EditPackage({ isOpen, onClose, packageData: initialData 
           {serverError && serverError.includes('Bucket') && !skipFileUploads && (
             <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded relative" role="alert">
               <strong className="font-bold">S3 Bucket Error: </strong>
-              <span className="block sm:inline">Your server has an issue with image uploads. You can try creating the package without images.</span>
+              <span className="block sm:inline">Your server has an issue with image uploads. You can try updating the package without images.</span>
               <button
                 type="button"
                 onClick={() => setSkipFileUploads(true)}
