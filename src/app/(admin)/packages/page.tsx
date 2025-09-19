@@ -9,18 +9,32 @@ import Cookies from 'js-cookie';
 import { useRouter, useSearchParams } from "next/navigation";
 import Pagination from "@/components/tables/Pagination";
 
+interface ServiceDetail {
+    id: number;
+    title: string;
+    price: number;
+}
+
 interface Package {
     id: number;
     packagesName: string;
-    targetAudience: string;
-    goals: string;
+    targetAudience: string | null;
+    goals: string | null;
     features: {
-      text: string;
-      price: string;
+        text: string;
     }[];
+    image: string | null;
+    icon: string | null;
+    description: string;
+    price: number;
+    offer: string;
+    suggestion: string;
+    serviceIds: string[];
+    status: string;
     createdAt: string;
     updatedAt: string;
     deletedAt: string | null;
+    serviceDetails: ServiceDetail[];
 }
 
 interface ApiResponse {
@@ -220,15 +234,15 @@ export default function PackageTablesPage() {
                     
                     <CreatePackage
                         isOpen={isModalOpen}
-                        onClose={() => setIsModalOpen(false)}                        
+                        onClose={() => setIsModalOpen(false)}    
                     />
 
-                    <PackageListTable packages={apiResponse.items} error={error} />
+                    <PackageListTable packages={apiResponse.items} error={error} onRefresh={fetchData} />
                     
                     {apiResponse.totalItems > 0 && (
                         <div className="mt-4">
                             <Pagination
-                                currentPage={1}
+                                currentPage={currentPage}
                                 totalPages={apiResponse.totalPages}
                                 onPageChange={handlePageChange}
                             />

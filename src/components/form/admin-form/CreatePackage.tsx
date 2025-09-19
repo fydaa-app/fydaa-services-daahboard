@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import Input from '@/components/form/input/InputField';
@@ -13,15 +13,21 @@ interface CreatePackageProps {
 
 interface Feature {
   text: string;
-  price: string;
-  description: string;
-  icon?: string;
+}
+
+interface Service {
+  id: number;
+  serviceName: string;
+  title: string;
 }
 
 interface PackageData {
   packagesName: string;
-  targetAudience: string;
-  goals: string;
+  description: string;
+  price: string;
+  offer?: string;
+  suggestion?: string;
+  serviceIds?: string[];
   features: Feature[];
   image?: File | string;
   icon?: File | string;
@@ -29,15 +35,16 @@ interface PackageData {
 
 const DEFAULT_PACKAGE_DATA: PackageData = {
   packagesName: "",
-  targetAudience: "",
-  goals: "",
+  description: "",
+  price: "",
+  offer: "",
+  suggestion: "",
+  serviceIds: [],
   features: []
 };
 
 const DEFAULT_FEATURE: Feature = {
   text: "",
-  price: "",
-  description: ""
 };
 
 export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
@@ -47,6 +54,8 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [newFeature, setNewFeature] = useState<Feature>(DEFAULT_FEATURE);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [loadingServices, setLoadingServices] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const iconInputRef = useRef<HTMLInputElement>(null);
   const featureIconInputRef = useRef<HTMLInputElement>(null);
@@ -54,8 +63,8 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     if (!packageData.packagesName) newErrors.packagesName = 'Package name is required';
-    if (!packageData.targetAudience) newErrors.targetAudience = 'Target audience is required';
-    if (!packageData.goals) newErrors.goals = 'Goals are required';
+    if (!packageData.description) newErrors.description = 'Description is required';
+    if (!packageData.price) newErrors.price = 'Package price is required';
     if (packageData.features.length === 0) newErrors.features = 'At least one feature is required';
 
     setErrors(newErrors);
@@ -74,6 +83,53 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
     return '';
   };
 
+  // Fetch services from API
+  const fetchServices = async () => {
+    setLoadingServices(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_STOCK_API_URL;
+      const endpoint = 'package-service/all/services';
+      const url = `${apiUrl}${endpoint}`;
+      
+      const authToken = getAuthToken();
+      if (!authToken) {
+        toast.error('Authentication token not found. Please log in again.');
+        return;
+      }
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch services: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (data.success && data.data) {
+        setServices(data.data);
+      } else {
+        throw new Error(data.message || 'Failed to fetch services');
+      }
+    } catch (error) {
+      console.error('Error fetching services:', error);
+      toast.error('Failed to load services');
+    } finally {
+      setLoadingServices(false);
+    }
+  };
+
+  // Fetch services when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchServices();
+    }
+  }, [isOpen]);
+
   // For temporarily skipping file uploads when S3 bucket issues occur
   const [skipFileUploads, setSkipFileUploads] = useState(false);
 
@@ -89,17 +145,21 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
       
       // Append basic fields
       formData.append('packagesName', packageData.packagesName);
-      formData.append('targetAudience', packageData.targetAudience);
-      formData.append('goals', packageData.goals);
+      formData.append('description', packageData.description);
+      formData.append('price', packageData.price);
+      
+      // Append optional fields
+      if (packageData.offer) formData.append('offer', packageData.offer);
+      if (packageData.suggestion) formData.append('suggestion', packageData.suggestion);
+      
+      // Append service IDs if selected
+      if (packageData.serviceIds && packageData.serviceIds.length > 0) {
+        formData.append('serviceIds', JSON.stringify(packageData.serviceIds));
+      }
       
       // Append features as JSON - ensure all features have valid properties
       const sanitizedFeatures = packageData.features.map(feature => ({
-        text: feature.text,
-        price: feature.price,
-        description: feature.description,
-        // Don't include icon URLs in JSON if we're skipping file uploads
-        // as these are likely client-side URLs that don't exist on server
-        ...(skipFileUploads ? {} : { icon: feature.icon })
+        text: feature.text,       
       }));
       
       formData.append('features', JSON.stringify(sanitizedFeatures));
@@ -127,6 +187,8 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
 
       console.log('Submitting to URL:', url);
       console.log('Skip file uploads:', skipFileUploads);
+
+      console.log('Form Data Entries:',formData);
       
       const response = await fetch(url, {
         method: "POST",
@@ -180,6 +242,7 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
     setPackageData(DEFAULT_PACKAGE_DATA);
     setErrors({});
     setServerError(null);
+    setSkipFileUploads(false);
     onClose();
   };
 
@@ -201,17 +264,17 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
     }
   };
 
-  const handleFeatureIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setNewFeature(prev => ({
-        ...prev,
-        icon: URL.createObjectURL(e.target.files![0])
-      }));
-    }
-  };
+  // const handleFeatureIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   if (e.target.files && e.target.files[0]) {
+  //     setNewFeature(prev => ({
+  //       ...prev,
+  //       icon: URL.createObjectURL(e.target.files![0])
+  //     }));
+  //   }
+  // };
 
   const addFeature = () => {
-    if (newFeature.text && newFeature.price && newFeature.description) {
+    if (newFeature.text) {
       setPackageData(prev => ({
         ...prev,
         features: [...prev.features, { ...newFeature }]
@@ -236,6 +299,15 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
     setNewFeature(prev => ({
       ...prev,
       [field]: value
+    }));
+  };
+
+  const handleServiceSelection = (serviceId: string, checked: boolean) => {
+    setPackageData(prev => ({
+      ...prev,
+      serviceIds: checked 
+        ? [...(prev.serviceIds || []), serviceId]
+        : (prev.serviceIds || []).filter(id => id !== serviceId)
     }));
   };
 
@@ -284,31 +356,83 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
           </div>
 
           <div>
-            <Label htmlFor="targetAudience">Target Audience *</Label>
+            <Label htmlFor="description">Description *</Label>
             <Input
-              id="targetAudience"
-              value={packageData.targetAudience}
+              id="description"
+              value={packageData.description}
               onChange={(e) => setPackageData(prev => ({
                 ...prev,
-                targetAudience: e.target.value
+                description: e.target.value
               }))}
-              error={!!errors.targetAudience}
+              error={!!errors.description}
             />
-            {errors.targetAudience && <p className="text-red-500 text-sm mt-1">{errors.targetAudience}</p>}
+            {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
           </div>
         
           <div>
-            <Label htmlFor="goals">Package Fees *</Label>
+            <Label htmlFor="price">Package Price *</Label>
             <Input
-              id="goals"
-              value={packageData.goals}
+              id="price"
+              type="number"
+              value={packageData.price}
               onChange={(e) => setPackageData(prev => ({
                 ...prev,
-                goals: e.target.value
+                price: e.target.value
               }))}
-              error={!!errors.goals}
+              error={!!errors.price}
             />
-            {errors.goals && <p className="text-red-500 text-sm mt-1">{errors.goals}</p>}
+            {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price}</p>}
+          </div>
+
+          <div>
+            <Label htmlFor="offer">Offer (Optional)</Label>
+            <Input
+              id="offer"
+              value={packageData.offer || ""}
+              onChange={(e) => setPackageData(prev => ({
+                ...prev,
+                offer: e.target.value
+              }))}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="suggestion">Suggestion (Optional)</Label>
+            <Input
+              id="suggestion"
+              value={packageData.suggestion || ""}
+              onChange={(e) => setPackageData(prev => ({
+                ...prev,
+                suggestion: e.target.value
+              }))}
+            />
+          </div>
+
+          {/* Services Selection */}
+          <div className="border rounded-lg p-4">
+            <Label>Services (Optional)</Label>
+            {loadingServices ? (
+              <p className="text-gray-500 text-sm mt-2">Loading services...</p>
+            ) : services.length > 0 ? (
+              <div className="mt-2 space-y-2 max-h-32 overflow-y-auto">
+                {services.map((service) => (
+                  <div key={service.id} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id={`service-${service.id}`}
+                      checked={(packageData.serviceIds || []).includes(service.id.toString())}
+                      onChange={(e) => handleServiceSelection(service.id.toString(), e.target.checked)}
+                      className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor={`service-${service.id}`} className="text-sm text-gray-700 dark:text-gray-300">
+                      {service.serviceName} - {service.title}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm mt-2">No services available</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -375,42 +499,10 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
             <div className="space-y-3 mt-2">
               <div className="grid grid-cols-1 gap-3">
                 <div>
-                  <Label>Feature</Label>
                   <Input
                     value={newFeature.text}
                     onChange={(e) => updateFeatureField('text', e.target.value)}
                     placeholder="Feature text"
-                  />
-                </div>
-                <div>
-                  <Label>Price</Label>
-                  <Input
-                    value={newFeature.price}
-                    onChange={(e) => updateFeatureField('price', e.target.value)}
-                    placeholder="Price"
-                  />
-                </div>
-                <div>
-                  <Label>Description</Label>
-                  <Input
-                    value={newFeature.description}
-                    onChange={(e) => updateFeatureField('description', e.target.value)}
-                    placeholder="Description"
-                  />
-                </div>
-                <div>
-                  <Label>Feature Icon</Label>
-                  <input
-                    type="file"
-                    ref={featureIconInputRef}
-                    onChange={handleFeatureIconUpload}
-                    accept="image/*"
-                    className="block w-full text-sm text-gray-500
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-md file:border-0
-                      file:text-sm file:font-semibold
-                      file:bg-blue-50 file:text-blue-700
-                      hover:file:bg-blue-100"
                   />
                 </div>
               </div>
@@ -428,19 +520,8 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
                 <div key={index} className="border p-3 rounded-lg">
                   <div className="flex justify-between items-start">
                     <div className="flex gap-3 items-center">
-                      {feature.icon && (
-                        <Image 
-                          src={feature.icon} 
-                          alt={feature.text} 
-                          className="h-10 w-10 object-cover rounded" 
-                          width={40}
-                          height={40}
-                        />
-                      )}
                       <div>
-                        <h4 className="font-medium">{feature.text}</h4>
-                        <p className="text-sm text-gray-600">{feature.description}</p>
-                        <p className="text-sm font-semibold">{feature.price}</p>
+                        <h4 className="font-medium">{feature.text}</h4>                       
                       </div>
                     </div>
                     <button
