@@ -35,6 +35,8 @@ interface GoalData {
   brandName: BrandName[];
   discount: string;
   imageUrl: File | string | null;
+  pending?: File | string | null;
+  pendingUrl?: File | string | null;
   description: string;
   items: GoalItem[];
   suggestion: string | null;
@@ -66,15 +68,18 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
   const [newItem, setNewItem] = useState<GoalItem>(DEFAULT_GOAL_ITEM);
   const [newRecommendation, setNewRecommendation] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingFileInputRef = useRef<HTMLInputElement>(null);
   const itemFileInputRef = useRef<HTMLInputElement>(null);
   const recommendationFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
-      // Ensure recommendations is always an array
+      // Process data to handle pendingUrl -> pending mapping
       const processedData = {
         ...initialGoalData,
-        recommendations: initialGoalData.recommendations || []
+        recommendations: initialGoalData.recommendations || [],
+        // Map pendingUrl to pending for display
+        pending: initialGoalData.pendingUrl || initialGoalData.pending || null
       };
       setGoalData(processedData);
       setErrors({});
@@ -154,6 +159,11 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
         formData.append('image', goalData.imageUrl);
       }
 
+      // Append pending image if it exists and is a new file
+      if (goalData.pending instanceof File) {
+        formData.append('pending', goalData.pending);
+      }
+
       // Append recommendation image if it exists
       if (goalData.recommendationUrl instanceof File) {
         formData.append('recommendationImage', goalData.recommendationUrl);
@@ -219,6 +229,15 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
       setGoalData(prev => ({
         ...prev,
         imageUrl: e.target.files![0]
+      }));
+    }
+  };
+
+  const handlePendingImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setGoalData(prev => ({
+        ...prev,
+        pending: e.target.files![0]
       }));
     }
   };
@@ -440,31 +459,60 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
             />
           </div>
 
-          <div>
-            <Label>Main Image</Label>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleImageUpload}
-              accept="image/*"
-              className="block w-full text-sm text-gray-500
-                file:mr-4 file:py-2 file:px-4
-                file:rounded-md file:border-0
-                file:text-sm file:font-semibold
-                file:bg-blue-50 file:text-blue-700
-                hover:file:bg-blue-100"
-            />
-            {goalData.imageUrl && (
-              <div className="mt-2">
-                <Image 
-                  src={getImageUrl(goalData.imageUrl)} 
-                  alt="Preview" 
-                  className="h-32 object-cover rounded"
-                  width={128}
-                  height={128}
-                />
-              </div>
-            )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Main Image</Label>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageUpload}
+                accept="image/*"
+                className="block w-full text-sm text-gray-500
+                  file:mr-4 file:py-2 file:px-4
+                  file:rounded-md file:border-0
+                  file:text-sm file:font-semibold
+                  file:bg-blue-50 file:text-blue-700
+                  hover:file:bg-blue-100"
+              />
+              {goalData.imageUrl && (
+                <div className="mt-2">
+                  <Image 
+                    src={getImageUrl(goalData.imageUrl)} 
+                    alt="Preview" 
+                    className="h-32 object-cover rounded"
+                    width={128}
+                    height={128}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div>
+              <Label>Pending Image</Label>
+              <input
+                type="file"
+                ref={pendingFileInputRef}
+                onChange={handlePendingImageUpload}
+                accept="image/*"
+                className="block w-full text-sm text-gray-500
+                  file:mr-4 file:py-2 file:px-4
+                  file:rounded-md file:border-0
+                  file:text-sm file:font-semibold
+                  file:bg-blue-50 file:text-blue-700
+                  hover:file:bg-blue-100"
+              />
+              {goalData.pending && (
+                <div className="mt-2">
+                  <Image 
+                    src={getImageUrl(goalData.pending)} 
+                    alt="Pending Preview" 
+                    className="h-32 object-cover rounded"
+                    width={128}
+                    height={128}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Brand Names Section */}
