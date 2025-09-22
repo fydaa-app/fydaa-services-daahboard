@@ -33,6 +33,7 @@ interface EditGoalData {
   brandName: BrandName[];
   discount: string;
   imageUrl: File | string | null;
+  pending?: File | string | null;
   description: string;
   items: GoalItem[]; 
   suggestion: string | null;
@@ -54,6 +55,7 @@ export interface GoalTableProps {
     discount: string;    
     imageUrl: string | null;
     description: string | null;
+    pendingUrl: string | null;
     items: {
       image: string;
       title: string;

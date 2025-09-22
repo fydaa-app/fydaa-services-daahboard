@@ -21,6 +21,7 @@ interface Goal {
   brandName: { title: string }[] | null;
   discount: string;
   imageUrl: string | null;
+  pendingUrl: string | null;
   description: string | null;
   items: {
     image: string;
