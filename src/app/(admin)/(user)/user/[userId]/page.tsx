@@ -45,6 +45,13 @@ interface UserDetails {
   main_subscription_status: number; // Added property
 }
 
+interface ReferralDetails {
+  firstName: string;
+  lastName: string;
+  callingCode: string;
+  mobileNumber: string;
+}
+
 interface UserSubscription {
   plan_id: number;
   plan_name: string;
@@ -118,6 +125,7 @@ interface UserData {
   portfolioDetails: PortfolioDetail[];
   stockOrders: StockOrder[];
   xirr: Record<string, unknown>;
+  referralDetails:ReferralDetails
 }
 
 interface PageProps {
@@ -160,6 +168,8 @@ export default function UserDetails({ params }: PageProps) {
         }
 
         const data: UserData = await response.json();
+
+        console.log("Fetched user data:", data);
 
         // Transform the fetched data to match the expected structure
         const transformedData = {
@@ -226,6 +236,7 @@ export default function UserDetails({ params }: PageProps) {
           transactions={userData.userTransactionDetails as Transaction[]}
           subscriptions={userData.userSubscriptionDetails}
           stockOrders={userData.stockOrders}
+          referralDetails={userData.referralDetails}
         />
       </ComponentCard>
     </div>

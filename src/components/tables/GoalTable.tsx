@@ -36,8 +36,9 @@ interface EditGoalData {
   pending?: File | string | null;
   description: string;
   items: GoalItem[]; 
-  suggestion: string | null;
-  recommendations: string[] | null;
+  suggestion: string | boolean; 
+  isRecommended: boolean; 
+  recommendations: string[]; 
   recommendationUrl: File | string | null;
 }
 
@@ -88,11 +89,17 @@ export default function GoalListTable({ goals, error, onRefresh }: GoalTableProp
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   
   const handleOpenEditModal = (goal: typeof goals[0]) => {
+    let Recommended = false;
+    if(goal.suggestion == "isRecommended ") {
+        Recommended = true;
+      }
     const formattedGoal: EditGoalData = {
       ...goal,
       brandName: goal.brandName || [],
       items: goal.items || [],
-      description: goal.description || ""
+      description: goal.description || "",
+      suggestion: goal.suggestion ?? "",
+      isRecommended: Recommended 
     };
     setEditingGoal(formattedGoal);
     setIsModalOpen(true);
@@ -211,7 +218,7 @@ export default function GoalListTable({ goals, error, onRefresh }: GoalTableProp
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                      {goal.feePricing}%
+                      {goal.feePricing}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                       {goal.tenureMin} - {goal.tenureMax} months

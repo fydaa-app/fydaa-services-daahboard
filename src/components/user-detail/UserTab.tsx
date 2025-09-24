@@ -106,12 +106,20 @@ interface StockOrder {
   'stock.ticker': string;
 }
 
+interface ReferralDetails {
+  firstName: string;
+  lastName: string;
+  callingCode: string;
+  mobileNumber: string;
+}
+
 interface UserTabProps {
   userDetails: UserDetails;
   portfolioDetails: PortfolioDetails[];
   transactions: Transaction[];
   subscriptions: Subscription[];
   stockOrders: StockOrder[];
+  referralDetails: ReferralDetails;
 }
 
 interface OrderData {
@@ -197,7 +205,8 @@ export default function UserTab({
   portfolioDetails,
   transactions,
   subscriptions,
-  stockOrders
+  stockOrders,
+  referralDetails
 }: UserTabProps) {
   const [activeTab, setActiveTab] = useState<string>('Portfolio');
   const [downloading, setDownloading] = useState<string | null>(null);
@@ -280,7 +289,7 @@ export default function UserTab({
       const selectedEmployee = employees.find(emp => emp.id === selectedEmployeeId);
       
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_CRM_API_URL}/referrals/mapuser`, // Adjust API endpoint as needed
+        `${process.env.NEXT_PUBLIC_CRM_API_URL}/referrals/mapuser`,
         {
           method: 'POST',
           headers: {
@@ -683,7 +692,8 @@ export default function UserTab({
       fetchPaymentDetails();
     }
   };
-  
+
+    
   return (
     <div className="grid grid-cols-12 gap-4 md:gap-6">
       {/* Left Column - User Profile */}
@@ -724,16 +734,52 @@ export default function UserTab({
                 </p>
                 {/* Referral Code Section */}
                 <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
-                    Referral By:
-                  </p>
+                  <div className="flex items-center gap-2 mb-6">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Referral Information
+                    </p>
+                  </div>
                   {userDetails.referredBy ? (
-                    <div className="flex items-center gap-2">
-                      <code className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-sm font-mono">
-                        {userDetails.referredBy}
-                      </code>
-                      <Badge color="success">Mapped</Badge>
-                    </div>
+                    <>
+                      <div className="space-y-3">
+                        {/* Referrer Details */}
+                        <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Referred By</span>
+                          </div>
+                          <div className="space-y-2 mb-2">
+                            <div className="flex items-center gap-2">
+                              <code className="px-2 py-1  text-green-700 dark:text-green-300  text-sm font-mono">
+                                {referralDetails.firstName} {referralDetails.lastName}
+                              </code>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <code className="px-2 py-1 text-blue-700 dark:text-blue-300 text-sm font-mono">
+                                {referralDetails.callingCode} {referralDetails.mobileNumber}
+                              </code>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <code className="px-2 py-1 text-purple-700 dark:text-purple-300 text-sm font-mono">
+                                {userDetails.referredBy}
+                              </code>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <Badge color="success">Successfully Mapped</Badge>
+                            </div>
+                          </div>
+                          <button
+                            onClick={handleShowReferralMapping}
+                            className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-[1.02] active:scale-[0.98]"
+                          >
+                            <div className="flex items-center justify-center gap-2">
+                              Map Different Referral Code
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+                    </>
                   ) : (
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
