@@ -39,8 +39,9 @@ interface GoalData {
   pendingUrl?: File | string | null;
   description: string;
   items: GoalItem[];
-  suggestion: string | null;
-  recommendations: string[] | null;
+  suggestion: string | boolean; 
+  isRecommended: boolean; 
+  recommendations: string[]; 
   recommendationUrl: File | string | null;
 }
 
@@ -66,26 +67,36 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
   const [isLoading, setIsLoading] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
   const [newItem, setNewItem] = useState<GoalItem>(DEFAULT_GOAL_ITEM);
-  const [newRecommendation, setNewRecommendation] = useState("");
+  const [newSuggestion, setNewSuggestion] = useState(""); // Changed from newRecommendation
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingFileInputRef = useRef<HTMLInputElement>(null);
   const itemFileInputRef = useRef<HTMLInputElement>(null);
   const recommendationFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      // Process data to handle pendingUrl -> pending mapping
+    
+      if (isOpen) {     
+      // Process data to handle existing data structure and map to new structure
       const processedData = {
         ...initialGoalData,
+        // Map recommendations to recommendations for consistency - ENSURE ARRAYS ARE INITIALIZED
+        // recommendations: initialGoalData.recommendations || initialGoalData.recommendations || [],
         recommendations: initialGoalData.recommendations || [],
+        // Determine if it's recommended based on suggestion field
+        isRecommended: initialGoalData.suggestion === "isRecommended" || initialGoalData.isRecommended || false,
         // Map pendingUrl to pending for display
-        pending: initialGoalData.pendingUrl || initialGoalData.pending || null
+        pending: initialGoalData.pendingUrl || initialGoalData.pending || null,
+        // Ensure suggestion is boolean for new structure
+        suggestion: true, // Making it always true as per create component logic
+        // Ensure other arrays are initialized
+        brandName: initialGoalData.brandName || [],
+        items: initialGoalData.items || []
       };
       setGoalData(processedData);
       setErrors({});
       setNewBrandName("");
       setNewItem(DEFAULT_GOAL_ITEM);
-      setNewRecommendation("");
+      setNewSuggestion("");
     }
   }, [isOpen, initialGoalData]);
 
@@ -125,34 +136,37 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
       formData.append('discount', goalData.discount);
       formData.append('description', goalData.description);
       
-      // Handle suggestion field
-      if (goalData.suggestion) {
-        formData.append('suggestion', goalData.suggestion);
-      } else {
-        formData.append('suggestion', '');
+      // Handle isRecommended field (matching create component logic)
+      if(goalData.isRecommended) {
+         formData.append('suggestion', "isRecommended");
       }
   
-      // Append brand names as array
-      goalData.brandName.forEach((brand, index) => {
-        formData.append(`brandName[${index}][title]`, brand.title);
-      });
+      // Append brand names as array - with safety check
+      if (goalData.brandName && Array.isArray(goalData.brandName)) {
+        goalData.brandName.forEach((brand, index) => {
+          formData.append(`brandName[${index}][title]`, brand.title);
+        });
+      }
   
-      // Append items with their properties
-      goalData.items.forEach((item, index) => {
-        formData.append(`items[${index}][title]`, item.title);
-        formData.append(`items[${index}][description]`, item.description);
-        if (item.image instanceof File) {
-          formData.append(`items[${index}][image]`, item.image);
-        } else if (typeof item.image === 'string') {
-          formData.append(`items[${index}][image]`, item.image);
-        }
-      });
+      // Append items with their properties - with safety check
+      if (goalData.items && Array.isArray(goalData.items)) {
+        goalData.items.forEach((item, index) => {
+          formData.append(`items[${index}][title]`, item.title);
+          formData.append(`items[${index}][description]`, item.description);
+          if (item.image instanceof File) {
+            formData.append(`items[${index}][image]`, item.image);
+          } else if (typeof item.image === 'string') {
+            formData.append(`items[${index}][image]`, item.image);
+          }
+        });
+      }
 
-      // Safely append recommendations if they exist
-      const recommendations = goalData.recommendations || [];
-      recommendations.forEach((rec, index) => {
-        formData.append(`recommendations[${index}]`, rec);
-      });
+      // Append recommendations (matching create component structure) - with safety check
+      if (goalData.recommendations && Array.isArray(goalData.recommendations)) {
+        goalData.recommendations.forEach((suggestion, index) => {
+          formData.append(`recommendations[${index}]`, suggestion);
+        });
+      }
   
       // Append main image if it exists and is a new file
       if (goalData.imageUrl instanceof File) {
@@ -164,9 +178,9 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
         formData.append('pending', goalData.pending);
       }
 
-      // Append recommendation image if it exists
-      if (goalData.recommendationUrl instanceof File) {
-        formData.append('recommendationImage', goalData.recommendationUrl);
+      // Append recommendation image if it exists and isRecommended is true
+      if (goalData.isRecommended && goalData.recommendationUrl instanceof File) {
+        formData.append('recommendation', goalData.recommendationUrl);
       }
   
       const getAuthToken = () => {
@@ -211,7 +225,7 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
     if (newBrandName.trim()) {
       setGoalData(prev => ({
         ...prev,
-        brandName: [...prev.brandName, { title: newBrandName }]
+        brandName: [...(prev.brandName || []), { title: newBrandName }]
       }));
       setNewBrandName("");
     }
@@ -220,7 +234,7 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
   const removeBrandName = (index: number) => {
     setGoalData(prev => ({
       ...prev,
-      brandName: prev.brandName.filter((_, i) => i !== index)
+      brandName: (prev.brandName || []).filter((_, i) => i !== index)
     }));
   };
 
@@ -264,7 +278,7 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
     if (newItem.title.trim() && newItem.description.trim()) {
       setGoalData(prev => ({
         ...prev,
-        items: [...prev.items, { ...newItem }]
+        items: [...(prev.items || []), { ...newItem }]
       }));
       setNewItem(DEFAULT_GOAL_ITEM);
       if (itemFileInputRef.current) {
@@ -276,21 +290,21 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
   const removeItem = (index: number) => {
     setGoalData(prev => ({
       ...prev,
-      items: prev.items.filter((_, i) => i !== index)
+      items: (prev.items || []).filter((_, i) => i !== index)
     }));
   };
 
-  const addRecommendation = () => {
-    if (newRecommendation.trim()) {
+  const addSuggestion = () => {
+    if (newSuggestion.trim()) {
       setGoalData(prev => ({
         ...prev,
-        recommendations: [...(prev.recommendations || []), newRecommendation]
+        recommendations: [...(prev.recommendations || []), newSuggestion]
       }));
-      setNewRecommendation("");
+      setNewSuggestion("");
     }
   };
 
-  const removeRecommendation = (index: number) => {
+  const removeSuggestion = (index: number) => {
     setGoalData(prev => ({
       ...prev,
       recommendations: (prev.recommendations || []).filter((_, i) => i !== index)
@@ -535,7 +549,7 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
             </div>
             
             <div className="mt-3 space-y-2">
-              {goalData.brandName.map((brand, index) => (
+              {(goalData.brandName || []).map((brand, index) => (
                 <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded">
                   <span>{brand.title}</span>
                   <button
@@ -591,7 +605,7 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
             </div>
             
             <div className="mt-3 space-y-3">
-              {goalData.items.map((item, index) => (
+              {(goalData.items || []).map((item, index) => (
                 <div key={index} className="border p-3 rounded-lg">
                   <div className="flex justify-between items-start">
                     <div className="flex gap-3">
@@ -622,90 +636,103 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
             </div>
           </div>
 
-          {/* Recommendations Section */}
-           <div className="border rounded-lg p-4">
-            <div className="mb-4">
-              <Label htmlFor="suggestion">Suggestion</Label>
-              <Select
-                value={goalData.suggestion || ""}
-                onChange={(selectedOption) => {
-                  setGoalData(prev => ({
-                    ...prev,
-                    suggestion: selectedOption?.value || null,
-                    // Initialize to empty array if setting to isRecommended and no recommendations exist
-                    recommendations: selectedOption?.value === "isRecommended" ? (prev.recommendations || []) : []
-                  }));
-                }}
-                options={[
-                  { value: "", label: "Select Option" },
-                  { value: "isRecommended", label: "Recommended" },
-                ]}
+          {/* Suggestions Section */}
+          <div className="border rounded-lg p-4">
+            <Label>Suggestions</Label>
+            
+            <div className="flex gap-2 mt-2">
+              <Input
+                value={newSuggestion}
+                onChange={(e) => setNewSuggestion(e.target.value)}
+                placeholder="Enter suggestion text"
+                className="flex-1"
               />
+              <button
+                type="button"
+                onClick={addSuggestion}
+                className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Add
+              </button>
             </div>
 
-            {goalData.suggestion === "isRecommended" && (
-              <>
-                <div className="mb-4">
-                  <Label>Recommendations</Label>
-                  <div className="flex gap-2 mt-2">
-                    <Input
-                      value={newRecommendation}
-                      onChange={(e) => setNewRecommendation(e.target.value)}
-                      placeholder="Enter recommendation"
-                      className="flex-1"
-                    />
-                    <button
-                      type="button"
-                      onClick={addRecommendation}
-                      className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                    >
-                      Add
-                    </button>
-                  </div>
-                  
-                  <div className="mt-3 space-y-2">
-                   {(goalData.recommendations || []).map((rec, index) => (
-                      <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded">
-                        <span>{rec}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeRecommendation(index)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div> 
-
-                <div>
-                  <Label>Recommendation Image</Label>
-                  <input
-                    type="file"
-                    ref={recommendationFileInputRef}
-                    onChange={handleRecommendationImageUpload}
-                    accept="image/*"
-                    className="block w-full text-sm text-gray-500
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-md file:border-0
-                      file:text-sm file:font-semibold
-                      file:bg-blue-50 file:text-blue-700
-                      hover:file:bg-blue-100 mt-2"
-                  />
-                  {goalData.recommendationUrl && (
-                    <div className="mt-2">
-                      <Image 
-                        src={getImageUrl(goalData.recommendationUrl)} 
-                        alt="Preview" 
-                        className="h-32 object-cover rounded"
-                        width={128}
-                        height={128}
-                      />
-                    </div>
-                  )}
+            <div className="mt-3 space-y-2">
+              {(goalData.recommendations || []).map((suggestion, index) => (
+                <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded">
+                  <span>{suggestion}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeSuggestion(index)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    ×
+                  </button>
                 </div>
-              </>
+              ))}
+            </div>
+          </div>
+
+          {/* Recommendation Section */}
+          <div className="border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <Label htmlFor="recommendationToggle">Recommendation</Label>
+              <div className="relative inline-block w-12 h-6 transition duration-200 ease-in-out">
+                <input
+                  type="checkbox"
+                  id="recommendationToggle"
+                  checked={goalData.isRecommended}
+                  onChange={(e) => setGoalData(prev => ({
+                    ...prev,
+                    isRecommended: e.target.checked
+                  }))}
+                  className="absolute opacity-0 w-0 h-0"
+                />
+                <label
+                  htmlFor="recommendationToggle"
+                  className={`block w-12 h-6 rounded-full cursor-pointer transition-colors duration-300 ${
+                    goalData.isRecommended 
+                      ? 'bg-green-500' 
+                      : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`block w-5 h-5 bg-white rounded-full shadow transform transition-transform duration-300 translate-y-0.5 ${
+                      goalData.isRecommended 
+                        ? 'translate-x-6' 
+                        : 'translate-x-0.5'
+                    }`}
+                  />
+                </label>
+              </div>
+            </div>
+
+            {goalData.isRecommended && (
+              <div className="mt-4">
+                <Label>Recommendation Image</Label>
+                <input
+                  type="file"
+                  ref={recommendationFileInputRef}
+                  onChange={handleRecommendationImageUpload}
+                  accept="image/*"
+                  className="block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-md file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-green-50 file:text-green-700
+                    hover:file:bg-green-100 mt-2"
+                />
+                {goalData.recommendationUrl && (
+                  <div className="mt-2">
+                    <Image 
+                      src={getImageUrl(goalData.recommendationUrl)} 
+                      alt="Recommendation Preview" 
+                      className="h-32 object-cover rounded"
+                      width={128}
+                      height={128}
+                    />
+                  </div>
+                )}
+              </div>
             )}
           </div>
 

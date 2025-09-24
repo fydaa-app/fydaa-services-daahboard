@@ -37,7 +37,8 @@ interface GoalData {
   description: string;
   items: GoalItem[];
   suggestion: boolean;
-  recommendations: string[];
+  suggestions: string[]; 
+  isRecommended: boolean; 
   recommendationUrl: File | string | null;
 }
 
@@ -56,7 +57,8 @@ const DEFAULT_GOAL_DATA: GoalData = {
   description: "",
   items: [],
   suggestion: false,
-  recommendations: [],
+  suggestions: [],  // Changed from recommendations
+  isRecommended: false, // New field
   recommendationUrl: null,
 };
 
@@ -69,7 +71,7 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
   const [newItem, setNewItem] = useState<GoalItem>(DEFAULT_GOAL_ITEM);
-  const [newRecommendation, setNewRecommendation] = useState("");
+  const [newSuggestion, setNewSuggestion] = useState(""); // Changed from newRecommendation
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingFileInputRef = useRef<HTMLInputElement>(null);
   const itemFileInputRef = useRef<HTMLInputElement>(null);
@@ -107,10 +109,16 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
       formData.append('goalAmountMax', goalData.goalAmountMax);
       formData.append('discount', goalData.discount);
       formData.append('description', goalData.description);
-      // formData.append('suggestion', goalData.suggestion.toString());
-        if (goalData.suggestion === true) {
-           formData.append('suggestion', "isRecommended");
-        }
+      
+      // Handle suggestion field (now always true since it's compulsory)
+      // formData.append('suggestion', "isRecommended");
+      
+      // Handle isRecommended field
+      // formData.append('isRecommended', goalData.isRecommended.toString());
+      if(goalData.isRecommended) {
+         formData.append('suggestion', "isRecommended");
+      }
+      
       // Append brand names as array
       goalData.brandName.forEach((brand, index) => {
         formData.append(`brandName[${index}][title]`, brand.title);
@@ -127,12 +135,10 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
         }
       });
 
-      // Append recommendations if isRecommended is true
-      if (goalData.suggestion) {
-        goalData.recommendations.forEach((rec, index) => {
-          formData.append(`recommendations[${index}]`, rec);
-        });
-      }
+      // Append suggestions (now compulsory)
+      goalData.suggestions.forEach((suggestion, index) => {
+        formData.append(`recommendations[${index}]`, suggestion);
+      });
   
       // Append main image if it exists
       if (goalData.imageUrl instanceof File) {
@@ -144,9 +150,9 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
         formData.append('pending', goalData.pending);
       }
 
-      // Append recommendation image if it exists
-      if (goalData.recommendationUrl instanceof File) {
-        formData.append('recommendationImage', goalData.recommendationUrl);
+      // Append recommendation image if it exists and isRecommended is true
+      if (goalData.isRecommended && goalData.recommendationUrl instanceof File) {
+        formData.append('recommendation', goalData.recommendationUrl);
       }
   
       const getAuthToken = () => {
@@ -263,20 +269,20 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
     }));
   };
 
-  const addRecommendation = () => {
-    if (newRecommendation.trim()) {
+  const addSuggestion = () => {
+    if (newSuggestion.trim()) {
       setGoalData(prev => ({
         ...prev,
-        recommendations: [...prev.recommendations, newRecommendation]
+        suggestions: [...prev.suggestions, newSuggestion]
       }));
-      setNewRecommendation("");
+      setNewSuggestion("");
     }
   };
 
-  const removeRecommendation = (index: number) => {
+  const removeSuggestion = (index: number) => {
     setGoalData(prev => ({
       ...prev,
-      recommendations: prev.recommendations.filter((_, i) => i !== index)
+      suggestions: prev.suggestions.filter((_, i) => i !== index)
     }));
   };
 
@@ -607,82 +613,103 @@ export default function CreateGoal({ isOpen, onClose }: CreateGoalProps) {
             </div>
           </div>
 
-          {/* Recommendations Section */}
+          {/* Suggestions Section */}
           <div className="border rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <input
-                type="checkbox"
-                id="isRecommended"
-                checked={goalData.suggestion}
-                onChange={(e) => setGoalData(prev => ({
-                  ...prev,
-                  suggestion: e.target.checked
-                }))}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            <Label>Suggestions</Label>
+            
+            <div className="flex gap-2 mt-2">
+              <Input
+                value={newSuggestion}
+                onChange={(e) => setNewSuggestion(e.target.value)}
+                placeholder="Enter suggestion text"
+                className="flex-1"
               />
-              <Label htmlFor="isRecommended">Suggestion</Label>
+              <button
+                type="button"
+                onClick={addSuggestion}
+                className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Add
+              </button>
             </div>
 
-            {goalData.suggestion && (
-              <>
-                <div className="flex gap-2 mt-2">
-                  <Input
-                    value={newRecommendation}
-                    onChange={(e) => setNewRecommendation(e.target.value)}
-                    placeholder="Enter recommendation"
-                    className="flex-1"
-                  />
+            <div className="mt-3 space-y-2">
+              {goalData.suggestions.map((suggestion, index) => (
+                <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded">
+                  <span>{suggestion}</span>
                   <button
                     type="button"
-                    onClick={addRecommendation}
-                    className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    onClick={() => removeSuggestion(index)}
+                    className="text-red-500 hover:text-red-700"
                   >
-                    Add
+                    ×
                   </button>
                 </div>
+              ))}
+            </div>
+          </div>
 
-                <div className="mt-3 space-y-2">
-                  {goalData.recommendations.map((rec, index) => (
-                    <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded">
-                      <span>{rec}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeRecommendation(index)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-4">
-                  <Label>Recommendation Image</Label>
-                  <input
-                    type="file"
-                    ref={recommendationFileInputRef}
-                    onChange={handleRecommendationImageUpload}
-                    accept="image/*"
-                    className="block w-full text-sm text-gray-500
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-md file:border-0
-                      file:text-sm file:font-semibold
-                      file:bg-blue-50 file:text-blue-700
-                      hover:file:bg-blue-100 mt-2"
+          {/* Recommendation Section */}
+          <div className="border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <Label htmlFor="recommendationToggle">Recommendation</Label>
+              <div className="relative inline-block w-12 h-6 transition duration-200 ease-in-out">
+                <input
+                  type="checkbox"
+                  id="recommendationToggle"
+                  checked={goalData.isRecommended}
+                  onChange={(e) => setGoalData(prev => ({
+                    ...prev,
+                    isRecommended: e.target.checked
+                  }))}
+                  className="absolute opacity-0 w-0 h-0"
+                />
+                <label
+                  htmlFor="recommendationToggle"
+                  className={`block w-12 h-6 rounded-full cursor-pointer transition-colors duration-300 ${
+                    goalData.isRecommended 
+                      ? 'bg-green-500' 
+                      : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`block w-5 h-5 bg-white rounded-full shadow transform transition-transform duration-300 translate-y-0.5 ${
+                      goalData.isRecommended 
+                        ? 'translate-x-6' 
+                        : 'translate-x-0.5'
+                    }`}
                   />
-                  {goalData.recommendationUrl && (
-                    <div className="mt-2">
-                      <Image 
-                        src={getImageUrl(goalData.recommendationUrl)} 
-                        alt="Preview" 
-                        className="h-32 object-cover rounded"
-                        width={128}
-                        height={128}
-                      />
-                    </div>
-                  )}
-                </div>
-              </>
+                </label>
+              </div>
+            </div>
+
+            {goalData.isRecommended && (
+              <div className="mt-4">
+                <Label>Recommendation Image</Label>
+                <input
+                  type="file"
+                  ref={recommendationFileInputRef}
+                  onChange={handleRecommendationImageUpload}
+                  accept="image/*"
+                  className="block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-md file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-green-50 file:text-green-700
+                    hover:file:bg-green-100 mt-2"
+                />
+                {goalData.recommendationUrl && (
+                  <div className="mt-2">
+                    <Image 
+                      src={getImageUrl(goalData.recommendationUrl)} 
+                      alt="Recommendation Preview" 
+                      className="h-32 object-cover rounded"
+                      width={128}
+                      height={128}
+                    />
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
