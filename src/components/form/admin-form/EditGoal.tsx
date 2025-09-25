@@ -137,8 +137,11 @@ export default function EditGoal({ isOpen, onClose, goalData: initialGoalData }:
       formData.append('description', goalData.description);
       
       // Handle isRecommended field (matching create component logic)
+     
       if(goalData.isRecommended) {
          formData.append('suggestion', "isRecommended");
+      }else {
+         formData.append('suggestion', "");
       }
   
       // Append brand names as array - with safety check
