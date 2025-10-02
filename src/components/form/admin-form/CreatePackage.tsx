@@ -19,12 +19,14 @@ interface Service {
   id: number;
   serviceName: string;
   title: string;
+  price: string;
 }
 
 interface PackageData {
   packagesName: string;
   description: string;
   price: string;
+  originalPrice?:string;
   offer?: string;
   suggestion?: string;
   serviceIds?: string[];
@@ -37,6 +39,7 @@ const DEFAULT_PACKAGE_DATA: PackageData = {
   packagesName: "",
   description: "",
   price: "",
+  originalPrice: "",
   offer: "",
   suggestion: "",
   serviceIds: [],
@@ -147,6 +150,7 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
       formData.append('packagesName', packageData.packagesName);
       formData.append('description', packageData.description);
       formData.append('price', packageData.price);
+      if(packageData.originalPrice) formData.append('originalPrice', packageData.originalPrice);  
       
       // Append optional fields
       if (packageData.offer) formData.append('offer', packageData.offer);
@@ -302,13 +306,24 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
     }));
   };
 
-  const handleServiceSelection = (serviceId: string, checked: boolean) => {
-    setPackageData(prev => ({
-      ...prev,
-      serviceIds: checked 
+    const handleServiceSelection = (serviceId: string, checked: boolean) => {
+    setPackageData(prev => {
+      const updatedServiceIds = checked 
         ? [...(prev.serviceIds || []), serviceId]
-        : (prev.serviceIds || []).filter(id => id !== serviceId)
-    }));
+        : (prev.serviceIds || []).filter(id => id !== serviceId);
+      
+      // Calculate original price based on selected services
+      const totalPrice = updatedServiceIds.reduce((sum, id) => {
+        const service = services.find(s => s.id.toString() === id);
+        return sum + (service ? parseFloat(service.price) || 0 : 0);
+      }, 0);
+      
+      return {
+        ...prev,
+        serviceIds: updatedServiceIds,
+        originalPrice: totalPrice > 0 ? totalPrice.toString() : ""
+      };
+    });
   };
 
   const getImageUrl = (image: File | string | undefined) => {
@@ -409,6 +424,17 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
           </div>
 
           {/* Services Selection */}
+          <div>
+            <Label htmlFor="price">Original Price</Label>
+            <Input
+              id="price"
+              type="number"
+              value={packageData.originalPrice}
+              readOnly
+            />
+           
+          </div>
+
           <div className="border rounded-lg p-4">
             <Label>Services (Optional)</Label>
             {loadingServices ? (
@@ -425,7 +451,7 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
                       className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
                     <label htmlFor={`service-${service.id}`} className="text-sm text-gray-700 dark:text-gray-300">
-                      {service.serviceName} - {service.title}
+                      {service.serviceName} - {service.title} (₹{service.price})
                     </label>
                   </div>
                 ))}

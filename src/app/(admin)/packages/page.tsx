@@ -27,6 +27,7 @@ interface Package {
     icon: string | null;
     description: string;
     price: number;
+    originalPrice: number | null;
     offer: string;
     suggestion: string;
     serviceIds: string[];
