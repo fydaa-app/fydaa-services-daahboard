@@ -20,6 +20,7 @@ interface Service {
   id: number;
   serviceName: string;
   title: string;
+  price: string;
 }
 
 interface PackageData {
@@ -166,7 +167,6 @@ export default function EditPackage({ isOpen, onClose, packageData: initialData 
       formData.append('packagesName', packageData.packagesName);
       formData.append('description', packageData.description);
       formData.append('price', packageData.price);
-      
       // Append optional fields
       if (packageData.offer) formData.append('offer', packageData.offer);
       if (packageData.suggestion) formData.append('suggestion', packageData.suggestion);
@@ -290,15 +290,6 @@ export default function EditPackage({ isOpen, onClose, packageData: initialData 
     }
   };
 
-  // const handleFeatureIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   if (e.target.files && e.target.files[0]) {
-  //     setNewFeature(prev => ({
-  //       ...prev,
-  //       icon: URL.createObjectURL(e.target.files![0])
-  //     }));
-  //   }
-  // };
-
   const addFeature = () => {
     if (newFeature.text) {
       setPackageData(prev => ({
@@ -329,12 +320,23 @@ export default function EditPackage({ isOpen, onClose, packageData: initialData 
   };
 
   const handleServiceSelection = (serviceId: string, checked: boolean) => {
-    setPackageData(prev => ({
-      ...prev,
-      serviceIds: checked 
+    setPackageData(prev => {
+      const updatedServiceIds = checked 
         ? [...(prev.serviceIds || []), serviceId]
-        : (prev.serviceIds || []).filter(id => id !== serviceId)
-    }));
+        : (prev.serviceIds || []).filter(id => id !== serviceId);
+      
+      // Calculate original price based on selected services
+      const totalPrice = updatedServiceIds.reduce((sum, id) => {
+        const service = services.find(s => s.id.toString() === id);
+        return sum + (service ? parseFloat(service.price) || 0 : 0);
+      }, 0);
+      
+      return {
+        ...prev,
+        serviceIds: updatedServiceIds,
+        originalPrice: totalPrice > 0 ? totalPrice.toString() : ""
+      };
+    });
   };
 
   const getImageUrl = (image: File | string | undefined) => {
@@ -436,6 +438,26 @@ export default function EditPackage({ isOpen, onClose, packageData: initialData 
             />
           </div>
 
+          {/* Original Price - Auto-calculated */}
+          <div>
+            <Label htmlFor="originalPrice">Original Price (Auto-calculated from services)</Label>
+            <Input
+              id="originalPrice"
+              type="number"
+              className="bg-gray-100 dark:bg-gray-700 cursor-not-allowed"
+              placeholder="Select services to calculate"
+              value={
+                (packageData.serviceIds && packageData.serviceIds.length > 0)
+                  ? packageData.serviceIds.reduce((sum, id) => {
+                      const service = services.find(s => s.id.toString() === id);
+                      return sum + (service ? parseFloat(service.price) || 0 : 0);
+                    }, 0).toString()
+                  : ""
+              }
+              readOnly
+            />
+          </div>
+
           {/* Services Selection */}
           <div className="border rounded-lg p-4">
             <Label>Services (Optional)</Label>
@@ -453,7 +475,7 @@ export default function EditPackage({ isOpen, onClose, packageData: initialData 
                       className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
                     <label htmlFor={`service-${service.id}`} className="text-sm text-gray-700 dark:text-gray-300">
-                      {service.serviceName} - {service.title}
+                      {service.serviceName} - {service.title} (₹{service.price})
                     </label>
                   </div>
                 ))}

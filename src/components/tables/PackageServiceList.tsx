@@ -21,6 +21,7 @@ export interface PackageServiceTableProps {
     points: {
       text: string;
     }[];
+    price: string;
     createdAt: string;
     updatedAt: string;
     deletedAt: string | null;
@@ -119,6 +120,9 @@ export default function PackageServiceTable({ packageServices, error, onRefresh 
                     Description
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
+                    Price
+                  </TableCell>
+                  <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Points
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
@@ -161,6 +165,11 @@ export default function PackageServiceTable({ packageServices, error, onRefresh 
                     <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                       <div className="max-w-40 truncate" title={service.description}>
                         {service.description}
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                      <div className="max-w-40 truncate" title={service.price}>
+                        {service.price}
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">

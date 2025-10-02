@@ -118,6 +118,7 @@ export default function EditPackage({ isOpen, onClose, packageData }: EditPackag
       formDataToSend.append('title', formData.title.trim());
       formDataToSend.append('subtitle', formData.subtitle.trim());      
       formDataToSend.append('description', formData.description.trim());
+      formDataToSend.append('price', formData.price ? formData.price.toString() : '0');
       
       // Prepare points array - ensure all points have trimmed text
       const sanitizedFeatures = formData.points

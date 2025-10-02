@@ -19,6 +19,7 @@ interface PackageService {
     points: {
         text: string;
     }[];
+    price: string;
     createdAt: string;
     updatedAt: string;
     deletedAt: string | null;

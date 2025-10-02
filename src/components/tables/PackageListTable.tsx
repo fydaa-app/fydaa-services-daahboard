@@ -133,7 +133,7 @@ export default function PackageListTable({ packages, error, onRefresh }: Package
                     Package Name
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
-                    Target Audience
+                    Original Price
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Price
@@ -173,7 +173,13 @@ export default function PackageListTable({ packages, error, onRefresh }: Package
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                      {pkg.targetAudience || 'Not specified'}
+                      <div className="flex flex-col">
+                        {(() => {
+                          const servicesTotal = pkg.serviceDetails.reduce((sum, service) => sum + service.price, 0);
+                          const displayPrice = servicesTotal;
+                          return displayPrice ? formatCurrency(displayPrice) : '';
+                        })()}
+                      </div>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                       <div className="flex flex-col">
