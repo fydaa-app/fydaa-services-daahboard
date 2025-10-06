@@ -23,6 +23,7 @@ interface RecommendedStock {
     buyPrice: string;
     sellPrice: string;
     stock?: Stock; // Optional nested stock object
+    stopLossPrice: string;
     createdAt: string;
     updatedAt: string;
     deletedAt: string | null;

@@ -27,6 +27,7 @@ interface RecommendedStock {
   currentPrice: string;
   buyPrice: string;
   sellPrice: string;
+  stopLossPrice?: string;
   stock?: {
     id: number;
     stockName: string;
@@ -40,6 +41,7 @@ interface RecommendedStockData {
   currentPrice: string;
   buyPrice: string;
   sellPrice: string;
+  stopLossPrice?: string;
 }
 
 const DEFAULT_RECOMMENDED_STOCK_DATA: RecommendedStockData = {
@@ -47,6 +49,7 @@ const DEFAULT_RECOMMENDED_STOCK_DATA: RecommendedStockData = {
   currentPrice: '',
   buyPrice: '',
   sellPrice: '',
+  stopLossPrice: ''
 };
 
 export default function EditRecommendedStock({ 
@@ -76,6 +79,7 @@ export default function EditRecommendedStock({
         currentPrice: recommendedStock.currentPrice || '',
         buyPrice: recommendedStock.buyPrice === '0' ? '' : recommendedStock.buyPrice || '',
         sellPrice: recommendedStock.sellPrice === '0' ? '' : recommendedStock.sellPrice || '',
+        stopLossPrice: recommendedStock.stopLossPrice === '0' ? '' : recommendedStock.stopLossPrice || '',
       });
     } else if (isOpen && !recommendedStock) {
       // Reset form for create mode
@@ -162,6 +166,7 @@ export default function EditRecommendedStock({
         currentPrice: recommendedStockData.currentPrice,
         buyPrice: recommendedStockData.buyPrice || '0',
         sellPrice: recommendedStockData.sellPrice || '0',
+        stopLossPrice: recommendedStockData.stopLossPrice || '0',
       };
 
       const response = await fetch(url, {
@@ -286,6 +291,22 @@ export default function EditRecommendedStock({
             />
           </div>
 
+          <div>
+            <Label htmlFor="stopLossPrice">Stop Loss  Price</Label>
+            <Input
+              id="stopLossPrice"
+              type="number"
+              step="0.01"
+              min="0"
+              value={recommendedStockData.stopLossPrice}
+              onChange={(e) => setRecommendedStockData(prev => ({
+                ...prev,
+                stopLossPrice: e.target.value
+              }))}
+              placeholder="Enter Stop Loss Price"
+            />
+          </div>
+          
           <div className="flex justify-end gap-3 pt-4">
             <button
               type="button"
