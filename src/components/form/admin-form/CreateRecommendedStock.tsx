@@ -25,6 +25,7 @@ interface RecommendedStockData {
   currentPrice: string;
   buyPrice: string;
   sellPrice: string;
+  stopLossPrice: string;
 }
 
 const DEFAULT_RECOMMENDED_STOCK_DATA: RecommendedStockData = {
@@ -32,6 +33,7 @@ const DEFAULT_RECOMMENDED_STOCK_DATA: RecommendedStockData = {
   currentPrice: '',
   buyPrice: '',
   sellPrice: '',
+  stopLossPrice: ''
 };
 
 export default function CreateRecommendedStock({ 
@@ -115,6 +117,7 @@ export default function CreateRecommendedStock({
         currentPrice: recommendedStockData.currentPrice,
         buyPrice: recommendedStockData.buyPrice || '0',
         sellPrice: recommendedStockData.sellPrice || '0',
+        stopLossPrice: recommendedStockData.stopLossPrice || '0',
       };
 
       const response = await fetch(url, {
@@ -231,6 +234,23 @@ export default function CreateRecommendedStock({
               placeholder="Enter sell price (optional)"
             />
           </div>
+
+          <div>
+            <Label htmlFor="stopLossPrice">stop Loss  Price</Label>
+            <Input
+              id="stopLossPrice"
+              type="number"
+              step="0.01"
+              min="0"
+              value={recommendedStockData.stopLossPrice}
+              onChange={(e) => setRecommendedStockData(prev => ({
+                ...prev,
+                stopLossPrice: e.target.value
+              }))}
+              placeholder="Enter Stop Loss  Price (optional)"
+            />
+          </div>
+
 
           <div className="flex justify-end gap-3 pt-4">
             <button

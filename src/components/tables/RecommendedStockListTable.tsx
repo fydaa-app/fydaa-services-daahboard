@@ -24,6 +24,7 @@ interface RecommendedStock {
   buyPrice: string;
   sellPrice: string;
   stock?: Stock;
+  stopLossPrice?: string;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -126,6 +127,7 @@ export default function RecommendedStockListTable({
       currentPrice: recommendedStock.currentPrice,
       buyPrice: recommendedStock.buyPrice || '0',
       sellPrice: recommendedStock.sellPrice || '0',
+      stopLossPrice: recommendedStock.stopLossPrice ?? '', // Ensure always a string
       stock: recommendedStock.stock ? {
         id: recommendedStock.stock.id,
         stockName: recommendedStock.stock.stockName,
@@ -174,6 +176,9 @@ export default function RecommendedStockListTable({
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Sell Price
+                  </TableCell>
+                  <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
+                    Stop Loss Price
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Recommendation
@@ -228,6 +233,13 @@ export default function RecommendedStockListTable({
                           <span className="text-gray-400">Not set</span>
                         ) : (
                           formatCurrency(recommendedStock.sellPrice)
+                        )}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                        {!recommendedStock.stopLossPrice || recommendedStock.stopLossPrice === '0' ? (
+                          <span className="text-gray-400">Not set</span>  
+                        ) : (
+                          formatCurrency(recommendedStock.stopLossPrice)
                         )}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-start">
