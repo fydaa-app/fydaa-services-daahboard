@@ -348,7 +348,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+    console.log('Submitting portfolioDetails:', totalWeights);
     try {
       if (!portfolioDetails.portfolioName.trim()) {
         toast.error('Portfolio name is required');
@@ -362,6 +362,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
             return;
         }
         const totalSum = Object.values(totalWeights).reduce((sum, value) => sum + value, 0);
+        console.log('Submitting portfolioDetails1:', totalSum);
         if(totalSum!==100){
             toast.error('Sum of all asset class Total weight must be 100.');
             return;
@@ -403,7 +404,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
 
         try {
            await portfolioManagementServiceApi.updatePortfolio(portfolioDetails.id.toString(),params);
-            toast.success('Portfolio created successfully');
+            toast.success('Portfolio update successfully');
             resetForm();
             onClose();
             router.refresh();          

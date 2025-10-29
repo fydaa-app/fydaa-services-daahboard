@@ -41,8 +41,8 @@ interface UserDetails {
   dob: string;
   address: Address;
   userGoal: UserGoal;
-  subscription_date: string; // Added property
-  main_subscription_status: number; // Added property
+  subscription_date: string;
+  main_subscription_status: number;
 }
 
 interface ReferralDetails {
@@ -59,7 +59,7 @@ interface UserSubscription {
 
 interface UserTransaction {
   transactionId: string;
-  orderType: string; // Original type from API
+  orderType: string;
   portfolioId: number;
   totalAmount: number;
   totalTradeQty: string;
@@ -68,7 +68,7 @@ interface UserTransaction {
 
 interface Transaction {
   transactionId: string;
-  orderType: "BUY" | "SELL"; // Expected type in UserTab
+  orderType: "BUY" | "SELL";
   portfolioId: number;
   totalAmount: number;
   totalTradeQty: string;
@@ -118,6 +118,29 @@ interface StockOrder {
   "stock.ticker": string;
 }
 
+interface Advisor {
+  id: number;
+  name: string;
+  email: string;
+  mobile: string;
+  age: number;
+  experienceInYears: number;
+  description: string;
+  photo: string;
+  attachment1: string;
+  attachment2: string;
+}
+
+interface RelationshipManager {
+  id: number;
+  name: string;
+  email: string;
+  mobileNumber: string;
+  description: string;
+  type: string;
+  photo: string | null;
+}
+
 interface UserData {
   userDetails: UserDetails;
   userSubscriptionDetails: UserSubscription[];
@@ -125,11 +148,13 @@ interface UserData {
   portfolioDetails: PortfolioDetail[];
   stockOrders: StockOrder[];
   xirr: Record<string, unknown>;
-  referralDetails:ReferralDetails
+  referralDetails: ReferralDetails;
+  advisor: Advisor;
+  relationshipManager: RelationshipManager;
 }
 
 interface PageProps {
-  params: Promise<{ userId: string }>; // Updated to match the expected type
+  params: Promise<{ userId: string }>;
 }
 
 export default function UserDetails({ params }: PageProps) {
@@ -140,7 +165,7 @@ export default function UserDetails({ params }: PageProps) {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const resolvedParams = await params; // Resolve the params promise
+        const resolvedParams = await params;
         const { userId } = resolvedParams;
 
         const authToken =
@@ -178,7 +203,7 @@ export default function UserDetails({ params }: PageProps) {
             ...transaction,
             orderType: transaction.orderType === "BUY" || transaction.orderType === "SELL"
               ? transaction.orderType
-              : "BUY", // Default to "BUY" if the value is invalid
+              : "BUY",
           })),
         };
 
@@ -206,40 +231,42 @@ export default function UserDetails({ params }: PageProps) {
   }
 
   return (
-  <div>
-    <PageBreadcrumb pageTitle="User" />
-    <div className="space-y-6">
-      <div className="mb-4">
-        <button 
-          onClick={() => window.location.href = '/userlist'}
-          className="flex items-center text-blue-600 hover:text-blue-800"
-        >
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            className="h-5 w-5 mr-2" 
-            viewBox="0 0 20 20" 
-            fill="currentColor"
+    <div>
+      <PageBreadcrumb pageTitle="User" />
+      <div className="space-y-6">
+        <div className="mb-4">
+          <button 
+            onClick={() => window.location.href = '/userlist'}
+            className="flex items-center text-blue-600 hover:text-blue-800"
           >
-            <path 
-              fillRule="evenodd" 
-              d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" 
-              clipRule="evenodd" 
-            />
-          </svg>
-          Back to User List
-        </button>
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              className="h-5 w-5 mr-2" 
+              viewBox="0 0 20 20" 
+              fill="currentColor"
+            >
+              <path 
+                fillRule="evenodd" 
+                d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" 
+                clipRule="evenodd" 
+              />
+            </svg>
+            Back to User List
+          </button>
+        </div>
+        <ComponentCard title="User Details">
+          <UserTab
+            userDetails={userData.userDetails}
+            portfolioDetails={userData.portfolioDetails}
+            transactions={userData.userTransactionDetails as Transaction[]}
+            subscriptions={userData.userSubscriptionDetails}
+            stockOrders={userData.stockOrders}
+            referralDetails={userData.referralDetails}
+            advisor={userData.advisor}
+            relationshipManager={userData.relationshipManager}
+          />
+        </ComponentCard>
       </div>
-      <ComponentCard title="User Details">
-        <UserTab
-          userDetails={userData.userDetails}
-          portfolioDetails={userData.portfolioDetails}
-          transactions={userData.userTransactionDetails as Transaction[]}
-          subscriptions={userData.userSubscriptionDetails}
-          stockOrders={userData.stockOrders}
-          referralDetails={userData.referralDetails}
-        />
-      </ComponentCard>
     </div>
-  </div>
-);
+  );
 }
