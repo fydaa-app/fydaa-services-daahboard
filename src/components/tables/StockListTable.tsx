@@ -19,6 +19,7 @@ interface Stock {
   currentPrice: string;
   yesterdayPrice: string;
   StockType: string;
+  recommendationStock: number;
   CapType: string;
   sector: number;
   createdAt: string;
@@ -106,6 +107,34 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
     setEditingStock(null);
   };
 
+
+  const handleStockTypeChange = async (id: number, newType: number) => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_STOCK_API_URL;
+      const response = await fetch(`${apiUrl}stock/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${
+            document.cookie.split("; ").find((row) => row.startsWith("authToken="))?.split("=")[1] || ""
+          }`,
+        },
+        body: JSON.stringify({ recommendationStock: newType }),
+      });
+  
+      if (!response.ok) {
+        throw new Error("Failed to update stock type");
+      }
+  
+      toast.success("Stock recommendation type updated!");
+      onRefresh?.();
+    } catch (error) {
+      console.error(error);
+      toast.error("Error updating stock recommendation type");
+    }
+  };
+  
+
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="max-w-full overflow-x-auto">
@@ -132,6 +161,10 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Cap Type
+                  </TableCell>
+
+                  <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
+                   Stock recommendation type
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Updated At
@@ -178,6 +211,18 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
                           {stock.CapType}
                         </Badge>
                       </TableCell>
+                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                        <select
+                          value={Number(stock.recommendationStock)}
+                          onChange={(e) => handleStockTypeChange(stock.id, Number(e.target.value))}
+                          className="w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                        >
+                          <option value="1">Buy</option>
+                          <option value="2">Hold</option>
+                          <option value="3">Sell</option>
+                        </select>
+                      </TableCell>
+
                       <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                         {new Date(stock.updatedAt).toLocaleString()}
                       </TableCell>
