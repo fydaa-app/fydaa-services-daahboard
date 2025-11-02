@@ -38,6 +38,8 @@ export interface UserTableProps {
     gender: string;
     dob: string;
     isNRI: boolean;
+    advisorName?: string;
+    relationshipManagerName?: string;
   }[];
   error: string | null;
 }
@@ -106,6 +108,12 @@ export default function UserListTable({ users, error }: UserTableProps) {
                     PAN KYC Status
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
+                    Manager
+                  </TableCell>
+                  <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
+                    Advisor
+                  </TableCell>
+                  <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Status
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
@@ -160,6 +168,12 @@ export default function UserListTable({ users, error }: UserTableProps) {
                         {user.panStatus}
                       </Badge>
                     </TableCell>
+                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">                      
+                      {user.advisorName}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                      {user.relationshipManagerName}
+                    </TableCell> 
                     <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                       <Badge color={getUserStatus(user) === 'Active' ? 'success' : 'error'}>
                         {getUserStatus(user)}

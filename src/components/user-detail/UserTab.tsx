@@ -173,7 +173,6 @@ interface PaymentData {
   [key: string]: unknown;
 }
 
-// Updated Payment interfaces for the new API structure
 interface OneTimePayment {
   id: number;
   user_id: number;
@@ -199,7 +198,6 @@ interface PaymentOrder {
   paymentData: PaymentData;
 }
 
-// Combined payment interface for display
 interface CombinedPayment {
   id: number;
   orderId: string;
@@ -246,6 +244,18 @@ export default function UserTab({
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [mappingReferral, setMappingReferral] = useState(false);
+  
+  // NEW STATE VARIABLES FOR ADVISOR AND RM
+  const [showAdvisorModal, setShowAdvisorModal] = useState(false);
+  const [showRMModal, setShowRMModal] = useState(false);
+  const [advisors, setAdvisors] = useState<Advisor[]>([]);
+  const [relationshipManagers, setRelationshipManagers] = useState<RelationshipManager[]>([]);
+  const [selectedAdvisorId, setSelectedAdvisorId] = useState<number | null>(null);
+  const [selectedRMId, setSelectedRMId] = useState<number | null>(null);
+  const [loadingAdvisors, setLoadingAdvisors] = useState(false);
+  const [loadingRMs, setLoadingRMs] = useState(false);
+  const [updatingAdvisor, setUpdatingAdvisor] = useState(false);
+  const [updatingRM, setUpdatingRM] = useState(false);
 
   // Format currency values
   const formatCurrency = (value: number) => 
@@ -254,7 +264,7 @@ export default function UserTab({
       currency: 'INR' 
     }).format(value);
 
-    const fetchEmployeesWithReferralCodes = async () => {
+  const fetchEmployeesWithReferralCodes = async () => {
     try {
       setLoadingEmployees(true);
       const authToken = document.cookie
@@ -263,7 +273,7 @@ export default function UserTab({
         ?.split("=")[1] || "";
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_CRM_API_URL}/referrals/employee-list?limit=100`, // Adjust API endpoint as needed
+        `${process.env.NEXT_PUBLIC_CRM_API_URL}/referrals/employee-list?limit=100`,
         {
           headers: {
             Authorization: `Bearer ${authToken}`,
@@ -278,7 +288,6 @@ export default function UserTab({
       const result = await response.json();
       
       if (result.success && result.data && result.data.employees) {
-        // Filter employees who have referral codes
         const employeesWithReferralCodes = result.data.employees
           .filter((emp: Employee) => emp.referralCode)
           .map((emp: Employee) => ({
@@ -299,7 +308,6 @@ export default function UserTab({
     }
   };
 
-  // Function to map user to employee referral code
   const mapUserReferralCode = async () => {
     if (!selectedEmployeeId) {
       alert('Please select an employee first.');
@@ -339,7 +347,6 @@ export default function UserTab({
       if (result.success) {
         alert('Referral code mapped successfully!');
         setShowReferralMapping(false);
-        // Optionally refresh the page or update the userDetails state
         window.location.reload();
       } else {
         throw new Error(result.message || 'Failed to map referral code');
@@ -358,8 +365,185 @@ export default function UserTab({
       fetchEmployeesWithReferralCodes();
     }
   };
-  
-  // Function to download risk profile PDF
+
+  // NEW FUNCTION: Fetch advisors list
+  const fetchAdvisors = async () => {
+    try {
+      setLoadingAdvisors(true);
+      const authToken = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("authToken="))
+        ?.split("=")[1] || "";
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_CRM_API_URL}/referrals/getAdvisorList`,
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch advisors');
+      }
+
+      const result = await response.json();
+      
+      if (result.data) {
+        setAdvisors(result.data.rows);
+      } else {
+        throw new Error('No advisors found');
+      }
+    } catch (error) {
+      console.error('Error fetching advisors:', error);
+      alert('Failed to fetch advisors. Please try again.');
+    } finally {
+      setLoadingAdvisors(false);
+    }
+  };
+
+  // NEW FUNCTION: Fetch relationship managers list
+  const fetchRelationshipManagers = async () => {
+    try {
+      setLoadingRMs(true);
+      const authToken = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("authToken="))
+        ?.split("=")[1] || "";
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_CRM_API_URL}/referrals/getRelationshipManagerList`,
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch relationship managers');
+      }
+
+      const result = await response.json();
+      
+      if (result.data) {
+        setRelationshipManagers(result.data.rows);
+      } else {
+        throw new Error('No relationship managers found');
+      }
+    } catch (error) {
+      console.error('Error fetching relationship managers:', error);
+      alert('Failed to fetch relationship managers. Please try again.');
+    } finally {
+      setLoadingRMs(false);
+    }
+  };
+
+  // NEW FUNCTION: Update advisor
+  const updateAdvisor = async () => {
+    if (!selectedAdvisorId) {
+      alert('Please select an advisor first.');
+      return;
+    }
+
+    try {
+      setUpdatingAdvisor(true);
+      const authToken = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("authToken="))
+        ?.split("=")[1] || "";
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_CRM_API_URL}/referrals/updateAdvisorId/${userDetails.id}/${selectedAdvisorId}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to update advisor');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        alert('Advisor updated successfully!');
+        setShowAdvisorModal(false);
+        window.location.reload();
+      } else {
+        throw new Error(result.message || 'Failed to update advisor');
+      }
+    } catch (error) {
+      console.error('Error updating advisor:', error);
+      alert(`Failed to update advisor: ${error}`);
+    } finally {
+      setUpdatingAdvisor(false);
+    }
+  };
+
+  // NEW FUNCTION: Update relationship manager
+  const updateRelationshipManager = async () => {
+    if (!selectedRMId) {
+      alert('Please select a relationship manager first.');
+      return;
+    }
+
+    try {
+      setUpdatingRM(true);
+      const authToken = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("authToken="))
+        ?.split("=")[1] || "";
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_CRM_API_URL}/referrals/updateRelationshipManagerId/${userDetails.id}/${selectedRMId}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to update relationship manager');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        alert('Relationship manager updated successfully!');
+        setShowRMModal(false);
+        window.location.reload();
+      } else {
+        throw new Error(result.message || 'Failed to update relationship manager');
+      }
+    } catch (error) {
+      console.error('Error updating relationship manager:', error);
+      alert(`Failed to update relationship manager: ${error}`);
+    } finally {
+      setUpdatingRM(false);
+    }
+  };
+
+  const handleShowAdvisorModal = () => {
+    setShowAdvisorModal(true);
+    if (advisors.length === 0) {
+      fetchAdvisors();
+    }
+  };
+
+  const handleShowRMModal = () => {
+    setShowRMModal(true);
+    if (relationshipManagers.length === 0) {
+      fetchRelationshipManagers();
+    }
+  };
+
   const downloadRiskProfile = async () => {
     try {
       setDownloading('riskProfile');
@@ -400,7 +584,6 @@ export default function UserTab({
     }
   };
 
-  // Function to download esign agreement PDF
   const downloadEsignAgreement = async () => {
     try {
       setDownloading('esignAgreement');
@@ -484,7 +667,6 @@ export default function UserTab({
     }
   };
 
-  // Single function to send portfolio report email
   const sendPortfolioReportEmail = async () => {
     try {
       setSendingEmail('portfolioEmail');
@@ -545,7 +727,6 @@ export default function UserTab({
     }
   };
   
-  // Enhanced fetch payment details function
   const fetchPaymentDetails = async () => {
     try {
       setLoadingPayments(true);
@@ -570,10 +751,8 @@ export default function UserTab({
       const result = await response.json();
       
       if (result.success && result.data) {
-        // Combine both payment types
         const combinedPayments: CombinedPayment[] = [];
         
-        // Add one-time payments
         if (result.data.one_time_payments) {
           result.data.one_time_payments.forEach((payment: OneTimePayment) => {
             combinedPayments.push({
@@ -591,7 +770,6 @@ export default function UserTab({
           });
         }
 
-        // Add subscription payments
         if (result.data.payments_order) {
           result.data.payments_order.forEach((payment: PaymentOrder) => {
             combinedPayments.push({
@@ -609,7 +787,6 @@ export default function UserTab({
           });
         }
 
-        // Sort by date (newest first)
         combinedPayments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
         const totalPayments = combinedPayments.length;
@@ -631,7 +808,6 @@ export default function UserTab({
     }
   };
 
-  // Enhanced download invoice PDF function
   const downloadInvoicePDF = async (paymentId: number, paymentType: string) => {
     try {
       setProcessingDownload(`invoice-${paymentId}`);
@@ -674,7 +850,6 @@ export default function UserTab({
     }
   };
 
-  // Enhanced send invoice email function
   const sendInvoiceEmail = async (paymentId: number, paymentType: string) => {
     try {
       setSendingEmail(`email-${paymentId}`);
@@ -748,7 +923,6 @@ export default function UserTab({
                   {userDetails.city}, {userDetails.country}
                 </p>
               </div>
-              {/* Additional User Details */}
               <div className="mt-4 space-y-2">
                 <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
                   Email : {userDetails.email}
@@ -759,7 +933,6 @@ export default function UserTab({
                 <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
                   PAN Status : {userDetails.panStatus}
                 </p>
-                {/* Referral Code Section */}
                 <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <div className="flex items-center gap-2 mb-6">
                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -769,7 +942,6 @@ export default function UserTab({
                   {userDetails.referredBy ? (
                     <>
                       <div className="space-y-3">
-                        {/* Referrer Details */}
                         <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
                           <div className="flex items-center gap-1">
                             <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Referred By</span>
@@ -857,13 +1029,11 @@ export default function UserTab({
             {/* Portfolio Tab */}
             {activeTab === 'Portfolio' && (
               <div className="p-4">
-                {/* Single Portfolio Action Buttons at Top */}
                 {portfolioDetails.length > 0 && (
                   <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
                     <div className="flex justify-between items-center">
                       <h3 className="text-lg font-semibold dark:text-gray-400">Portfolio Overview</h3>
                       
-                      {/* Single Portfolio Action Buttons */}
                       <div className="flex gap-2">
                         <button
                           onClick={downloadPortfolioReport}
@@ -915,7 +1085,6 @@ export default function UserTab({
                   </div>
                 )}
 
-                {/* Portfolio Details */}
                 {portfolioDetails && portfolioDetails.length > 0 ? (
                   portfolioDetails.map((portfolio) => (
                     <div key={portfolio.portfolioId} className="mb-6">
@@ -1101,160 +1270,175 @@ export default function UserTab({
             )}
 
             {/* Profile Tab */}
-{activeTab === 'Profile' && (
-  <div className="p-4 space-y-6">
-    {/* User Basic Information */}
-    <div>
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Basic Information</h3>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <p className="text-sm text-gray-900 dark:text-gray-400">Date of Birth</p>
-          <p className="text-theme-sm text-gray-500">{new Date(userDetails.dob).toLocaleDateString()}</p>
-        </div>
-        <div>
-          <p className="text-sm text-gray-900 dark:text-gray-400">Address</p>
-          <p className="text-theme-sm text-gray-500">{userDetails.address?.addressLine1}</p>
-          <p className="text-theme-sm text-gray-500">{userDetails.pincode}</p>
-        </div>
-        <div>
-          <p className="text-sm text-gray-900 dark:text-gray-400">KYC Status</p>
-          <Badge color={userDetails.panStatus === 'KYC_SUCCESS' ? 'success' : 'error'}>
-            {userDetails.panStatus}
-          </Badge>
-        </div>
-        <div>
-          <p className="text-sm text-gray-900 dark:text-gray-400">Total Investment</p>
-          <p className="text-theme-sm text-gray-500">{formatCurrency(userDetails.total_investment)}</p>
-        </div>
-      </div>
-    </div>
+            {activeTab === 'Profile' && (
+              <div className="p-4 space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Basic Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-900 dark:text-gray-400">Date of Birth</p>
+                      <p className="text-theme-sm text-gray-500">{new Date(userDetails.dob).toLocaleDateString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-900 dark:text-gray-400">Address</p>
+                      <p className="text-theme-sm text-gray-500">{userDetails.address?.addressLine1}</p>
+                      <p className="text-theme-sm text-gray-500">{userDetails.pincode}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-900 dark:text-gray-400">KYC Status</p>
+                      <Badge color={userDetails.panStatus === 'KYC_SUCCESS' ? 'success' : 'error'}>
+                        {userDetails.panStatus}
+                      </Badge>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-900 dark:text-gray-400">Total Investment</p>
+                      <p className="text-theme-sm text-gray-500">{formatCurrency(userDetails.total_investment)}</p>
+                    </div>
+                  </div>
+                </div>
 
-    {/* Advisor Details */}
-    {advisor && (
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Advisor Details</h3>
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <div className="flex items-start space-x-4 mb-4">
-            {advisor.photo && (
-              <img 
-                src={advisor.photo} 
-                alt={advisor.name}
-                className="w-20 h-20 rounded-full object-cover"
-              />
-            )}
-            <div className="flex-1">
-              <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">{advisor.name}</h4>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{advisor.description}</p>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-900 dark:text-gray-400">Email</p>
-              <a href={`mailto:${advisor.email}`} className="text-theme-sm text-blue-600 hover:underline">
-                {advisor.email}
-              </a>
-            </div>
-            <div>
-              <p className="text-sm text-gray-900 dark:text-gray-400">Mobile</p>
-              <a href={`tel:${advisor.mobile}`} className="text-theme-sm text-blue-600 hover:underline">
-                {advisor.mobile}
-              </a>
-            </div>
-            <div>
-              <p className="text-sm text-gray-900 dark:text-gray-400">Age</p>
-              <p className="text-theme-sm text-gray-500">{advisor.age} years</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-900 dark:text-gray-400">Experience</p>
-              <p className="text-theme-sm text-gray-500">{advisor.experienceInYears} years</p>
-            </div>
-          </div>
+                {/* Advisor Details - UPDATED WITH CHANGE BUTTON */}
+                {advisor && (
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Advisor Details</h3>
+                      <button
+                        onClick={handleShowAdvisorModal}
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
+                      >
+                        Change Advisor
+                      </button>
+                    </div>
+                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                      <div className="flex items-start space-x-4 mb-4">
+                        {advisor.photo && (
+                          <img 
+                            src={advisor.photo} 
+                            alt={advisor.name}
+                            className="w-20 h-20 rounded-full object-cover"
+                          />
+                        )}
+                        <div className="flex-1">
+                          <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">{advisor.name}</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{advisor.description}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-900 dark:text-gray-400">Email</p>
+                          <a href={`mailto:${advisor.email}`} className="text-theme-sm text-blue-600 hover:underline">
+                            {advisor.email}
+                          </a>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-900 dark:text-gray-400">Mobile</p>
+                          <a href={`tel:${advisor.mobile}`} className="text-theme-sm text-blue-600 hover:underline">
+                            {advisor.mobile}
+                          </a>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-900 dark:text-gray-400">Age</p>
+                          <p className="text-theme-sm text-gray-500">{advisor.age} years</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-900 dark:text-gray-400">Experience</p>
+                          <p className="text-theme-sm text-gray-500">{advisor.experienceInYears} years</p>
+                        </div>
+                      </div>
 
-          {(advisor.attachment1 || advisor.attachment2) && (
-            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <p className="text-sm text-gray-900 dark:text-gray-400 mb-2">Certificates</p>
-              <div className="flex flex-wrap gap-2">
-                {advisor.attachment1 && (
-                  <a 
-                    href={advisor.attachment1}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-sm hover:bg-blue-200 dark:hover:bg-blue-800"
-                  >
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Certificate 1
-                  </a>
+                      {(advisor.attachment1 || advisor.attachment2) && (
+                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                          <p className="text-sm text-gray-900 dark:text-gray-400 mb-2">Certificates</p>
+                          <div className="flex flex-wrap gap-2">
+                            {advisor.attachment1 && (
+                              <a 
+                                href={advisor.attachment1}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-sm hover:bg-blue-200 dark:hover:bg-blue-800"
+                              >
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Certificate 1
+                              </a>
+                            )}
+                            {advisor.attachment2 && (
+                              <a 
+                                href={advisor.attachment2}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-sm hover:bg-blue-200 dark:hover:bg-blue-800"
+                              >
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Certificate 2
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
-                {advisor.attachment2 && (
-                  <a 
-                    href={advisor.attachment2}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-sm hover:bg-blue-200 dark:hover:bg-blue-800"
-                  >
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Certificate 2
-                  </a>
+
+                {/* Relationship Manager Details - UPDATED WITH CHANGE BUTTON */}
+                {relationshipManager && (
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Relationship Manager</h3>
+                      <button
+                        onClick={handleShowRMModal}
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
+                      >
+                        Change RM
+                      </button>
+                    </div>
+                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                      <div className="flex items-start space-x-4 mb-4">
+                        {relationshipManager.photo ? (
+                          <img 
+                            src={relationshipManager.photo} 
+                            alt={relationshipManager.name}
+                            className="w-16 h-16 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                            <span className="text-xl font-semibold text-gray-600 dark:text-gray-400">
+                              {relationshipManager.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">{relationshipManager.name}</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{relationshipManager.description}</p>
+                          <Badge color="info">
+                            {relationshipManager.type}
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-900 dark:text-gray-400">Email</p>
+                          <a href={`mailto:${relationshipManager.email}`} className="text-theme-sm text-blue-600 hover:underline">
+                            {relationshipManager.email}
+                          </a>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-900 dark:text-gray-400">Mobile</p>
+                          <a href={`tel:${relationshipManager.mobileNumber}`} className="text-theme-sm text-blue-600 hover:underline">
+                            {relationshipManager.mobileNumber}
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
-            </div>
-          )}
-        </div>
-      </div>
-    )}
-
-    {/* Relationship Manager Details */}
-    {relationshipManager && (
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Relationship Manager</h3>
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <div className="flex items-start space-x-4 mb-4">
-            {relationshipManager.photo ? (
-              <img 
-                src={relationshipManager.photo} 
-                alt={relationshipManager.name}
-                className="w-16 h-16 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                <span className="text-xl font-semibold text-gray-600 dark:text-gray-400">
-                  {relationshipManager.name.charAt(0).toUpperCase()}
-                </span>
-              </div>
             )}
-            <div className="flex-1">
-              <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">{relationshipManager.name}</h4>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{relationshipManager.description}</p>
-              <Badge color="info">
-                {relationshipManager.type}
-              </Badge>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-900 dark:text-gray-400">Email</p>
-              <a href={`mailto:${relationshipManager.email}`} className="text-theme-sm text-blue-600 hover:underline">
-                {relationshipManager.email}
-              </a>
-            </div>
-            <div>
-              <p className="text-sm text-gray-900 dark:text-gray-400">Mobile</p>
-              <a href={`tel:${relationshipManager.mobileNumber}`} className="text-theme-sm text-blue-600 hover:underline">
-                {relationshipManager.mobileNumber}
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
-)}
 
             {/* Reports Tab */}
             {activeTab === 'Reports' && (
@@ -1267,7 +1451,6 @@ export default function UserTab({
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Risk Profile Card */}
                   <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
                     <div className="flex items-center mb-4">
                       <div className="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-lg mr-4">
@@ -1303,7 +1486,6 @@ export default function UserTab({
                     </button>
                   </div>
 
-                  {/* Esign Agreement Card */}
                   <div className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-800">
                     <div className="flex items-center mb-4">
                       <div className="p-3 bg-green-100 dark:bg-green-900/50 rounded-lg mr-4">
@@ -1338,12 +1520,11 @@ export default function UserTab({
                       )}
                     </button>
                   </div>
-
                 </div>
               </div>
             )}
 
-            {/* NEW PAYMENTS TAB */}
+            {/* Payments Tab */}
             {activeTab === 'Payments' && (
               <div className="p-4">
                 {loadingPayments ? (
@@ -1355,7 +1536,6 @@ export default function UserTab({
                   </div>
                 ) : paymentDetails && paymentDetails.payments.length > 0 ? (
                   <>
-                    {/* Payment Summary */}
                     <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Payment Summary</h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1376,7 +1556,6 @@ export default function UserTab({
                       </div>
                     </div>
 
-                    {/* Payments Table */}
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
@@ -1468,16 +1647,17 @@ export default function UserTab({
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                       <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Payments Found</h3>
-                      <p className="text-gray-500 dark:text-gray-400">You havenot made any payments yet.</p>
+                      <p className="text-gray-500 dark:text-gray-400">You have not made any payments yet.</p>
                     </div>
                   </div>
                 )}
               </div>
             )}
-
           </div>
         </div>
       </div>
+
+      {/* MODALS */}
 
       {/* Referral Code Mapping Modal */}
       {showReferralMapping && (
@@ -1546,6 +1726,148 @@ export default function UserTab({
                   </>
                 ) : (
                   'Map Referral Code'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Advisor Modal */}
+      {showAdvisorModal && (
+        <div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Change Advisor
+              </h3>
+              <button
+                onClick={() => setShowAdvisorModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                Select a new advisor for this user:
+              </p>
+              
+              {loadingAdvisors ? (
+                <div className="flex justify-center py-4">
+                  <svg className="w-6 h-6 animate-spin text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span className="ml-2">Loading advisors...</span>
+                </div>
+              ) : (
+                <select
+                  value={selectedAdvisorId || ''}
+                  onChange={(e) => setSelectedAdvisorId(Number(e.target.value) || null)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select an advisor...</option>
+                  {advisors.map((adv) => (
+                    <option key={adv.id} value={adv.id}>
+                      {adv.name} - {adv.email}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={updateAdvisor}
+                disabled={!selectedAdvisorId || updatingAdvisor}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                {updatingAdvisor ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Updating...
+                  </>
+                ) : (
+                  'Update Advisor'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Relationship Manager Modal */}
+      {showRMModal && (
+        <div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Change Relationship Manager
+              </h3>
+              <button
+                onClick={() => setShowRMModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                Select a new relationship manager for this user:
+              </p>
+              
+              {loadingRMs ? (
+                <div className="flex justify-center py-4">
+                  <svg className="w-6 h-6 animate-spin text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span className="ml-2">Loading relationship managers...</span>
+                </div>
+              ) : (
+                <select
+                  value={selectedRMId || ''}
+                  onChange={(e) => setSelectedRMId(Number(e.target.value) || null)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select a relationship manager...</option>
+                  {relationshipManagers.map((rm) => (
+                    <option key={rm.id} value={rm.id}>
+                      {rm.name} - {rm.email}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowRMModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={updateRelationshipManager}
+                disabled={!selectedRMId || updatingRM}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                {updatingRM ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Updating...
+                  </>
+                ) : (
+                  'Update RM'
                 )}
               </button>
             </div>
