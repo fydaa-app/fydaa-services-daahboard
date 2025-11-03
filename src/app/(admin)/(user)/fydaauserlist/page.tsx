@@ -34,6 +34,8 @@ interface User {
   gender: string;
   dob: string;
   isNRI: boolean;
+  advisorName?: string;
+  relationshipManagerName?: string;
 }
 
 interface ApiResponse {
