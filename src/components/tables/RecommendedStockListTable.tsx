@@ -21,8 +21,10 @@ interface RecommendedStock {
   id: number;
   stockId: number;
   currentPrice: string;
-  buyPrice: string;
-  sellPrice: string;
+  entryPrice: string;
+  targetPrice: string;
+  entryType: string;
+  frequency: string;
   stock?: Stock;
   stopLossPrice?: string;
   createdAt: string;
@@ -49,16 +51,16 @@ const formatCurrency = (value: string): string => {
 
 const getPriceComparison = (current: string, buy: string, sell: string) => {
   const currentPrice = parseFloat(current);
-  const buyPrice = parseFloat(buy);
-  const sellPrice = parseFloat(sell);
+  const entryPrice = parseFloat(buy);
+  const targetPrice = parseFloat(sell);
   
   let status = 'neutral';
   let message = 'Hold';
   
-  if (buyPrice > 0 && currentPrice <= buyPrice) {
+  if (entryPrice > 0 && currentPrice <= entryPrice) {
     status = 'buy';
     message = 'Buy';
-  } else if (sellPrice > 0 && currentPrice >= sellPrice) {
+  } else if (targetPrice > 0 && currentPrice >= targetPrice) {
     status = 'sell';
     message = 'Sell';
   }
@@ -125,9 +127,11 @@ export default function RecommendedStockListTable({
       id: recommendedStock.id,
       stockId: recommendedStock.stockId,
       currentPrice: recommendedStock.currentPrice,
-      buyPrice: recommendedStock.buyPrice || '0',
-      sellPrice: recommendedStock.sellPrice || '0',
+      entryPrice: recommendedStock.entryPrice || '0',
+      targetPrice: recommendedStock.targetPrice || '0',
       stopLossPrice: recommendedStock.stopLossPrice ?? '', // Ensure always a string
+      entryType: recommendedStock.entryType || 'Buy',
+      frequency: recommendedStock.frequency || 'Daily',
       stock: recommendedStock.stock ? {
         id: recommendedStock.stock.id,
         stockName: recommendedStock.stock.stockName,
@@ -195,8 +199,8 @@ export default function RecommendedStockListTable({
                 {recommendedStocks.map((recommendedStock) => {
                   const recommendation = getPriceComparison(
                     recommendedStock.currentPrice, 
-                    recommendedStock.buyPrice, 
-                    recommendedStock.sellPrice
+                    recommendedStock.entryPrice, 
+                    recommendedStock.targetPrice
                   );
                   
                   return (
@@ -222,17 +226,17 @@ export default function RecommendedStockListTable({
                         </span>
                       </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {!recommendedStock.buyPrice || recommendedStock.buyPrice === '0' ? (
+                        {!recommendedStock.entryPrice || recommendedStock.entryPrice === '0' ? (
                           <span className="text-gray-400">Not set</span>
                         ) : (
-                          formatCurrency(recommendedStock.buyPrice)
+                          formatCurrency(recommendedStock.entryPrice)
                         )}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {!recommendedStock.sellPrice || recommendedStock.sellPrice === '0' ? (
+                        {!recommendedStock.targetPrice || recommendedStock.targetPrice === '0' ? (
                           <span className="text-gray-400">Not set</span>
                         ) : (
-                          formatCurrency(recommendedStock.sellPrice)
+                          formatCurrency(recommendedStock.targetPrice)
                         )}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
