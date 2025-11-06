@@ -18,23 +18,30 @@ interface Stock {
   stockName: string;
   ticker: string;
   currentPrice: string;
+
 }
 
 interface RecommendedStockData {
   stockId: number | '';
   currentPrice: string;
-  buyPrice: string;
-  sellPrice: string;
+  entryPrice: string;
+  targetPrice: string;
   stopLossPrice: string;
+  entryType: string;
+  frequency: string; 
 }
 
 const DEFAULT_RECOMMENDED_STOCK_DATA: RecommendedStockData = {
   stockId: '',
   currentPrice: '',
-  buyPrice: '',
-  sellPrice: '',
-  stopLossPrice: ''
+  entryPrice: '',
+  targetPrice: '',
+  stopLossPrice: '',
+  entryType: 'Buy',
+  frequency: 'Daily',
 };
+const frequencies = ["Daily", "Weekly", "Monthly", "Quarterly", "Yearly"];
+
 
 export default function CreateRecommendedStock({ 
   isOpen, 
@@ -115,9 +122,11 @@ export default function CreateRecommendedStock({
       const payload = {
         stockId: Number(recommendedStockData.stockId),
         currentPrice: recommendedStockData.currentPrice,
-        buyPrice: recommendedStockData.buyPrice || '0',
-        sellPrice: recommendedStockData.sellPrice || '0',
+        entryPrice: recommendedStockData.entryPrice || '0',
+        targetPrice: recommendedStockData.targetPrice || '0',
         stopLossPrice: recommendedStockData.stopLossPrice || '0',
+        entryType: recommendedStockData.entryType || 'Buy',
+        frequency: recommendedStockData.frequency || 'Daily', 
       };
 
       const response = await fetch(url, {
@@ -204,39 +213,99 @@ export default function CreateRecommendedStock({
               required
             />
           </div>
+          <div className="w-full">
+            <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+              Entry Type
+            </label>
 
+            <div className="relative flex w-full rounded-full border border-purple-500 overflow-hidden">
+              <button
+                type="button"
+                onClick={() =>
+                  setRecommendedStockData((prev) => ({ ...prev, entryType: "Buy" }))
+                }
+                className={`flex-1 py-2 text-sm font-semibold transition-all duration-200 ${
+                  recommendedStockData.entryType === "Buy"
+                    ? "bg-purple-600 text-white"
+                    : "bg-transparent text-purple-600"
+                }`}
+              >
+                Buy
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setRecommendedStockData((prev) => ({ ...prev, entryType: "Sell" }))
+                }
+                className={`flex-1 py-2 text-sm font-semibold transition-all duration-200 ${
+                  recommendedStockData.entryType === "Sell"
+                    ? "bg-purple-600 text-white"
+                    : "bg-transparent text-purple-600"
+                }`}
+              >
+                Sell
+              </button>
+            </div>
+          </div>
+          <div className="w-full">
+            <label
+              htmlFor="frequency"
+              className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
+              Frequency
+            </label>
+
+            <select
+              id="frequency"
+              value={recommendedStockData.frequency}
+              onChange={(e) =>
+                setRecommendedStockData((prev) => ({
+                  ...prev,
+                  frequency: e.target.value,
+                }))
+              }
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-purple-500 focus:ring focus:ring-purple-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            >
+              {frequencies.map((freq) => (
+                <option key={freq} value={freq}>
+                  {freq}
+                </option>
+              ))}
+            </select>
+          </div>
           <div>
-            <Label htmlFor="buyPrice">Buy Price</Label>
+            <Label htmlFor="entryPrice">Entry Price</Label>
             <Input
-              id="buyPrice"
+              id="entryPrice"
               type="number"
               step="0.01"
-              value={recommendedStockData.buyPrice}
+              value={recommendedStockData.entryPrice}
               onChange={(e) => setRecommendedStockData(prev => ({
                 ...prev,
-                buyPrice: e.target.value
+                entryPrice: e.target.value
               }))}
               placeholder="Enter buy price (optional)"
             />
           </div>
 
           <div>
-            <Label htmlFor="sellPrice">Sell Price</Label>
+            <Label htmlFor="targetPrice">Target Price</Label>
             <Input
-              id="sellPrice"
+              id="targetPrice"
               type="number"
               step="0.01"
-              value={recommendedStockData.sellPrice}
+              value={recommendedStockData.targetPrice}
               onChange={(e) => setRecommendedStockData(prev => ({
                 ...prev,
-                sellPrice: e.target.value
+                targetPrice: e.target.value
               }))}
               placeholder="Enter sell price (optional)"
             />
           </div>
 
           <div>
-            <Label htmlFor="stopLossPrice">stop Loss  Price</Label>
+            <Label htmlFor="stopLossPrice">Stop Loss  Price</Label>
             <Input
               id="stopLossPrice"
               type="number"

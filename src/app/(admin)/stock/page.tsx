@@ -17,6 +17,7 @@ interface Stock {
     currentPrice: string;
     yesterdayPrice: string;
     StockType: string;
+    recommendationStock: number;
     CapType: string;
     sector: number;    
     createdAt: string;

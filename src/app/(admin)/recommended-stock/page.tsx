@@ -20,8 +20,10 @@ interface RecommendedStock {
     id: number;
     stockId: number;
     currentPrice: string;
-    buyPrice: string;
-    sellPrice: string;
+    entryPrice: string;
+    targetPrice: string;
+    entryType: string;
+    frequency: string;
     stock?: Stock; // Optional nested stock object
     stopLossPrice: string;
     createdAt: string;
