@@ -52,6 +52,7 @@ interface UserDetails {
   userGoal: UserGoal;
   subscription_date: string;
   main_subscription_status: number;
+  fromApp: string;
 }
 
 interface Subscription {
@@ -912,7 +913,13 @@ export default function UserTab({
 
 
   // Fetch XIRR data for Savestment users
+  // Update the fetchXIRRData function
   const fetchXIRRData = async () => {
+    // Only fetch for Savestment users
+    if (userDetails.fromApp?.toLowerCase() !== 'savestment') {
+      return;
+    }
+
     try {
       setLoadingXIRR(true);
       setXirrError(null);
@@ -928,17 +935,19 @@ export default function UserTab({
     } finally {
       setLoadingXIRR(false);
     }
-    
   };
 
+  // Update the useEffect
   useEffect(() => {
-  if (activeTab === 'Portfolio' && userDetails?.id) {
-    fetchXIRRData();
-  } else {
-    setXirrData(null);
-  }
-  // eslint-disable-next-line
-}, [activeTab, userDetails?.id]);
+    if (activeTab === 'Portfolio' && 
+        userDetails?.id && 
+        userDetails.fromApp?.toLowerCase() === 'savestment') {
+      fetchXIRRData();
+    } else {
+      setXirrData(null);
+    }
+    // eslint-disable-next-line
+  }, [activeTab, userDetails?.id, userDetails.fromApp]);
 
 
     
@@ -1929,12 +1938,16 @@ export default function UserTab({
       )}
         {/* XIRR Performance Table - Only visible when Portfolio tab is active and user is Savestment */}
  {/* XIRR Performance Table - Only visible when Portfolio tab is active and has valid data */}
-{activeTab === 'Portfolio' &&
-  xirrData &&
-  Object.values(xirrData.portfolioXIRR ?? {}).some(val =>
-    val && val !== "N/A" && val !== "0.00%" && val !== "0.00"
-  ) && (
-    <div className="col-span-12 w-full p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6">
+
+{/* XIRR Performance Table - Only visible for Savestment users with valid data */}
+{activeTab === 'Portfolio' && 
+  userDetails.fromApp?.toLowerCase() === 'savestment' && 
+  xirrData && 
+  xirrService.hasValidData(xirrData) && (
+    <div className="col-span-12 w-full p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6 mt-6">
+      <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
+        <h3 className="text-lg font-semibold dark:text-gray-400">Performance Metrics (XIRR)</h3>
+      </div>
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
         <div className="max-w-full overflow-x-auto">
           <div className="min-w-[1200px]">
@@ -1949,6 +1962,23 @@ export default function UserTab({
       </div>
     </div>
 )}
+
+{/* Show "No Data" badge for Savestment users when no valid XIRR data */}
+{activeTab === 'Portfolio' && 
+  userDetails.fromApp?.toLowerCase() === 'savestment' && 
+  xirrData && 
+  !xirrService.hasValidData(xirrData) && 
+  !loadingXIRR && (
+    <div className="col-span-12 w-full p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6 mt-6">
+      <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
+        <h3 className="text-lg font-semibold dark:text-gray-400">Performance Metrics (XIRR)</h3>
+      </div>
+      <div className="flex justify-center items-center py-8">
+        <Badge color="warning">No XIRR Data Available</Badge>
+      </div>
+    </div>
+)}
+
 
 
     </div>

@@ -43,6 +43,7 @@ interface UserDetails {
   userGoal: UserGoal;
   subscription_date: string;
   main_subscription_status: number;
+  fromApp:string;
 }
 
 interface ReferralDetails {

@@ -66,6 +66,30 @@ class XIRRService {
     }
   }
 
+  // Helper to check if value is valid (not null, N/A, 0.00%, or empty)
+  private isValidValue(value: string | null): boolean {
+    if (!value) return false;
+    const cleanValue = value.trim().toLowerCase();
+    return cleanValue !== 'n/a' && 
+           cleanValue !== '0.00%' && 
+           cleanValue !== '0.00' && 
+           cleanValue !== '' &&
+           cleanValue !== 'null';
+  }
+
+  // Check if all XIRR values are null/invalid
+  public hasValidData(data: XIRRTableData | null): boolean {
+    if (!data) return false;
+    
+    const portfolioValues = Object.values(data.portfolioXIRR);
+    const benchmarkValues = Object.values(data.benchmarkXIRR);
+    
+    const hasValidPortfolio = portfolioValues.some(val => this.isValidValue(val));
+    const hasValidBenchmark = benchmarkValues.some(val => this.isValidValue(val));
+    
+    return hasValidPortfolio || hasValidBenchmark;
+  }
+
   async getUserXIRR(userId: number): Promise<XIRRTableData | null> {
     try {
       if (!this.authKey) {
@@ -98,23 +122,23 @@ class XIRRService {
 
       // Transform API response to table format
       const portfolioXIRR: XIRRData = {
-        oneMonth: result.data["1-month"]?.xirrPercentage || "N/A",
-        threeMonth: result.data["3-month"]?.xirrPercentage || "N/A",
-        sixMonth: result.data["6-month"]?.xirrPercentage || "N/A",
-        oneYear: result.data["1-year"]?.xirrPercentage || "N/A",
-        threeYear: result.data["3-year"]?.xirrPercentage || "N/A",
-        fiveYear: result.data["5-year"]?.xirrPercentage || "N/A",
-        allTime: result.data["all-time"]?.xirrPercentage || "N/A",
+        oneMonth: result.data["1-month"]?.xirrPercentage || null,
+        threeMonth: result.data["3-month"]?.xirrPercentage || null,
+        sixMonth: result.data["6-month"]?.xirrPercentage || null,
+        oneYear: result.data["1-year"]?.xirrPercentage || null,
+        threeYear: result.data["3-year"]?.xirrPercentage || null,
+        fiveYear: result.data["5-year"]?.xirrPercentage || null,
+        allTime: result.data["all-time"]?.xirrPercentage || null,
       };
 
       const benchmarkXIRR: XIRRData = {
-        oneMonth: result.data["1-month"]?.nifty50Benchmark?.cagr || "N/A",
-        threeMonth: result.data["3-month"]?.nifty50Benchmark?.cagr || "N/A",
-        sixMonth: result.data["6-month"]?.nifty50Benchmark?.cagr || "N/A",
-        oneYear: result.data["1-year"]?.nifty50Benchmark?.cagr || "N/A",
-        threeYear: result.data["3-year"]?.nifty50Benchmark?.cagr || "N/A",
-        fiveYear: result.data["5-year"]?.nifty50Benchmark?.cagr || "N/A",
-        allTime: result.data["all-time"]?.nifty50Benchmark?.cagr || "N/A",
+        oneMonth: result.data["1-month"]?.nifty50Benchmark?.cagr || null,
+        threeMonth: result.data["3-month"]?.nifty50Benchmark?.cagr || null,
+        sixMonth: result.data["6-month"]?.nifty50Benchmark?.cagr || null,
+        oneYear: result.data["1-year"]?.nifty50Benchmark?.cagr || null,
+        threeYear: result.data["3-year"]?.nifty50Benchmark?.cagr || null,
+        fiveYear: result.data["5-year"]?.nifty50Benchmark?.cagr || null,
+        allTime: result.data["all-time"]?.nifty50Benchmark?.cagr || null,
       };
 
       return {
