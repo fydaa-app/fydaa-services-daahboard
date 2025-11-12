@@ -9,6 +9,11 @@ import {
   TableRow,
 } from "../ui/table";
 import Badge from "../ui/badge/Badge";
+import PerformanceXIRRTable from "../tables/PerformanceXIRRTable";
+import { xirrService, XIRRTableData } from "@/services/xirrService";
+import { useEffect } from "react";
+
+
 
 // Detailed interfaces matching the API response
 interface Address {
@@ -47,6 +52,7 @@ interface UserDetails {
   userGoal: UserGoal;
   subscription_date: string;
   main_subscription_status: number;
+  fromApp: string;
 }
 
 interface Subscription {
@@ -223,6 +229,7 @@ interface Employee {
   referralCode: string;
 }
 
+
 export default function UserTab({
   userDetails,
   portfolioDetails,
@@ -256,6 +263,11 @@ export default function UserTab({
   const [loadingRMs, setLoadingRMs] = useState(false);
   const [updatingAdvisor, setUpdatingAdvisor] = useState(false);
   const [updatingRM, setUpdatingRM] = useState(false);
+
+  // new state variables for XIRR data
+  const [xirrData, setXirrData] = useState<XIRRTableData | null>(null);
+  const [loadingXIRR, setLoadingXIRR] = useState(false);
+  const [xirrError, setXirrError] = useState<string | null>(null);
 
   // Format currency values
   const formatCurrency = (value: number) => 
@@ -893,7 +905,50 @@ export default function UserTab({
     if (tab === 'Payments' && !paymentDetails) {
       fetchPaymentDetails();
     }
+    // Fetch XIRR data when Portfolio tab is opened for Savestment users
+    if (tab === 'Portfolio' && userDetails.userRole === 'savestment' && !xirrData) {
+      fetchXIRRData();
+    }
   };
+
+
+  // Fetch XIRR data for Savestment users
+  // Update the fetchXIRRData function
+  const fetchXIRRData = async () => {
+    // Only fetch for Savestment users
+    if (userDetails.fromApp?.toLowerCase() !== 'savestment') {
+      return;
+    }
+
+    try {
+      setLoadingXIRR(true);
+      setXirrError(null);
+      const data = await xirrService.getUserXIRR(userDetails.id);
+      if (data) {
+        setXirrData(data);
+      } else {
+        setXirrError('Failed to load XIRR data');
+      }
+    } catch (error) {
+      console.error('Error fetching XIRR data:', error);
+      setXirrError('Failed to load XIRR data');
+    } finally {
+      setLoadingXIRR(false);
+    }
+  };
+
+  // Update the useEffect
+  useEffect(() => {
+    if (activeTab === 'Portfolio' && 
+        userDetails?.id && 
+        userDetails.fromApp?.toLowerCase() === 'savestment') {
+      fetchXIRRData();
+    } else {
+      setXirrData(null);
+    }
+    // eslint-disable-next-line
+  }, [activeTab, userDetails?.id, userDetails.fromApp]);
+
 
     
   return (
@@ -1027,119 +1082,126 @@ export default function UserTab({
           <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
             
             {/* Portfolio Tab */}
-            {activeTab === 'Portfolio' && (
-              <div className="p-4">
-                {portfolioDetails.length > 0 && (
-                  <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-semibold dark:text-gray-400">Portfolio Overview</h3>
-                      
-                      <div className="flex gap-2">
-                        <button
-                          onClick={downloadPortfolioReport}
-                          disabled={downloading === 'portfolioReport'}
-                          className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
-                          title="Download Portfolio Report PDF"
-                        >
-                          {downloading === 'portfolioReport' ? (
-                            <>
-                              <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                              </svg>
-                              Downloading...
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                              </svg>
-                              Download PDF
-                            </>
-                          )}
-                        </button>
-                        
-                        <button
-                          onClick={sendPortfolioReportEmail}
-                          disabled={sendingEmail === 'portfolioEmail'}
-                          className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
-                          title="Send Portfolio Report via Email"
-                        >
-                          {sendingEmail === 'portfolioEmail' ? (
-                            <>
-                              <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                              </svg>
-                              Sending...
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                              </svg>
-                              Email Report
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
+            {/* Portfolio Tab */}
+{activeTab === 'Portfolio' && (
+  <div className="p-4">
+    {portfolioDetails.length > 0 && (
+      <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold dark:text-gray-400">Portfolio Overview</h3>
+          
+          <div className="flex gap-2">
+            <button
+              onClick={downloadPortfolioReport}
+              disabled={downloading === 'portfolioReport'}
+              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+              title="Download Portfolio Report PDF"
+            >
+              {downloading === 'portfolioReport' ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Downloading...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Download PDF
+                </>
+              )}
+            </button>
+            
+            <button
+              onClick={sendPortfolioReportEmail}
+              disabled={sendingEmail === 'portfolioEmail'}
+              className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+              title="Send Portfolio Report via Email"
+            >
+              {sendingEmail === 'portfolioEmail' ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  Email Report
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
-                {portfolioDetails && portfolioDetails.length > 0 ? (
-                  portfolioDetails.map((portfolio) => (
-                    <div key={portfolio.portfolioId} className="mb-6">
-                      <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
-                        <h4 className="text-md font-medium dark:text-gray-400">{portfolio.portfolioName}</h4>
-                      </div>                               
-                      <div className="mt-4 grid grid-cols-2 gap-4">
-                        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                          <p className="text-sm text-gray-500 dark:text-gray-400">Invested Amount</p>
-                          <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.totalInvestedValue)}</p>
-                        </div>
-                        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                          <p className="text-sm text-gray-500 dark:text-gray-400">Current Value</p>
-                          <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.currentValue)}</p>
-                        </div>
-                      </div>
-                      <div className="mt-4 grid grid-cols-2 gap-4">
-                        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                          <p className="text-sm text-gray-500 dark:text-gray-400">Realised Profit</p>
-                          <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.realizedReturn)}</p>
-                        </div>
-                        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                          <p className="text-sm text-gray-500 dark:text-gray-400">Unrealised Profit</p>
-                          <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.unrealizedReturn)}</p>
-                        </div>
-                      </div>                
-                      <div className="mt-4 grid grid-cols-2 gap-4">
-                        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                          <p className="text-sm text-gray-500 dark:text-gray-400">Absolute Return</p>
-                          <p className="font-medium dark:text-gray-400">
-                            {portfolio.totalInvestedValue > 0 
-                              ? (((portfolio.currentValue - portfolio.totalInvestedValue) / portfolio.totalInvestedValue) * 100).toFixed(2)
-                              : '0.00'
-                            }%
-                          </p>
-                        </div> 
-                        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                          <p className="text-sm text-gray-500 dark:text-gray-400">Total Profit</p>
-                          <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.totalProfit)}</p>
-                        </div>                  
-                      </div>
-                    </div>             
-                  ))
-                ) : (
-                  <div className="flex justify-center items-center py-12">
-                    <div className="text-center">
-                      <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Portfolio Found</h3>
-                    </div>
-                  </div>
-                )}
+
+
+    {portfolioDetails && portfolioDetails.length > 0 ? (
+      <>
+        {portfolioDetails.map((portfolio) => (
+          <div key={portfolio.portfolioId} className="mb-6">
+            <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
+              <h4 className="text-md font-medium dark:text-gray-400">{portfolio.portfolioName}</h4>
+            </div>                               
+            <div className="mt-4 grid grid-cols-2 gap-4">
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Invested Amount</p>
+                <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.totalInvestedValue)}</p>
               </div>
-            )}
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Current Value</p>
+                <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.currentValue)}</p>
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-4">
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Realised Profit</p>
+                <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.realizedReturn)}</p>
+              </div>
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Unrealised Profit</p>
+                <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.unrealizedReturn)}</p>
+              </div>
+            </div>                
+            <div className="mt-4 grid grid-cols-2 gap-4">
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Absolute Return</p>
+                <p className="font-medium dark:text-gray-400">
+                  {portfolio.totalInvestedValue > 0 
+                    ? (((portfolio.currentValue - portfolio.totalInvestedValue) / portfolio.totalInvestedValue) * 100).toFixed(2)
+                    : '0.00'
+                  }%
+                </p>
+              </div> 
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Total Profit</p>
+                <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.totalProfit)}</p>
+              </div>                  
+            </div>
+          </div>             
+        ))}
+      </>
+    ) : (
+      <div className="flex justify-center items-center py-12">
+        <div className="text-center">
+          <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Portfolio Found</h3>
+        </div>
+      </div>
+    )}
+  </div>
+)}
+
+
 
             {/* Transaction Tab */}
             {activeTab === 'Transaction' && (
@@ -1874,6 +1936,50 @@ export default function UserTab({
           </div>
         </div>
       )}
+        {/* XIRR Performance Table - Only visible when Portfolio tab is active and user is Savestment */}
+ {/* XIRR Performance Table - Only visible when Portfolio tab is active and has valid data */}
+
+{/* XIRR Performance Table - Only visible for Savestment users with valid data */}
+{activeTab === 'Portfolio' && 
+  userDetails.fromApp?.toLowerCase() === 'savestment' && 
+  xirrData && 
+  xirrService.hasValidData(xirrData) && (
+    <div className="col-span-12 w-full p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6 mt-6">
+      <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
+        <h3 className="text-lg font-semibold dark:text-gray-400">Performance Metrics (XIRR)</h3>
+      </div>
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+        <div className="max-w-full overflow-x-auto">
+          <div className="min-w-[1200px]">
+            <PerformanceXIRRTable 
+              portfolioXIRR={xirrData.portfolioXIRR}
+              benchmarkXIRR={xirrData.benchmarkXIRR}
+              loading={loadingXIRR}
+              error={xirrError}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+)}
+
+{/* Show "No Data" badge for Savestment users when no valid XIRR data */}
+{activeTab === 'Portfolio' && 
+  userDetails.fromApp?.toLowerCase() === 'savestment' && 
+  xirrData && 
+  !xirrService.hasValidData(xirrData) && 
+  !loadingXIRR && (
+    <div className="col-span-12 w-full p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6 mt-6">
+      <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
+        <h3 className="text-lg font-semibold dark:text-gray-400">Performance Metrics (XIRR)</h3>
+      </div>
+      <div className="flex justify-center items-center py-8">
+        <Badge color="warning">No XIRR Data Available</Badge>
+      </div>
+    </div>
+)}
+
+
 
     </div>
   );
