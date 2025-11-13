@@ -112,6 +112,38 @@ interface StockOrder {
   'stock.ticker': string;
 }
 
+interface MutualFundStock {
+  portfolioName: string;
+  portfolioId: number | null;
+  sipId: number;
+  stockName: string;
+  capType: string;
+  stockType: string;
+  sector: number;
+  ticker: string;
+  ltp: string;
+  balanceQty: number;
+  totalQty: number;
+  averagePrice: number;
+  unrealizedReturn: number;
+  realizedReturn: number;
+  totalProfit: number;
+  investedValue: number;
+  currentValue: number;
+  stockId: number;
+}
+
+interface MutualFundDetail {
+  portfolioId: number | null;
+  portfolioName: string;
+  sipId: number;
+  currentValue: number;
+  unrealizedReturn: number;
+  realizedReturn: number;
+  totalProfit: number;
+  mutualFunds: MutualFundStock[];
+}
+
 interface ReferralDetails {
   firstName: string;
   lastName: string;
@@ -145,6 +177,7 @@ interface RelationshipManager {
 interface UserTabProps {
   userDetails: UserDetails;
   portfolioDetails: PortfolioDetails[];
+  mutualFundDetails: MutualFundDetail[];
   transactions: Transaction[];
   subscriptions: Subscription[];
   stockOrders: StockOrder[];
@@ -233,6 +266,7 @@ interface Employee {
 export default function UserTab({
   userDetails,
   portfolioDetails,
+  mutualFundDetails,
   transactions,
   subscriptions,
   stockOrders,
@@ -1082,126 +1116,160 @@ export default function UserTab({
           <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
             
             {/* Portfolio Tab */}
-            {/* Portfolio Tab */}
-{activeTab === 'Portfolio' && (
-  <div className="p-4">
-    {portfolioDetails.length > 0 && (
-      <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold dark:text-gray-400">Portfolio Overview</h3>
-          
-          <div className="flex gap-2">
-            <button
-              onClick={downloadPortfolioReport}
-              disabled={downloading === 'portfolioReport'}
-              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
-              title="Download Portfolio Report PDF"
-            >
-              {downloading === 'portfolioReport' ? (
-                <>
-                  <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Downloading...
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Download PDF
-                </>
-              )}
-            </button>
-            
-            <button
-              onClick={sendPortfolioReportEmail}
-              disabled={sendingEmail === 'portfolioEmail'}
-              className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
-              title="Send Portfolio Report via Email"
-            >
-              {sendingEmail === 'portfolioEmail' ? (
-                <>
-                  <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Sending...
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  Email Report
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
+            {activeTab === 'Portfolio' && (
+              <div className="p-4">
+                {(portfolioDetails.length > 0 || mutualFundDetails.length > 0) && (
+                  <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-semibold dark:text-gray-400">Portfolio Overview</h3>
+                      
+                      <div className="flex gap-2">
+                        <button
+                          onClick={downloadPortfolioReport}
+                          disabled={downloading === 'portfolioReport'}
+                          className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+                          title="Download Portfolio Report PDF"
+                        >
+                          {downloading === 'portfolioReport' ? (
+                            <>
+                              <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                              Downloading...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              Download PDF
+                            </>
+                          )}
+                        </button>
+                        
+                        <button
+                          onClick={sendPortfolioReportEmail}
+                          disabled={sendingEmail === 'portfolioEmail'}
+                          className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+                          title="Send Portfolio Report via Email"
+                        >
+                          {sendingEmail === 'portfolioEmail' ? (
+                            <>
+                              <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                              Sending...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                              </svg>
+                              Email Report
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
+                {/* Stock Portfolios Section */}
+                {portfolioDetails && portfolioDetails.length > 0 && (
+                  <>
+                    {portfolioDetails.map((portfolio) => (
+                      <div key={portfolio.portfolioId} className="mb-6">
+                        <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
+                          <h4 className="text-md font-medium dark:text-gray-400">{portfolio.portfolioName}</h4>
+                        </div>                               
+                        <div className="mt-4 grid grid-cols-2 gap-4">
+                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Invested Amount</p>
+                            <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.totalInvestedValue)}</p>
+                          </div>
+                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Current Value</p>
+                            <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.currentValue)}</p>
+                          </div>
+                        </div>
+                        <div className="mt-4 grid grid-cols-2 gap-4">
+                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Realised Profit</p>
+                            <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.realizedReturn)}</p>
+                          </div>
+                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Unrealised Profit</p>
+                            <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.unrealizedReturn)}</p>
+                          </div>
+                        </div>                
+                        <div className="mt-4 grid grid-cols-2 gap-4">
+                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Absolute Return</p>
+                            <p className="font-medium dark:text-gray-400">
+                              {portfolio.totalInvestedValue > 0 
+                                ? (((portfolio.currentValue - portfolio.totalInvestedValue) / portfolio.totalInvestedValue) * 100).toFixed(2)
+                                : '0.00'
+                              }%
+                            </p>
+                          </div> 
+                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Total Profit</p>
+                            <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.totalProfit)}</p>
+                          </div>                  
+                        </div>
+                      </div>             
+                    ))}
+                  </>
+                )}
 
+                {/* Mutual Funds Section - Only show when portfolioDetails is empty */}
+                {portfolioDetails.length === 0 && mutualFundDetails && mutualFundDetails.length > 0 && (
+                  <>
+                    <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
+                      <h4 className="text-md font-medium dark:text-gray-400">Mutual Funds (SIP & Goal)</h4>
+                    </div>
+                    {mutualFundDetails.map((mutualFund) => (
+                      <div key={mutualFund.sipId} className="mb-6">
+                        <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
+                          <h4 className="text-md font-medium dark:text-gray-400">{mutualFund.portfolioName}</h4>
+                        </div>                               
+                        <div className="mt-4 grid grid-cols-2 gap-4">
+                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Current Value</p>
+                            <p className="font-medium dark:text-gray-400">{formatCurrency(mutualFund.currentValue)}</p>
+                          </div>
+                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Unrealised Return</p>
+                            <p className="font-medium dark:text-gray-400">{formatCurrency(mutualFund.unrealizedReturn)}</p>
+                          </div>
+                        </div>
+                        <div className="mt-4 grid grid-cols-2 gap-4">
+                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Realised Return</p>
+                            <p className="font-medium dark:text-gray-400">{formatCurrency(mutualFund.realizedReturn)}</p>
+                          </div>
+                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Total Profit</p>
+                            <p className="font-medium dark:text-gray-400">{formatCurrency(mutualFund.totalProfit)}</p>
+                          </div>
+                        </div>
+                      </div>             
+                    ))}
+                  </>
+                )}
 
-    {portfolioDetails && portfolioDetails.length > 0 ? (
-      <>
-        {portfolioDetails.map((portfolio) => (
-          <div key={portfolio.portfolioId} className="mb-6">
-            <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
-              <h4 className="text-md font-medium dark:text-gray-400">{portfolio.portfolioName}</h4>
-            </div>                               
-            <div className="mt-4 grid grid-cols-2 gap-4">
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Invested Amount</p>
-                <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.totalInvestedValue)}</p>
+                {portfolioDetails.length === 0 && mutualFundDetails.length === 0 && (
+                  <div className="flex justify-center items-center py-12">
+                    <div className="text-center">
+                      <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Portfolio Found</h3>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Current Value</p>
-                <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.currentValue)}</p>
-              </div>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-4">
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Realised Profit</p>
-                <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.realizedReturn)}</p>
-              </div>
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Unrealised Profit</p>
-                <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.unrealizedReturn)}</p>
-              </div>
-            </div>                
-            <div className="mt-4 grid grid-cols-2 gap-4">
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Absolute Return</p>
-                <p className="font-medium dark:text-gray-400">
-                  {portfolio.totalInvestedValue > 0 
-                    ? (((portfolio.currentValue - portfolio.totalInvestedValue) / portfolio.totalInvestedValue) * 100).toFixed(2)
-                    : '0.00'
-                  }%
-                </p>
-              </div> 
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Total Profit</p>
-                <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.totalProfit)}</p>
-              </div>                  
-            </div>
-          </div>             
-        ))}
-      </>
-    ) : (
-      <div className="flex justify-center items-center py-12">
-        <div className="text-center">
-          <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Portfolio Found</h3>
-        </div>
-      </div>
-    )}
-  </div>
-)}
-
-
+            )}
 
             {/* Transaction Tab */}
             {activeTab === 'Transaction' && (
@@ -1294,42 +1362,93 @@ export default function UserTab({
             {/* Stock Orders Tab */}
             {activeTab === 'Stock' && (
               <>
-                {stockOrders && stockOrders.length > 0 ? (
-                  <Table>
-                    <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                      <TableRow>
-                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Stock</TableCell>
-                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Ticker</TableCell>
-                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Quantity</TableCell>
-                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Avg. Price</TableCell>
-                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Total Value</TableCell>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                      {stockOrders.map((order) => (
-                        <TableRow key={order.stockId}>
-                          <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{order['stock.stockName']}</TableCell>
-                          <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{order['stock.ticker']}</TableCell>
-                          <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{order.quantityDifference}</TableCell>
-                          <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(order.avgValue)}</TableCell>
-                          <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(order.netValue)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="flex justify-center items-center py-12">
-                    <div className="text-center">
-                      <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8a4 4 0 01-8 0V8a4 4 0 018 0zM8 20l4-4 4 4M8 4l4 4 4-4" />
-                      </svg>
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Stock Orders Found</h3>
-                      <p className="text-gray-500 dark:text-gray-400">You have no stock orders in your portfolio.</p>
-                    </div>
-                  </div>
+                {/* NEW: Check if EITHER stockOrders OR mutualFunds exist */}
+                {(stockOrders && stockOrders.length > 0) || 
+                (mutualFundDetails && mutualFundDetails.some(mf => mf.mutualFunds && mf.mutualFunds.length > 0)) ? (
+                  <>
+                    {/* SECTION 1: Stock Orders (original) */}
+                    {stockOrders && stockOrders.length > 0 && (
+                      <div className="mb-6">
+                        <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-4">
+                          <h4 className="text-md font-medium dark:text-gray-400">Stock Orders</h4>
+                        </div>
+                        <Table>
+                                <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+                                  <TableRow>
+                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Stock</TableCell>
+                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Ticker</TableCell>
+                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Quantity</TableCell>
+                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Avg. Price</TableCell>
+                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Total Value</TableCell>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+                                  {stockOrders.map((order) => (
+                                    <TableRow key={order.stockId}>
+                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{order['stock.stockName']}</TableCell>
+                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{order['stock.ticker']}</TableCell>
+                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{order.quantityDifference}</TableCell>
+                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(order.avgValue)}</TableCell>
+                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(order.netValue)}</TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                      </div>
+                    )}
+
+                    {/* SECTION 2: Mutual Fund Stocks (NEW) */}
+                    {mutualFundDetails && mutualFundDetails.some(mf => mf.mutualFunds && mf.mutualFunds.length > 0) && (
+                          <div className="mb-6">
+                            <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-4">
+                              <h4 className="text-md font-medium dark:text-gray-400">Mutual Fund Holdings</h4>
+                            </div>
+                            <Table>
+                              <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+                                <TableRow>
+                                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Stock</TableCell>
+                                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Ticker</TableCell>
+                                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Portfolio</TableCell>
+                                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Balance Qty</TableCell>
+                                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Avg. Price</TableCell>
+                                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Invested Value</TableCell>
+                                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Current Value</TableCell>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {/* Loop through mutualFundDetails and flatten all stocks */}
+                                {mutualFundDetails.flatMap((mfDetail) => 
+                                  mfDetail.mutualFunds?.map((stock) => (
+                                    <TableRow key={`${mfDetail.sipId}-${stock.stockId}`}>
+                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{stock.stockName}</TableCell>
+                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{stock.ticker}</TableCell>
+                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{stock.portfolioName}</TableCell>
+                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{stock.balanceQty}</TableCell>
+                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(stock.averagePrice)}</TableCell>
+                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(stock.investedValue)}</TableCell>
+                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(stock.currentValue)}</TableCell>
+                                    </TableRow>
+                                  )) || []
+                                )}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex justify-center items-center py-12">
+                                <div className="text-center">
+                                  <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8a4 4 0 01-8 0V8a4 4 0 018 0zM8 20l4-4 4 4M8 4l4 4 4-4" />
+                                  </svg>
+                                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Stock Orders Found</h3>
+                                  <p className="text-gray-500 dark:text-gray-400">You have no stock orders in your portfolio.</p>
+                                </div>
+                              </div>
+                    )}
+                  </>
                 )}
-              </>
-            )}
+            
 
             {/* Profile Tab */}
             {activeTab === 'Profile' && (
