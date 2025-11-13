@@ -43,7 +43,7 @@ interface UserDetails {
   userGoal: UserGoal;
   subscription_date: string;
   main_subscription_status: number;
-  fromApp:string;
+  fromApp: string;
 }
 
 interface ReferralDetails {
@@ -107,6 +107,39 @@ interface PortfolioDetail {
   totalInvestedValue: number;
 }
 
+// Mutual Fund Interfaces
+interface MutualFundStock {
+  portfolioName: string;
+  portfolioId: number | null;
+  sipId: number;
+  stockName: string;
+  capType: string;
+  stockType: string;
+  sector: number;
+  ticker: string;
+  ltp: string;
+  balanceQty: number;
+  totalQty: number;
+  averagePrice: number;
+  unrealizedReturn: number;
+  realizedReturn: number;
+  totalProfit: number;
+  investedValue: number;
+  currentValue: number;
+  stockId: number;
+}
+
+interface MutualFundDetail {
+  portfolioId: number | null;
+  portfolioName: string;
+  sipId: number;
+  currentValue: number;
+  unrealizedReturn: number;
+  realizedReturn: number;
+  totalProfit: number;
+  mutualFunds: MutualFundStock[];
+}
+
 interface StockOrder {
   stockId: number;
   buyQuantity: string;
@@ -147,6 +180,7 @@ interface UserData {
   userSubscriptionDetails: UserSubscription[];
   userTransactionDetails: UserTransaction[];
   portfolioDetails: PortfolioDetail[];
+  mutualFundDetails: MutualFundDetail[];
   stockOrders: StockOrder[];
   xirr: Record<string, unknown>;
   referralDetails: ReferralDetails;
@@ -206,6 +240,8 @@ export default function UserDetails({ params }: PageProps) {
               ? transaction.orderType
               : "BUY",
           })),
+          // Ensure mutualFundDetails exists, default to empty array if not present
+          mutualFundDetails: data.mutualFundDetails || [],
         };
 
         setUserData(transformedData);
@@ -259,6 +295,7 @@ export default function UserDetails({ params }: PageProps) {
           <UserTab
             userDetails={userData.userDetails}
             portfolioDetails={userData.portfolioDetails}
+            mutualFundDetails={userData.mutualFundDetails}
             transactions={userData.userTransactionDetails as Transaction[]}
             subscriptions={userData.userSubscriptionDetails}
             stockOrders={userData.stockOrders}
