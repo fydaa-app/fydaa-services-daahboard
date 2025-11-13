@@ -3,6 +3,7 @@ import React from "react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "../ui/table";
 import Badge from "../ui/badge/Badge";
 
+
 export interface XIRRData {
   oneMonth: string | null;
   threeMonth: string | null;
@@ -13,12 +14,14 @@ export interface XIRRData {
   allTime: string | null;
 }
 
+
 interface PerformanceXIRRTableProps {
   portfolioXIRR?: XIRRData;
   benchmarkXIRR?: XIRRData;
   loading?: boolean;
   error?: string | null;
 }
+
 
 export default function PerformanceXIRRTable({ 
   portfolioXIRR, 
@@ -27,10 +30,9 @@ export default function PerformanceXIRRTable({
   error = null
 }: PerformanceXIRRTableProps) {
   const formatValue = (value: string | null | undefined): string => {
-  if (!value || value === "N/A" || value === "null") return "N/A";
-  return value;
-};
-
+    if (!value || value === "N/A" || value === "null") return "N/A";
+    return value;
+  };
 
   // Helper to check if all values are null/N/A
   const hasAllNullValues = (data?: XIRRData): boolean => {
@@ -68,6 +70,7 @@ export default function PerformanceXIRRTable({
   const portfolioAllNull = hasAllNullValues(portfolioXIRR);
   const benchmarkAllNull = hasAllNullValues(benchmarkXIRR);
 
+  // Show "No Data" badge only if BOTH are null
   if (portfolioAllNull && benchmarkAllNull) {
     return (
       <div className="flex justify-center items-center py-8">
@@ -94,106 +97,102 @@ export default function PerformanceXIRRTable({
               isHeader 
               className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
             >
-              1-month
+              1 Month
             </TableCell>
             <TableCell 
               isHeader 
               className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
             >
-              3-month
+              3 Month
             </TableCell>
             <TableCell 
               isHeader 
               className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
             >
-              6-month
+              6 Month
             </TableCell>
             <TableCell 
               isHeader 
               className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
             >
-              1-year
+              1 Year
             </TableCell>
             <TableCell 
               isHeader 
               className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
             >
-              3-year
+              3 Year
             </TableCell>
             <TableCell 
               isHeader 
               className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
             >
-              5-year
+              5 Year
             </TableCell>
             <TableCell 
               isHeader 
               className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
             >
-              all-time
+              All Time
             </TableCell>
           </TableRow>
         </TableHeader>
         <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-          {/* Portfolio XIRR Row */}
-          {!portfolioAllNull && (
-            <TableRow className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-              <TableCell className="px-4 py-3 text-gray-900 dark:text-gray-100 text-start text-theme-sm font-medium">
-                Portfolio 
-              </TableCell>
-              <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                {formatValue(portfolio?.oneMonth)}
-              </TableCell>
-              <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                {formatValue(portfolio?.threeMonth)}
-              </TableCell>
-              <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                {formatValue(portfolio?.sixMonth)}
-              </TableCell>
-              <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                {formatValue(portfolio?.oneYear)}
-              </TableCell>
-              <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                {formatValue(portfolio?.threeYear)}
-              </TableCell>
-              <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                {formatValue(portfolio?.fiveYear)}
-              </TableCell>
-              <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                {formatValue(portfolio?.allTime)}
-              </TableCell>
-            </TableRow>
-          )}
+          {/* Portfolio XIRR Row - Always show if not both null */}
+          <TableRow className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+            <TableCell className="px-4 py-3 text-gray-900 dark:text-gray-100 text-start text-theme-sm font-medium">
+              Portfolio 
+            </TableCell>
+            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+              {formatValue(portfolio?.oneMonth)}
+            </TableCell>
+            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+              {formatValue(portfolio?.threeMonth)}
+            </TableCell>
+            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+              {formatValue(portfolio?.sixMonth)}
+            </TableCell>
+            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+              {formatValue(portfolio?.oneYear)}
+            </TableCell>
+            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+              {formatValue(portfolio?.threeYear)}
+            </TableCell>
+            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+              {formatValue(portfolio?.fiveYear)}
+            </TableCell>
+            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+              {formatValue(portfolio?.allTime)}
+            </TableCell>
+          </TableRow>
           
-          {/* Nifty 50 Benchmark Row */}
-          {!benchmarkAllNull && (
-            <TableRow className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-              <TableCell className="px-4 py-3 text-gray-900 dark:text-gray-100 text-start text-theme-sm font-medium">
-                Nifty 50 Benchmark
-              </TableCell>
-              <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                {formatValue(benchmark?.oneMonth)}
-              </TableCell>
-              <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                {formatValue(benchmark?.threeMonth)}
-              </TableCell>
-              <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                {formatValue(benchmark?.sixMonth)}
-              </TableCell>
-              <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                {formatValue(benchmark?.oneYear)}
-              </TableCell>
-              <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                {formatValue(benchmark?.threeYear)}
-              </TableCell>
-              <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                {formatValue(benchmark?.fiveYear)}
-              </TableCell>
-              <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-                {formatValue(benchmark?.allTime)}
-              </TableCell>
-            </TableRow>
-          )}
+          {/* Nifty 50 Benchmark Row - Always show if not both null */}
+          <TableRow className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+            <TableCell className="px-4 py-3 text-gray-900 dark:text-gray-100 text-start text-theme-sm font-medium">
+              Nifty 50 Benchmark
+            </TableCell>
+            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+              {formatValue(benchmark?.oneMonth)}
+            </TableCell>
+            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+              {formatValue(benchmark?.threeMonth)}
+            </TableCell>
+            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+              {formatValue(benchmark?.sixMonth)}
+            </TableCell>
+            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+              {formatValue(benchmark?.oneYear)}
+            </TableCell>
+            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+              {formatValue(benchmark?.threeYear)}
+            </TableCell>
+            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+              {formatValue(benchmark?.fiveYear)}
+            </TableCell>
+            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+              {formatValue(benchmark?.allTime)}
+            </TableCell>
+          </TableRow>
         </TableBody>
       </Table>
     </div>
