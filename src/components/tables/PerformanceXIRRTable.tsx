@@ -94,43 +94,43 @@ export default function PerformanceXIRRTable({
               isHeader 
               className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
             >
-              1-month
+              1 Month
             </TableCell>
             <TableCell 
               isHeader 
               className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
             >
-              3-month
+              3 Month
             </TableCell>
             <TableCell 
               isHeader 
               className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
             >
-              6-month
+              6 Month
             </TableCell>
             <TableCell 
               isHeader 
               className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
             >
-              1-year
+              1 Year
             </TableCell>
             <TableCell 
               isHeader 
               className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
             >
-              3-year
+              3 Year
             </TableCell>
             <TableCell 
               isHeader 
               className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
             >
-              5-year
+              5 Year
             </TableCell>
             <TableCell 
               isHeader 
               className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
             >
-              all-time
+              All Time
             </TableCell>
           </TableRow>
         </TableHeader>

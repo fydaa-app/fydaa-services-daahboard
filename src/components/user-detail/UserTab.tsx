@@ -1971,7 +1971,7 @@ export default function UserTab({
   !loadingXIRR && (
     <div className="col-span-12 w-full p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6 mt-6">
       <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
-        <h3 className="text-lg font-semibold dark:text-gray-400">Performance Metrics (XIRR)</h3>
+        <h3 className="text-lg font-semibold dark:text-gray-400">Performance Metrics</h3>
       </div>
       <div className="flex justify-center items-center py-8">
         <Badge color="warning">No XIRR Data Available</Badge>
