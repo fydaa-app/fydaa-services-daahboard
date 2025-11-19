@@ -1362,92 +1362,92 @@ export default function UserTab({
             {/* Stock Orders Tab */}
             {activeTab === 'Stock' && (
               <>
-                {/* NEW: Check if EITHER stockOrders OR mutualFunds exist */}
-                {(stockOrders && stockOrders.length > 0) || 
-                (mutualFundDetails && mutualFundDetails.some(mf => mf.mutualFunds && mf.mutualFunds.length > 0)) ? (
-                  <>
-                    {/* SECTION 1: Stock Orders (original) */}
-                    {stockOrders && stockOrders.length > 0 && (
-                      <div className="mb-6">
-                        <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-4">
-                          <h4 className="text-md font-medium dark:text-gray-400">Stock Orders</h4>
-                        </div>
-                        <Table>
-                                <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                                  <TableRow>
-                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Stock</TableCell>
-                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Ticker</TableCell>
-                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Quantity</TableCell>
-                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Avg. Price</TableCell>
-                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Total Value</TableCell>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                                  {stockOrders.map((order) => (
-                                    <TableRow key={order.stockId}>
-                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{order['stock.stockName']}</TableCell>
-                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{order['stock.ticker']}</TableCell>
-                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{order.quantityDifference}</TableCell>
-                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(order.avgValue)}</TableCell>
-                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(order.netValue)}</TableCell>
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
+              {/* NEW: Check if EITHER stockOrders OR mutualFunds exist */}
+              {(stockOrders && stockOrders.length > 0) || 
+              (mutualFundDetails && mutualFundDetails.some(mf => mf.mutualFunds && mf.mutualFunds.length > 0)) ? (
+                <>
+                  {/* SECTION 1: Stock Orders (original) */}
+                  {stockOrders && stockOrders.length > 0 && (
+                    <div className="mb-6">
+                      <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-4">
+                        <h4 className="text-md font-medium dark:text-gray-400">Stock Orders</h4>
                       </div>
-                    )}
-
-                    {/* SECTION 2: Mutual Fund Stocks (NEW) */}
-                    {mutualFundDetails && mutualFundDetails.some(mf => mf.mutualFunds && mf.mutualFunds.length > 0) && (
-                          <div className="mb-6">
-                            <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-4">
-                              <h4 className="text-md font-medium dark:text-gray-400">Mutual Fund Holdings</h4>
-                            </div>
-                            <Table>
+                      <Table>
                               <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                                 <TableRow>
                                   <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Stock</TableCell>
                                   <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Ticker</TableCell>
-                                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Portfolio</TableCell>
-                                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Balance Qty</TableCell>
+                                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Quantity</TableCell>
                                   <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Avg. Price</TableCell>
-                                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Invested Value</TableCell>
-                                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Current Value</TableCell>
+                                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Total Value</TableCell>
                                 </TableRow>
                               </TableHeader>
-                              <TableBody>
-                                {/* Loop through mutualFundDetails and flatten all stocks */}
-                                {mutualFundDetails.flatMap((mfDetail) => 
-                                  mfDetail.mutualFunds?.map((stock) => (
-                                    <TableRow key={`${mfDetail.sipId}-${stock.stockId}`}>
-                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{stock.stockName}</TableCell>
-                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{stock.ticker}</TableCell>
-                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{stock.portfolioName}</TableCell>
-                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{stock.balanceQty}</TableCell>
-                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(stock.averagePrice)}</TableCell>
-                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(stock.investedValue)}</TableCell>
-                                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(stock.currentValue)}</TableCell>
-                                    </TableRow>
-                                  )) || []
-                                )}
+                              <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+                                {stockOrders.map((order) => (
+                                  <TableRow key={order.stockId}>
+                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{order['stock.stockName']}</TableCell>
+                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{order['stock.ticker']}</TableCell>
+                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{order.quantityDifference}</TableCell>
+                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(order.avgValue)}</TableCell>
+                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(order.netValue)}</TableCell>
+                                  </TableRow>
+                                ))}
                               </TableBody>
                             </Table>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div className="flex justify-center items-center py-12">
-                                <div className="text-center">
-                                  <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8a4 4 0 01-8 0V8a4 4 0 018 0zM8 20l4-4 4 4M8 4l4 4 4-4" />
-                                  </svg>
-                                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Stock Orders Found</h3>
-                                  <p className="text-gray-500 dark:text-gray-400">You have no stock orders in your portfolio.</p>
-                                </div>
-                              </div>
-                    )}
-                  </>
-                )}
+                    </div>
+                  )}
+
+                  {/* SECTION 2: Mutual Fund Stocks (NEW) */}
+                  {mutualFundDetails && mutualFundDetails.some(mf => mf.mutualFunds && mf.mutualFunds.length > 0) && (
+                    <div className="mb-6">
+                      <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-4">
+                        <h4 className="text-md font-medium dark:text-gray-400">Mutual Fund Holdings</h4>
+                      </div>
+                      <Table>
+                        <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+                          <TableRow>
+                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Stock</TableCell>
+                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Ticker</TableCell>
+                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Portfolio</TableCell>
+                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Balance Qty</TableCell>
+                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Avg. Price</TableCell>
+                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Invested Value</TableCell>
+                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Current Value</TableCell>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {/* Loop through mutualFundDetails and flatten all stocks */}
+                          {mutualFundDetails.flatMap((mfDetail) => 
+                            mfDetail.mutualFunds?.map((stock) => (
+                              <TableRow key={`${mfDetail.sipId}-${stock.stockId}`}>
+                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{stock.stockName}</TableCell>
+                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{stock.ticker}</TableCell>
+                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{stock.portfolioName}</TableCell>
+                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{stock.balanceQty}</TableCell>
+                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(stock.averagePrice)}</TableCell>
+                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(stock.investedValue)}</TableCell>
+                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(stock.currentValue)}</TableCell>
+                              </TableRow>
+                            )) || []
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                    </>
+                  ) : (
+                  <div className="flex justify-center items-center py-12">
+                    <div className="text-center">
+                      <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8a4 4 0 01-8 0V8a4 4 0 018 0zM8 20l4-4 4 4M8 4l4 4 4-4" />
+                      </svg>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Stock Orders Found</h3>
+                      <p className="text-gray-500 dark:text-gray-400">You have no stock orders in your portfolio.</p>
+                    </div>
+                  </div>
+              )}
+              </>
+            )}
             
 
             {/* Profile Tab */}
