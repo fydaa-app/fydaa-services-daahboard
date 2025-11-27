@@ -1,39 +1,21 @@
 import React from "react";
 
-interface MutualFundStock {
+interface PortfolioDetails {
+  portfolioId: number;
   portfolioName: string;
-  portfolioId: number | null;
-  sipId: number;
-  stockName: string;
-  capType: string;
-  stockType: string;
-  sector: number;
-  ticker: string;
-  ltp: string;
-  balanceQty: number;
-  totalQty: number;
-  averagePrice: number;
-  unrealizedReturn: number;
-  realizedReturn: number;
-  totalProfit: number;
-  investedValue: number;
-  currentValue: number;
-  stockId: number;
-}
-
-interface MutualFundDetail {
-  portfolioId: number | null;
-  portfolioName: string;
-  sipId: number;
   currentValue: number;
   unrealizedReturn: number;
   realizedReturn: number;
   totalProfit: number;
-  mutualFunds: MutualFundStock[];
+  totalInvestedValue: number;
+  sipAmount?: number;
+  goalAmount?: number;
+  sipStatus?: string;
+  sipTenure?: number;
 }
 
-interface SavestmentPortfolioTabProps {
-  mutualFundDetails: MutualFundDetail[];
+interface FydaaPortfolioTabProps {
+  portfolioDetails: PortfolioDetails[];
   formatCurrency: (value: number) => string;
   downloading: string | null;
   sendingEmail: string | null;
@@ -41,20 +23,22 @@ interface SavestmentPortfolioTabProps {
   sendPortfolioReportEmail: () => Promise<void>;
 }
 
-export default function SavestmentPortfolioTab({
-  mutualFundDetails,
+
+//this is savestment portfolio not fydaa
+export default function FydaaPortfolioTab({
+  portfolioDetails,
   formatCurrency,
   downloading,
   sendingEmail,
   downloadPortfolioReport,
   sendPortfolioReportEmail,
-}: SavestmentPortfolioTabProps) {
+}: FydaaPortfolioTabProps) {
   return (
     <div className="p-4">
-      {mutualFundDetails.length > 0 && (
+      {portfolioDetails.length > 0 && (
         <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold dark:text-gray-400">Portfolio Overviewssssss</h3>
+            <h3 className="text-lg font-semibold dark:text-gray-400">Portfolio Overview</h3>
             
             <div className="flex gap-2">
               <button
@@ -107,38 +91,51 @@ export default function SavestmentPortfolioTab({
         </div>
       )}
 
-      {/* Mutual Funds Section */}
-      {mutualFundDetails.length > 0 ? (
+      {/* Stock Portfolios Section */}
+      {portfolioDetails.length > 0 ? (
         <>
-          <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
-            <h4 className="text-md font-medium dark:text-gray-400">Mutual Funds (SIP & Goal)</h4>
-          </div>
-          {mutualFundDetails.map((mutualFund) => (
-            <div key={mutualFund.sipId} className="mb-6">
+          {portfolioDetails.map((portfolio) => (
+            <div key={portfolio.portfolioId} className="mb-6">
               <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
-                <h4 className="text-md font-medium dark:text-gray-400">{mutualFund.portfolioName}</h4>
+                <h4 className="text-md font-medium dark:text-gray-400">{portfolio.portfolioName}</h4>
               </div>                               
               <div className="mt-4 grid grid-cols-2 gap-4">
                 <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Current Value</p>
-                  <p className="font-medium dark:text-gray-400">{formatCurrency(mutualFund.currentValue)}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Invested Amount</p>
+                  <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.totalInvestedValue)}</p>
                 </div>
                 <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Unrealised Return</p>
-                  <p className="font-medium dark:text-gray-400">{formatCurrency(mutualFund.unrealizedReturn)}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Current Value</p>
+                  <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.currentValue)}</p>
                 </div>
               </div>
               <div className="mt-4 grid grid-cols-2 gap-4">
                 <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Realised Return</p>
-                  <p className="font-medium dark:text-gray-400">{formatCurrency(mutualFund.realizedReturn)}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Realised Profit</p>
+                  <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.realizedReturn)}</p>
                 </div>
                 <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Total Profit</p>
-                  <p className="font-medium dark:text-gray-400">{formatCurrency(mutualFund.totalProfit)}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Unrealised Profit</p>
+                  <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.unrealizedReturn)}</p>
                 </div>
+              </div>                
+              <div className="mt-4 grid grid-cols-2 gap-4">
+                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Absolute Return</p>
+                  <p className="font-medium dark:text-gray-400">
+                    {portfolio.totalInvestedValue > 0 
+                      ? (((portfolio.currentValue - portfolio.totalInvestedValue) / portfolio.totalInvestedValue) * 100).toFixed(2)
+                      : '0.00'
+                    }%
+                  </p>
+                </div> 
+                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Total Profit</p>
+                  <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.totalProfit)}</p>
+                </div>                  
               </div>
-            </div>             
+            </div>   
+                      
           ))}
         </>
       ) : (

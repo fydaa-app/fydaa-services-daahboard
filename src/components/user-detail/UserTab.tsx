@@ -7,8 +7,8 @@ import PerformanceXIRRTable from "../tables/PerformanceXIRRTable";
 import { xirrService, XIRRTableData } from "@/services/xirrService";
 
 // Import tab components
-import FydaaPortfolioTab from "./tabs/FydaaPortfolioTab";
-import SavestmentPortfolioTab from "./tabs/SavestmentPortfolioTab";
+import FydaaPortfolioTab from "./tabs/SavestmentPortfolioTab";
+import SavestmentPortfolioTab from "./tabs/FydaaPortfolioTab";
 import TransactionTab from "./tabs/TransactionTab";
 import SubscriptionTab from "./tabs/SubscriptionTab";
 import FydaaStocksTab from "./tabs/FydaaStocksTab";
@@ -16,9 +16,63 @@ import SavestmentStocksTab from "./tabs/SavestmentStocksTab";
 import ProfileTab from "./tabs/ProfileTab";
 import ReportsTab from "./tabs/ReportsTab";
 import PaymentsTab from "./tabs/PaymentsTab";
-import PortfolioTabFydaa from "./tabs/FydaaPortfolioTab";
 
 // Interfaces
+
+interface Goal {
+  id: number;
+  name: string;
+  termId: number;
+  feePricing: string;
+  tenureMin: number;
+  tenureMax: number;
+  goalAmountMin: string;
+  goalAmountMax: string;
+  brandName: string | null;
+  discount: string;
+  imageUrl: string;
+  recommendationUrl: string | null;
+  iconUrl: string | null;
+  pendingUrl: string;
+  description: string;
+  items: Array<{
+    image: string;
+    title: string;
+    description: string;
+  }>;
+  suggestion: string | null;
+  recommendations: string[];
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+interface SipDetails {
+  id: number;
+  userId: number;
+  portfolioId: number;
+  goalId: number;
+  feePricing: number;
+  planId: number | null;
+  sipTenure: number;
+  sipName: string;
+  userSipName: string | null;
+  sipAmount: number;
+  goalAmount: number;
+  autoRenewDate: string;
+  startDate: string;
+  sipDate: string;
+  endDate: string;
+  status: string;
+  paymentStatus: number;
+  isRegister: boolean;
+  isProgress: boolean;
+  isAllocation: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
 interface Address {
   addressLine1: string;
   addressLine2?: string;
@@ -145,6 +199,8 @@ interface MutualFundDetail {
   realizedReturn: number;
   totalProfit: number;
   mutualFunds: MutualFundStock[];
+  goal: Goal[];
+  sip: SipDetails[];
 }
 
 interface ReferralDetails {
@@ -265,8 +321,6 @@ interface Employee {
   referralCode: string;
 }
 
-
-
 export default function UserTab({
   userDetails,
   portfolioDetails,
@@ -306,40 +360,6 @@ export default function UserTab({
   const [xirrData, setXirrData] = useState<XIRRTableData | null>(null);
   const [loadingXIRR, setLoadingXIRR] = useState(false);
   const [xirrError, setXirrError] = useState<string | null>(null);
-
-const clientData = {
-  userDetails: {
-    ...userDetails,
-    address: userDetails.address ? {
-      addressLine1: userDetails.address.addressLine1,
-      addressLine2: userDetails.address.addressLine2 || '',
-    } : null,
-    createdAt: userDetails.subscription_date || new Date().toISOString(),
-    investorProfileId: null,
-    mfiaId: null,
-    advisorId: advisor?.id || null,
-    relationshipmanagerId: relationshipManager?.id || null,
-  },
-  userSubscriptionDetails: subscriptions,
-  userTransactionDetails: transactions.map(tx => ({
-    ...tx,
-    totalTradeQty: parseFloat(tx.totalTradeQty) || 0,
-  })),
-  portfolioDetails: portfolioDetails.map(portfolio => ({
-    ...portfolio,
-    sipId: 0,
-    goal: [] as any[],
-    sip: [] as any[],
-  })),
-  stockOrders: stockOrders,
-  xirr: 0,
-  referralDetails: referralDetails,
-  relationshipManager: relationshipManager,
-  advisor: advisor,
-  mutualFundDetails: mutualFundDetails,
-};
-
-
 
   // Format currency values
   const formatCurrency = (value: number) => 
@@ -1019,7 +1039,7 @@ const clientData = {
   }, [activeTab, userDetails?.id, userDetails.fromApp]);
 
   // Determine which portfolio/stock tabs to show based on user type
-  const isSavestmentUser = portfolioDetails.length === 0 && mutualFundDetails.length > 0;
+  // const isSavestmentUser = portfolioDetails.length === 0 && mutualFundDetails.length > 0;
   const isFydaaUser = portfolioDetails.length > 0;
 
   return (
@@ -1156,7 +1176,20 @@ const clientData = {
             {activeTab === 'Portfolio' && (
               <>
                 {isFydaaUser ? (
-                  <PortfolioTabFydaa clientData={clientData} />
+                  <FydaaPortfolioTab
+                    portfolioDetails={portfolioDetails.map(portfolio => ({
+                      ...portfolio,
+                      sipAmount: userDetails.userGoal?.sipAmount,
+                      goalAmount: userDetails.userGoal?.goalAmount,
+                      sipTenure: userDetails.userGoal?.timePeriod,
+                      sipStatus: userDetails.main_subscription_status === 1 ? 'Active' : 'Inactive',
+                    }))}
+                    formatCurrency={formatCurrency}
+                    downloading={downloading}
+                    sendingEmail={sendingEmail}
+                    downloadPortfolioReport={downloadPortfolioReport}
+                    sendPortfolioReportEmail={sendPortfolioReportEmail}
+                  />
 
                 ) : (
                   <>
