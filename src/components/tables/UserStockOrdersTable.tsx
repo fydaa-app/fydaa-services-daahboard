@@ -28,6 +28,13 @@ export default function UserStockOrdersTable({
   stockOrders,
   formatCurrency,
 }: UserStockOrdersTableProps) {
+  // Sort stock orders alphabetically by stock name in ascending order
+  const sortedStockOrders = [...stockOrders].sort((a, b) => {
+    const nameA = a['stock.stockName'].toLowerCase();
+    const nameB = b['stock.stockName'].toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
+
   return (
     <Table>
       <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
@@ -40,7 +47,7 @@ export default function UserStockOrdersTable({
         </TableRow>
       </TableHeader>
       <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-        {stockOrders.map((order) => (
+        {sortedStockOrders.map((order) => (
           <TableRow key={order.stockId}>
             <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{order['stock.stockName']}</TableCell>
             <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{order['stock.ticker']}</TableCell>

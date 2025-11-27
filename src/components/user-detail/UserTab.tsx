@@ -1153,7 +1153,7 @@ export default function UserTab({
         <div className="flex flex-col gap-5">
           {/* Tabs Navigation */}
           <div className="flex gap-2 overflow-x-auto">
-            {['Portfolio', 'Transaction', 'Subscription', 'Stock', 'Payments', 'Profile', 'Reports'].map((tab) => (
+            {['Portfolio', 'Transaction', 'Subscription', isFydaaUser ? 'Stock' : 'Mutual Fund', 'Payments', 'Profile', 'Reports'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => handleTabChange(tab)}
@@ -1224,7 +1224,7 @@ export default function UserTab({
             )}
 
             {/* Stock Orders Tab */}
-            {activeTab === 'Stock' && (
+            {(activeTab === 'Stock' || activeTab === 'Mutual Fund') && (
               <>
                 {isFydaaUser ? (
                   <FydaaStocksTab
