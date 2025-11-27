@@ -1,21 +1,78 @@
+// FILE: components/user-detail/UserTab.tsx
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from "../ui/table";
 import Badge from "../ui/badge/Badge";
 import PerformanceXIRRTable from "../tables/PerformanceXIRRTable";
 import { xirrService, XIRRTableData } from "@/services/xirrService";
-import { useEffect } from "react";
 
+// Import tab components
+import FydaaPortfolioTab from "./tabs/SavestmentPortfolioTab";
+import SavestmentPortfolioTab from "./tabs/FydaaPortfolioTab";
+import TransactionTab from "./tabs/TransactionTab";
+import SubscriptionTab from "./tabs/SubscriptionTab";
+import FydaaStocksTab from "./tabs/FydaaStocksTab";
+import SavestmentStocksTab from "./tabs/SavestmentStocksTab";
+import ProfileTab from "./tabs/ProfileTab";
+import ReportsTab from "./tabs/ReportsTab";
+import PaymentsTab from "./tabs/PaymentsTab";
 
+// Interfaces
 
-// Detailed interfaces matching the API response
+interface Goal {
+  id: number;
+  name: string;
+  termId: number;
+  feePricing: string;
+  tenureMin: number;
+  tenureMax: number;
+  goalAmountMin: string;
+  goalAmountMax: string;
+  brandName: string | null;
+  discount: string;
+  imageUrl: string;
+  recommendationUrl: string | null;
+  iconUrl: string | null;
+  pendingUrl: string;
+  description: string;
+  items: Array<{
+    image: string;
+    title: string;
+    description: string;
+  }>;
+  suggestion: string | null;
+  recommendations: string[];
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+interface SipDetails {
+  id: number;
+  userId: number;
+  portfolioId: number;
+  goalId: number;
+  feePricing: number;
+  planId: number | null;
+  sipTenure: number;
+  sipName: string;
+  userSipName: string | null;
+  sipAmount: number;
+  goalAmount: number;
+  autoRenewDate: string;
+  startDate: string;
+  sipDate: string;
+  endDate: string;
+  status: string;
+  paymentStatus: number;
+  isRegister: boolean;
+  isProgress: boolean;
+  isAllocation: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
 interface Address {
   addressLine1: string;
   addressLine2?: string;
@@ -142,6 +199,8 @@ interface MutualFundDetail {
   realizedReturn: number;
   totalProfit: number;
   mutualFunds: MutualFundStock[];
+  goal: Goal[];
+  sip: SipDetails[];
 }
 
 interface ReferralDetails {
@@ -262,7 +321,6 @@ interface Employee {
   referralCode: string;
 }
 
-
 export default function UserTab({
   userDetails,
   portfolioDetails,
@@ -286,7 +344,7 @@ export default function UserTab({
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [mappingReferral, setMappingReferral] = useState(false);
   
-  // NEW STATE VARIABLES FOR ADVISOR AND RM
+  // State variables for advisor and RM
   const [showAdvisorModal, setShowAdvisorModal] = useState(false);
   const [showRMModal, setShowRMModal] = useState(false);
   const [advisors, setAdvisors] = useState<Advisor[]>([]);
@@ -298,7 +356,7 @@ export default function UserTab({
   const [updatingAdvisor, setUpdatingAdvisor] = useState(false);
   const [updatingRM, setUpdatingRM] = useState(false);
 
-  // new state variables for XIRR data
+  // State variables for XIRR data
   const [xirrData, setXirrData] = useState<XIRRTableData | null>(null);
   const [loadingXIRR, setLoadingXIRR] = useState(false);
   const [xirrError, setXirrError] = useState<string | null>(null);
@@ -412,7 +470,7 @@ export default function UserTab({
     }
   };
 
-  // NEW FUNCTION: Fetch advisors list
+  // Fetch advisors list
   const fetchAdvisors = async () => {
     try {
       setLoadingAdvisors(true);
@@ -449,7 +507,7 @@ export default function UserTab({
     }
   };
 
-  // NEW FUNCTION: Fetch relationship managers list
+  // Fetch relationship managers list
   const fetchRelationshipManagers = async () => {
     try {
       setLoadingRMs(true);
@@ -486,7 +544,7 @@ export default function UserTab({
     }
   };
 
-  // NEW FUNCTION: Update advisor
+  // Update advisor
   const updateAdvisor = async () => {
     if (!selectedAdvisorId) {
       alert('Please select an advisor first.');
@@ -531,7 +589,7 @@ export default function UserTab({
     }
   };
 
-  // NEW FUNCTION: Update relationship manager
+  // Update relationship manager
   const updateRelationshipManager = async () => {
     if (!selectedRMId) {
       alert('Please select a relationship manager first.');
@@ -940,14 +998,12 @@ export default function UserTab({
       fetchPaymentDetails();
     }
     // Fetch XIRR data when Portfolio tab is opened for Savestment users
-    if (tab === 'Portfolio' && userDetails.userRole === 'savestment' && !xirrData) {
+    if (tab === 'Portfolio' && userDetails.fromApp?.toLowerCase() === 'savestment' && !xirrData) {
       fetchXIRRData();
     }
   };
 
-
   // Fetch XIRR data for Savestment users
-  // Update the fetchXIRRData function
   const fetchXIRRData = async () => {
     // Only fetch for Savestment users
     if (userDetails.fromApp?.toLowerCase() !== 'savestment') {
@@ -971,7 +1027,6 @@ export default function UserTab({
     }
   };
 
-  // Update the useEffect
   useEffect(() => {
     if (activeTab === 'Portfolio' && 
         userDetails?.id && 
@@ -983,8 +1038,10 @@ export default function UserTab({
     // eslint-disable-next-line
   }, [activeTab, userDetails?.id, userDetails.fromApp]);
 
+  // Determine which portfolio/stock tabs to show based on user type
+  // const isSavestmentUser = portfolioDetails.length === 0 && mutualFundDetails.length > 0;
+  const isFydaaUser = portfolioDetails.length > 0;
 
-    
   return (
     <div className="grid grid-cols-12 gap-4 md:gap-6">
       {/* Left Column - User Profile */}
@@ -1096,7 +1153,7 @@ export default function UserTab({
         <div className="flex flex-col gap-5">
           {/* Tabs Navigation */}
           <div className="flex gap-2 overflow-x-auto">
-            {['Portfolio', 'Transaction', 'Subscription', 'Stock', 'Payments', 'Profile', 'Reports'].map((tab) => (
+            {['Portfolio', 'Transaction', 'Subscription', isFydaaUser ? 'Stock' : 'Mutual Fund', 'Payments', 'Profile', 'Reports'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => handleTabChange(tab)}
@@ -1117,989 +1174,276 @@ export default function UserTab({
             
             {/* Portfolio Tab */}
             {activeTab === 'Portfolio' && (
-              <div className="p-4">
-                {(portfolioDetails.length > 0 || mutualFundDetails.length > 0) && (
-                  <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-semibold dark:text-gray-400">Portfolio Overview</h3>
-                      
-                      <div className="flex gap-2">
-                        <button
-                          onClick={downloadPortfolioReport}
-                          disabled={downloading === 'portfolioReport'}
-                          className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
-                          title="Download Portfolio Report PDF"
-                        >
-                          {downloading === 'portfolioReport' ? (
-                            <>
-                              <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                              </svg>
-                              Downloading...
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                              </svg>
-                              Download PDF
-                            </>
-                          )}
-                        </button>
-                        
-                        <button
-                          onClick={sendPortfolioReportEmail}
-                          disabled={sendingEmail === 'portfolioEmail'}
-                          className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
-                          title="Send Portfolio Report via Email"
-                        >
-                          {sendingEmail === 'portfolioEmail' ? (
-                            <>
-                              <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                              </svg>
-                              Sending...
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                              </svg>
-                              Email Report
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
+              <>
+                {isFydaaUser ? (
+                  <FydaaPortfolioTab
+                    portfolioDetails={portfolioDetails.map(portfolio => ({
+                      ...portfolio,
+                      sipAmount: userDetails.userGoal?.sipAmount,
+                      goalAmount: userDetails.userGoal?.goalAmount,
+                      sipTenure: userDetails.userGoal?.timePeriod,
+                      sipStatus: userDetails.main_subscription_status === 1 ? 'Active' : 'Inactive',
+                    }))}
+                    formatCurrency={formatCurrency}
+                    downloading={downloading}
+                    sendingEmail={sendingEmail}
+                    downloadPortfolioReport={downloadPortfolioReport}
+                    sendPortfolioReportEmail={sendPortfolioReportEmail}
+                  />
 
-                {/* Stock Portfolios Section */}
-                {portfolioDetails && portfolioDetails.length > 0 && (
+                ) : (
                   <>
-                    {portfolioDetails.map((portfolio) => (
-                      <div key={portfolio.portfolioId} className="mb-6">
-                        <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
-                          <h4 className="text-md font-medium dark:text-gray-400">{portfolio.portfolioName}</h4>
-                        </div>                               
-                        <div className="mt-4 grid grid-cols-2 gap-4">
-                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Invested Amount</p>
-                            <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.totalInvestedValue)}</p>
-                          </div>
-                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Current Value</p>
-                            <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.currentValue)}</p>
-                          </div>
-                        </div>
-                        <div className="mt-4 grid grid-cols-2 gap-4">
-                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Realised Profit</p>
-                            <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.realizedReturn)}</p>
-                          </div>
-                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Unrealised Profit</p>
-                            <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.unrealizedReturn)}</p>
-                          </div>
-                        </div>                
-                        <div className="mt-4 grid grid-cols-2 gap-4">
-                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Absolute Return</p>
-                            <p className="font-medium dark:text-gray-400">
-                              {portfolio.totalInvestedValue > 0 
-                                ? (((portfolio.currentValue - portfolio.totalInvestedValue) / portfolio.totalInvestedValue) * 100).toFixed(2)
-                                : '0.00'
-                              }%
-                            </p>
-                          </div> 
-                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Total Profit</p>
-                            <p className="font-medium dark:text-gray-400">{formatCurrency(portfolio.totalProfit)}</p>
-                          </div>                  
-                        </div>
-                      </div>             
-                    ))}
+                    <SavestmentPortfolioTab
+                      mutualFundDetails={mutualFundDetails}
+                      formatCurrency={formatCurrency}
+                      downloading={downloading}
+                      sendingEmail={sendingEmail}
+                      downloadPortfolioReport={downloadPortfolioReport}
+                      sendPortfolioReportEmail={sendPortfolioReportEmail}
+                    />
                   </>
                 )}
-
-                {/* Mutual Funds Section - Only show when portfolioDetails is empty */}
-                {portfolioDetails.length === 0 && mutualFundDetails && mutualFundDetails.length > 0 && (
-                  <>
-                    <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
-                      <h4 className="text-md font-medium dark:text-gray-400">Mutual Funds (SIP & Goal)</h4>
-                    </div>
-                    {mutualFundDetails.map((mutualFund) => (
-                      <div key={mutualFund.sipId} className="mb-6">
-                        <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
-                          <h4 className="text-md font-medium dark:text-gray-400">{mutualFund.portfolioName}</h4>
-                        </div>                               
-                        <div className="mt-4 grid grid-cols-2 gap-4">
-                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Current Value</p>
-                            <p className="font-medium dark:text-gray-400">{formatCurrency(mutualFund.currentValue)}</p>
-                          </div>
-                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Unrealised Return</p>
-                            <p className="font-medium dark:text-gray-400">{formatCurrency(mutualFund.unrealizedReturn)}</p>
-                          </div>
-                        </div>
-                        <div className="mt-4 grid grid-cols-2 gap-4">
-                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Realised Return</p>
-                            <p className="font-medium dark:text-gray-400">{formatCurrency(mutualFund.realizedReturn)}</p>
-                          </div>
-                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Total Profit</p>
-                            <p className="font-medium dark:text-gray-400">{formatCurrency(mutualFund.totalProfit)}</p>
-                          </div>
-                        </div>
-                      </div>             
-                    ))}
-                  </>
-                )}
-
-                {portfolioDetails.length === 0 && mutualFundDetails.length === 0 && (
-                  <div className="flex justify-center items-center py-12">
-                    <div className="text-center">
-                      <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Portfolio Found</h3>
-                    </div>
-                  </div>
-                )}
-              </div>
+              </>
             )}
 
             {/* Transaction Tab */}
             {activeTab === 'Transaction' && (
-              <>
-                {transactions && transactions.length > 0 ? (
-                  <Table>
-                    <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                      <TableRow>
-                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Transaction ID</TableCell>
-                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Date</TableCell>
-                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Type</TableCell>
-                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Amount</TableCell>
-                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Quantity</TableCell>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                      {transactions.map((transaction) => (
-                        <TableRow key={transaction.transactionId}>
-                          <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{transaction.transactionId}</TableCell>
-                          <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                            {new Date(transaction.createdAt).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                            <Badge color={transaction.orderType === 'BUY' ? 'success' : 'error'}>
-                              {transaction.orderType}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(transaction.totalAmount)}</TableCell>
-                          <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{transaction.totalTradeQty}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="flex justify-center items-center py-12">
-                    <div className="text-center">
-                      <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                      </svg>
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Transactions Found</h3>
-                      <p className="text-gray-500 dark:text-gray-400">You have not made any transactions yet.</p>
-                    </div>
-                  </div>
-                )}
-              </>
+              <TransactionTab
+                transactions={transactions}
+                formatCurrency={formatCurrency}
+              />
             )}
 
             {/* Subscription Tab */}
             {activeTab === 'Subscription' && (
-              <>
-                {subscriptions && subscriptions.length > 0 ? (
-                  <Table>
-                    <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                      <TableRow>
-                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Plan Name</TableCell>
-                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Subscription Date</TableCell>
-                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Status</TableCell>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                      {subscriptions.map((subscription, index) => (
-                        <TableRow key={index}>
-                          <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{subscription.plan_name}</TableCell>
-                          <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                            {new Date(userDetails.subscription_date).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                            <Badge color={userDetails.main_subscription_status === 1 ? 'success' : 'error'}>
-                              {userDetails.main_subscription_status === 1 ? 'Active' : 'Inactive'}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="flex justify-center items-center py-12">
-                    <div className="text-center">
-                      <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                      </svg>
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Subscriptions Found</h3>
-                      <p className="text-gray-500 dark:text-gray-400">You have no active subscriptions.</p>
-                    </div>
-                  </div>
-                )}
-              </>
+              <SubscriptionTab
+                subscriptions={subscriptions}
+                subscriptionDate={userDetails.subscription_date}
+                subscriptionStatus={userDetails.main_subscription_status}
+              />
             )}
 
             {/* Stock Orders Tab */}
-            {activeTab === 'Stock' && (
+            {(activeTab === 'Stock' || activeTab === 'Mutual Fund') && (
               <>
-              {/* NEW: Check if EITHER stockOrders OR mutualFunds exist */}
-              {(stockOrders && stockOrders.length > 0) || 
-              (mutualFundDetails && mutualFundDetails.some(mf => mf.mutualFunds && mf.mutualFunds.length > 0)) ? (
-                <>
-                  {/* SECTION 1: Stock Orders (original) */}
-                  {stockOrders && stockOrders.length > 0 && (
-                    <div className="mb-6">
-                      <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-4">
-                        <h4 className="text-md font-medium dark:text-gray-400">Stock Orders</h4>
-                      </div>
-                      <Table>
-                              <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                                <TableRow>
-                                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Stock</TableCell>
-                                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Ticker</TableCell>
-                                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Quantity</TableCell>
-                                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Avg. Price</TableCell>
-                                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Total Value</TableCell>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                                {stockOrders.map((order) => (
-                                  <TableRow key={order.stockId}>
-                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{order['stock.stockName']}</TableCell>
-                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{order['stock.ticker']}</TableCell>
-                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{order.quantityDifference}</TableCell>
-                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(order.avgValue)}</TableCell>
-                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(order.netValue)}</TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                    </div>
-                  )}
-
-                  {/* SECTION 2: Mutual Fund Stocks (NEW) */}
-                  {mutualFundDetails && mutualFundDetails.some(mf => mf.mutualFunds && mf.mutualFunds.length > 0) && (
-                    <div className="mb-6">
-                      <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-4">
-                        <h4 className="text-md font-medium dark:text-gray-400">Mutual Fund Holdings</h4>
-                      </div>
-                      <Table>
-                        <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                          <TableRow>
-                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Stock</TableCell>
-                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Ticker</TableCell>
-                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Portfolio</TableCell>
-                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Balance Qty</TableCell>
-                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Avg. Price</TableCell>
-                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Invested Value</TableCell>
-                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400">Current Value</TableCell>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {/* Loop through mutualFundDetails and flatten all stocks */}
-                          {mutualFundDetails.flatMap((mfDetail) => 
-                            mfDetail.mutualFunds?.map((stock) => (
-                              <TableRow key={`${mfDetail.sipId}-${stock.stockId}`}>
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{stock.stockName}</TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{stock.ticker}</TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{stock.portfolioName}</TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{stock.balanceQty}</TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(stock.averagePrice)}</TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(stock.investedValue)}</TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{formatCurrency(stock.currentValue)}</TableCell>
-                              </TableRow>
-                            )) || []
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                    </>
-                  ) : (
-                  <div className="flex justify-center items-center py-12">
-                    <div className="text-center">
-                      <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8a4 4 0 01-8 0V8a4 4 0 018 0zM8 20l4-4 4 4M8 4l4 4 4-4" />
-                      </svg>
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Stock Orders Found</h3>
-                      <p className="text-gray-500 dark:text-gray-400">You have no stock orders in your portfolio.</p>
-                    </div>
-                  </div>
-              )}
+                {isFydaaUser ? (
+                  <FydaaStocksTab
+                    stockOrders={stockOrders}
+                    formatCurrency={formatCurrency}
+                  />
+                ) : (
+                  <SavestmentStocksTab
+                    mutualFundDetails={mutualFundDetails}
+                    formatCurrency={formatCurrency}
+                  />
+                )}
               </>
-            )}
-            
-
-            {/* Profile Tab */}
-            {activeTab === 'Profile' && (
-              <div className="p-4 space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Basic Information</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-900 dark:text-gray-400">Date of Birth</p>
-                      <p className="text-theme-sm text-gray-500">{new Date(userDetails.dob).toLocaleDateString()}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-900 dark:text-gray-400">Address</p>
-                      <p className="text-theme-sm text-gray-500">{userDetails.address?.addressLine1}</p>
-                      <p className="text-theme-sm text-gray-500">{userDetails.pincode}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-900 dark:text-gray-400">KYC Status</p>
-                      <Badge color={userDetails.panStatus === 'KYC_SUCCESS' ? 'success' : 'error'}>
-                        {userDetails.panStatus}
-                      </Badge>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-900 dark:text-gray-400">Total Investment</p>
-                      <p className="text-theme-sm text-gray-500">{formatCurrency(userDetails.total_investment)}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Advisor Details - UPDATED WITH CHANGE BUTTON */}
-                {advisor && (
-                  <div>
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Advisor Details</h3>
-                      <button
-                        onClick={handleShowAdvisorModal}
-                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
-                      >
-                        Change Advisor
-                      </button>
-                    </div>
-                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                      <div className="flex items-start space-x-4 mb-4">
-                        {advisor.photo && (
-                          <img 
-                            src={advisor.photo} 
-                            alt={advisor.name}
-                            className="w-20 h-20 rounded-full object-cover"
-                          />
-                        )}
-                        <div className="flex-1">
-                          <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">{advisor.name}</h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{advisor.description}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm text-gray-900 dark:text-gray-400">Email</p>
-                          <a href={`mailto:${advisor.email}`} className="text-theme-sm text-blue-600 hover:underline">
-                            {advisor.email}
-                          </a>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-900 dark:text-gray-400">Mobile</p>
-                          <a href={`tel:${advisor.mobile}`} className="text-theme-sm text-blue-600 hover:underline">
-                            {advisor.mobile}
-                          </a>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-900 dark:text-gray-400">Age</p>
-                          <p className="text-theme-sm text-gray-500">{advisor.age} years</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-900 dark:text-gray-400">Experience</p>
-                          <p className="text-theme-sm text-gray-500">{advisor.experienceInYears} years</p>
-                        </div>
-                      </div>
-
-                      {(advisor.attachment1 || advisor.attachment2) && (
-                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                          <p className="text-sm text-gray-900 dark:text-gray-400 mb-2">Certificates</p>
-                          <div className="flex flex-wrap gap-2">
-                            {advisor.attachment1 && (
-                              <a 
-                                href={advisor.attachment1}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-sm hover:bg-blue-200 dark:hover:bg-blue-800"
-                              >
-                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                Certificate 1
-                              </a>
-                            )}
-                            {advisor.attachment2 && (
-                              <a 
-                                href={advisor.attachment2}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-sm hover:bg-blue-200 dark:hover:bg-blue-800"
-                              >
-                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                Certificate 2
-                              </a>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Relationship Manager Details - UPDATED WITH CHANGE BUTTON */}
-                {relationshipManager && (
-                  <div>
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Relationship Manager</h3>
-                      <button
-                        onClick={handleShowRMModal}
-                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
-                      >
-                        Change RM
-                      </button>
-                    </div>
-                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                      <div className="flex items-start space-x-4 mb-4">
-                        {relationshipManager.photo ? (
-                          <img 
-                            src={relationshipManager.photo} 
-                            alt={relationshipManager.name}
-                            className="w-16 h-16 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                            <span className="text-xl font-semibold text-gray-600 dark:text-gray-400">
-                              {relationshipManager.name.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex-1">
-                          <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">{relationshipManager.name}</h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{relationshipManager.description}</p>
-                          <Badge color="info">
-                            {relationshipManager.type}
-                          </Badge>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm text-gray-900 dark:text-gray-400">Email</p>
-                          <a href={`mailto:${relationshipManager.email}`} className="text-theme-sm text-blue-600 hover:underline">
-                            {relationshipManager.email}
-                          </a>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-900 dark:text-gray-400">Mobile</p>
-                          <a href={`tel:${relationshipManager.mobileNumber}`} className="text-theme-sm text-blue-600 hover:underline">
-                            {relationshipManager.mobileNumber}
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Reports Tab */}
-            {activeTab === 'Reports' && (
-              <div className="p-6">
-                <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Download Reports</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Download user risk profile and esign agreement documents
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
-                    <div className="flex items-center mb-4">
-                      <div className="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-lg mr-4">
-                        <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Risk Profile</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">User investment risk assessment</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={downloadRiskProfile}
-                      disabled={downloading === 'riskProfile'}
-                      className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-                    >
-                      {downloading === 'riskProfile' ? (
-                        <>
-                          <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
-                          Downloading...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          Download Risk Profile
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  <div className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-800">
-                    <div className="flex items-center mb-4">
-                      <div className="p-3 bg-green-100 dark:bg-green-900/50 rounded-lg mr-4">
-                        <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Esign Agreement</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">Digital signature agreement document</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={downloadEsignAgreement}
-                      disabled={downloading === 'esignAgreement'}
-                      className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-                    >
-                      {downloading === 'esignAgreement' ? (
-                        <>
-                          <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
-                          Downloading...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          Download Esign Agreement
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
             )}
 
             {/* Payments Tab */}
             {activeTab === 'Payments' && (
-              <div className="p-4">
-                {loadingPayments ? (
-                  <div className="flex justify-center items-center py-8">
-                    <svg className="w-8 h-8 animate-spin text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    <span className="ml-2 text-gray-600 dark:text-gray-400">Loading payment details...</span>
-                  </div>
-                ) : paymentDetails && paymentDetails.payments.length > 0 ? (
-                  <>
-                    <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Payment Summary</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                          <p className="text-sm text-gray-500 dark:text-gray-400">Total Payments</p>
-                          <p className="font-medium text-2xl text-blue-600 dark:text-blue-400">{paymentDetails.totalPayments}</p>
-                        </div>
-                        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                          <p className="text-sm text-gray-500 dark:text-gray-400">Total Amount</p>
-                          <p className="font-medium text-2xl text-green-600 dark:text-green-400">{formatCurrency(paymentDetails.totalAmount)}</p>
-                        </div>
-                        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                          <p className="text-sm text-gray-500 dark:text-gray-400">Average Payment</p>
-                          <p className="font-medium text-2xl text-purple-600 dark:text-purple-400">
-                            {formatCurrency(paymentDetails.totalAmount / paymentDetails.totalPayments)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+              <PaymentsTab
+                loadingPayments={loadingPayments}
+                paymentDetails={paymentDetails}
+                formatCurrency={formatCurrency}
+                getPaymentMethodDisplay={getPaymentMethodDisplay}
+                processingDownload={processingDownload}
+                sendingEmail={sendingEmail}
+                downloadInvoicePDF={downloadInvoicePDF}
+                sendInvoiceEmail={sendInvoiceEmail}
+              />
+            )}
 
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                          <TableRow>
-                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-sm dark:text-gray-100">Payment ID</TableCell>
-                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-sm dark:text-gray-100">Date</TableCell>
-                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-sm dark:text-gray-100">Amount</TableCell>
-                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-sm dark:text-gray-100">Status</TableCell>
-                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-sm dark:text-gray-100">Method</TableCell>
-                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-sm dark:text-gray-100">Type</TableCell>
-                            <TableCell isHeader className="px-5 py-3 font-medium text-gray-900 text-start text-sm dark:text-gray-100">Actions</TableCell>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                          {paymentDetails.payments.map((payment) => (
-                            <TableRow key={payment.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                              <TableCell className="px-4 py-3 text-gray-900 dark:text-gray-100 text-start text-sm font-medium">
-                                #{payment.id}
-                              </TableCell>
-                              <TableCell className="px-4 py-3 text-gray-500 text-start text-sm dark:text-gray-400">
-                                {new Date(payment.createdAt).toLocaleDateString('en-IN', {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric'
-                                })}
-                              </TableCell>
-                              <TableCell className="px-4 py-3 text-gray-900 dark:text-gray-100 text-start text-sm font-medium">
-                                {formatCurrency(Number(payment.amount))}
-                              </TableCell>
-                              <TableCell className="px-4 py-3 text-start text-sm">
-                                <Badge color="success">
-                                  {payment.paymentStatus}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="px-4 py-3 text-gray-500 text-start text-sm dark:text-gray-400">
-                                {getPaymentMethodDisplay(payment)}
-                              </TableCell>
-                              <TableCell className="px-4 py-3 text-gray-500 text-start text-sm dark:text-gray-400">
-                                <span className="capitalize">{payment.type}</span>
-                              </TableCell>
-                              <TableCell className="px-4 py-3 text-start text-sm">
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={() => downloadInvoicePDF(payment.id,payment.paymentType)}
-                                    disabled={processingDownload === `invoice-${payment.id}`}
-                                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white text-xs rounded transition-colors flex items-center gap-1"
-                                    title="Download Invoice PDF"
-                                  >
-                                    {processingDownload === `invoice-${payment.id}` ? (
-                                      <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                      </svg>
-                                    ) : (
-                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                      </svg>
-                                    )}
-                                    <span>Invoice</span>
-                                  </button>
-                                  <button
-                                    onClick={() => sendInvoiceEmail(payment.id,payment.paymentType)}
-                                    disabled={sendingEmail === `email-${payment.id}`}
-                                    className="px-3 py-1 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white text-xs rounded transition-colors flex items-center gap-1"
-                                    title="Send Invoice Email"
-                                  >
-                                    {sendingEmail === `email-${payment.id}` ? (
-                                      <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                      </svg>
-                                    ) : (
-                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                      </svg>
-                                    )}
-                                    <span>Email</span>
-                                  </button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex justify-center items-center py-12">
-                    <div className="text-center">
-                      <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Payments Found</h3>
-                      <p className="text-gray-500 dark:text-gray-400">You have not made any payments yet.</p>
-                    </div>
-                  </div>
-                )}
-              </div>
+            {/* Profile Tab */}
+            {activeTab === 'Profile' && (
+              <ProfileTab
+                userDetails={userDetails}
+                advisor={advisor}
+                relationshipManager={relationshipManager}
+                formatCurrency={formatCurrency}
+                handleShowAdvisorModal={handleShowAdvisorModal}
+                handleShowRMModal={handleShowRMModal}
+              />
+            )}
+
+            {/* Reports Tab */}
+            {activeTab === 'Reports' && (
+              <ReportsTab
+                downloading={downloading}
+                downloadRiskProfile={downloadRiskProfile}
+                downloadEsignAgreement={downloadEsignAgreement}
+              />
             )}
           </div>
         </div>
       </div>
 
-      {/* MODALS */}
-
-      {/* Referral Code Mapping Modal */}
+      {/* Referral Mapping Modal */}
       {showReferralMapping && (
-        <div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                Map Referral Code
-              </h3>
-              <button
-                onClick={() => setShowReferralMapping(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+<div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Map Referral Code
+            </h3>
+            {loadingEmployees ? (
+              <div className="flex justify-center items-center py-8">
+                <svg className="w-8 h-8 animate-spin text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-              </button>
-            </div>
-
-            <div className="mb-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                Select an employee to map their referral code to this user:
-              </p>
-              
-              {loadingEmployees ? (
-                <div className="flex justify-center py-4">
-                  <svg className="w-6 h-6 animate-spin text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  <span className="ml-2">Loading employees...</span>
-                </div>
-              ) : (
+              </div>
+            ) : (
+              <>
                 <select
                   value={selectedEmployeeId || ''}
-                  onChange={(e) => setSelectedEmployeeId(Number(e.target.value) || null)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={(e) => setSelectedEmployeeId(Number(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg mb-4 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 >
-                  <option value="">Select an employee...</option>
-                  {employees.map((employee) => (
-                    <option key={employee.id} value={employee.id}>
-                      {employee.name} - {employee.referralCode}
+                  <option value="">Select an employee</option>
+                  {employees.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.name} - {emp.referralCode}
                     </option>
                   ))}
                 </select>
-              )}
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowReferralMapping(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={mapUserReferralCode}
-                disabled={!selectedEmployeeId || mappingReferral}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                {mappingReferral ? (
-                  <>
-                    <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Mapping...
-                  </>
-                ) : (
-                  'Map Referral Code'
-                )}
-              </button>
-            </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={mapUserReferralCode}
+                    disabled={mappingReferral || !selectedEmployeeId}
+                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                  >
+                    {mappingReferral ? 'Mapping...' : 'Map'}
+                  </button>
+                  <button
+                    onClick={() => setShowReferralMapping(false)}
+                    className="flex-1 px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
 
       {/* Advisor Modal */}
       {showAdvisorModal && (
-        <div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                Change Advisor
-              </h3>
-              <button
-                onClick={() => setShowAdvisorModal(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+<div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Change Advisor
+            </h3>
+            {loadingAdvisors ? (
+              <div className="flex justify-center items-center py-8">
+                <svg className="w-8 h-8 animate-spin text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-              </button>
-            </div>
-
-            <div className="mb-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                Select a new advisor for this user:
-              </p>
-              
-              {loadingAdvisors ? (
-                <div className="flex justify-center py-4">
-                  <svg className="w-6 h-6 animate-spin text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  <span className="ml-2">Loading advisors...</span>
-                </div>
-              ) : (
+              </div>
+            ) : (
+              <>
                 <select
                   value={selectedAdvisorId || ''}
-                  onChange={(e) => setSelectedAdvisorId(Number(e.target.value) || null)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={(e) => setSelectedAdvisorId(Number(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg mb-4 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 >
-                  <option value="">Select an advisor...</option>
+                  <option value="">Select an advisor</option>
                   {advisors.map((adv) => (
                     <option key={adv.id} value={adv.id}>
                       {adv.name} - {adv.email}
                     </option>
                   ))}
                 </select>
-              )}
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={updateAdvisor}
-                disabled={!selectedAdvisorId || updatingAdvisor}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                {updatingAdvisor ? (
-                  <>
-                    <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Updating...
-                  </>
-                ) : (
-                  'Update Advisor'
-                )}
-              </button>
-            </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={updateAdvisor}
+                    disabled={updatingAdvisor || !selectedAdvisorId}
+                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                  >
+                    {updatingAdvisor ? 'Updating...' : 'Update'}
+                  </button>
+                  <button
+                    onClick={() => setShowAdvisorModal(false)}
+                    className="flex-1 px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
 
       {/* Relationship Manager Modal */}
       {showRMModal && (
-        <div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                Change Relationship Manager
-              </h3>
-              <button
-                onClick={() => setShowRMModal(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+<div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Change Relationship Manager
+            </h3>
+            {loadingRMs ? (
+              <div className="flex justify-center items-center py-8">
+                <svg className="w-8 h-8 animate-spin text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-              </button>
-            </div>
-
-            <div className="mb-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                Select a new relationship manager for this user:
-              </p>
-              
-              {loadingRMs ? (
-                <div className="flex justify-center py-4">
-                  <svg className="w-6 h-6 animate-spin text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  <span className="ml-2">Loading relationship managers...</span>
-                </div>
-              ) : (
+              </div>
+            ) : (
+              <>
                 <select
                   value={selectedRMId || ''}
-                  onChange={(e) => setSelectedRMId(Number(e.target.value) || null)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={(e) => setSelectedRMId(Number(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg mb-4 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 >
-                  <option value="">Select a relationship manager...</option>
+                  <option value="">Select a relationship manager</option>
                   {relationshipManagers.map((rm) => (
                     <option key={rm.id} value={rm.id}>
                       {rm.name} - {rm.email}
                     </option>
                   ))}
                 </select>
-              )}
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowRMModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={updateRelationshipManager}
-                disabled={!selectedRMId || updatingRM}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                {updatingRM ? (
-                  <>
-                    <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Updating...
-                  </>
-                ) : (
-                  'Update RM'
-                )}
-              </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={updateRelationshipManager}
+                    disabled={updatingRM || !selectedRMId}
+                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                  >
+                    {updatingRM ? 'Updating...' : 'Update'}
+                  </button>
+                  <button
+                    onClick={() => setShowRMModal(false)}
+                    className="flex-1 px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+      {/* XIRR Performance Table - Only visible for Savestment users with valid data */}
+      {activeTab === 'Portfolio' && 
+      userDetails.fromApp?.toLowerCase() === 'savestment' && 
+      xirrData && 
+      xirrService.hasValidData(xirrData) && (
+        <div className="col-span-12 w-full p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6 mt-6">
+          <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
+            <h3 className="text-lg font-semibold dark:text-gray-400">Performance Metrics (XIRR)</h3>
+          </div>
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+            <div className="max-w-full overflow-x-auto">
+              <div className="min-w-[1200px]">
+                <PerformanceXIRRTable 
+                  portfolioXIRR={xirrData.portfolioXIRR}
+                  benchmarkXIRR={xirrData.benchmarkXIRR}
+                  loading={loadingXIRR}
+                  error={xirrError}
+                />
+              </div>
             </div>
           </div>
         </div>
       )}
-        {/* XIRR Performance Table - Only visible when Portfolio tab is active and user is Savestment */}
- {/* XIRR Performance Table - Only visible when Portfolio tab is active and has valid data */}
-
-{/* XIRR Performance Table - Only visible for Savestment users with valid data */}
-{activeTab === 'Portfolio' && 
-  userDetails.fromApp?.toLowerCase() === 'savestment' && 
-  xirrData && 
-  xirrService.hasValidData(xirrData) && (
-    <div className="col-span-12 w-full p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6 mt-6">
-      <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
-        <h3 className="text-lg font-semibold dark:text-gray-400">Performance Metrics (XIRR)</h3>
-      </div>
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-        <div className="max-w-full overflow-x-auto">
-          <div className="min-w-[1200px]">
-            <PerformanceXIRRTable 
-              portfolioXIRR={xirrData.portfolioXIRR}
-              benchmarkXIRR={xirrData.benchmarkXIRR}
-              loading={loadingXIRR}
-              error={xirrError}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-)}
-
-{/* Show "No Data" badge for Savestment users when no valid XIRR data */}
-{activeTab === 'Portfolio' && 
-  userDetails.fromApp?.toLowerCase() === 'savestment' && 
-  xirrData && 
-  !xirrService.hasValidData(xirrData) && 
-  !loadingXIRR && (
-    <div className="col-span-12 w-full p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6 mt-6">
-      <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
-        <h3 className="text-lg font-semibold dark:text-gray-400">Performance Metrics</h3>
-      </div>
-      <div className="flex justify-center items-center py-8">
-        <Badge color="warning">No XIRR Data Available</Badge>
-      </div>
-    </div>
-)}
-
-
-
     </div>
   );
 }

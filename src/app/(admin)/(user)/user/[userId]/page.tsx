@@ -7,6 +7,61 @@ import UserTab from "@/components/user-detail/UserTab";
 import Cookies from "js-cookie";
 
 // Detailed interfaces matching the API response
+
+interface Goal {
+  id: number;
+  name: string;
+  termId: number;
+  feePricing: string;
+  tenureMin: number;
+  tenureMax: number;
+  goalAmountMin: string;
+  goalAmountMax: string;
+  brandName: string | null;
+  discount: string;
+  imageUrl: string;
+  recommendationUrl: string | null;
+  iconUrl: string | null;
+  pendingUrl: string;
+  description: string;
+  items: Array<{
+    image: string;
+    title: string;
+    description: string;
+  }>;
+  suggestion: string | null;
+  recommendations: string[];
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+interface SipDetails {
+  id: number;
+  userId: number;
+  portfolioId: number;
+  goalId: number;
+  feePricing: number;
+  planId: number | null;
+  sipTenure: number;
+  sipName: string;
+  userSipName: string | null;
+  sipAmount: number;
+  goalAmount: number;
+  autoRenewDate: string;
+  startDate: string;
+  sipDate: string;
+  endDate: string;
+  status: string;
+  paymentStatus: number;
+  isRegister: boolean;
+  isProgress: boolean;
+  isAllocation: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
 interface Address {
   addressLine1: string;
   addressLine2: string;
@@ -138,6 +193,8 @@ interface MutualFundDetail {
   realizedReturn: number;
   totalProfit: number;
   mutualFunds: MutualFundStock[];
+  goal: Goal[];
+  sip: SipDetails[];
 }
 
 interface StockOrder {
