@@ -79,6 +79,7 @@ interface Stock {
   CapType: string;
   StockType: string;
   currentPrice: string;
+  recommendationStock: number;
 }
 
 interface MutualFund {
@@ -226,6 +227,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
           capType: stock.CapType,
           stockType: stock.StockType,
           currentPrice: stock.currentPrice,
+          recommendationStock: Number(stock.recommendationStock),
         }));      
        
         console.log(fields);
@@ -281,6 +283,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
                       item.options =  options;  // Replace with the new option(s)
                       if (stock) {
                           item.currentPrice = stock.currentPrice;                          
+                          item.recommendationStock = stock.recommendationStock;
                       } else {
                           console.warn(`No stock found for selectValue: ${item.selectValue}`);
                       }
@@ -1109,7 +1112,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
               type="number"
               min="0"
               placeholder="System Amount"
-              value={portfolioDetails.orderAmount}
+              value={String(Math.round(parseFloat(portfolioDetails?.orderAmount || '0')))}
               onChange={(e) => setPortfolioDetails({ ...portfolioDetails, orderAmount: e.target.value })}
             />
           </div>
@@ -1155,7 +1158,21 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
               />
               {fieldstock[category]?.map((field) => (
                 <div key={field.id} className="flex gap-2 items-center mb-1">
-                  {renderStockDropdown(category, field)}                 
+                  {renderStockDropdown(category, field)}   
+                  <Input
+                    value={
+                      field.recommendationStock === 1
+                        ? "Buy"
+                        : field.recommendationStock === 2
+                        ? "Hold"
+                        : field.recommendationStock === 3
+                        ? "Sell"
+                        : ""
+                    }
+                    readOnly
+                    placeholder="Recommendation"
+                    className="w-28"
+                  />              
                   <Input
                     value={field.currentPrice}
                     readOnly
@@ -1212,6 +1229,15 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
                   </button>
                 </div>
               ))}
+              <div className="mt-2 font-semibold text-right">
+                Total Weight:{" "}
+                {
+                  fieldstock[category]?.reduce(
+                    (sum, f) => sum + (Number(f.weight) || 0),
+                    0
+                  )
+                }
+              </div>
               <button 
                 type="button"
                 onClick={() => addField1(category)}
@@ -1220,7 +1246,9 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
                 Add More
               </button>
             </div>
+            
           ))}
+          
           {summary.totalStocks > 0 && (
               <div className="portfolio-summary-container">
                 {/* Asset Wise Allocation */}
