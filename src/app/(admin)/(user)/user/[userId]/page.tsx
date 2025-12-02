@@ -5,6 +5,7 @@ import ComponentCard from "@/components/common/ComponentCard";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import UserTab from "@/components/user-detail/UserTab";
 import Cookies from "js-cookie";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // Detailed interfaces matching the API response
 
@@ -253,6 +254,8 @@ export default function UserDetails({ params }: PageProps) {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -324,13 +327,29 @@ export default function UserDetails({ params }: PageProps) {
     return <div>No user data found</div>;
   }
 
+  const handleBackToList = () => {
+    const returnPage = searchParams.get('returnPage') || '1';
+    const listType = searchParams.get('listType') || 'userlist';
+
+    let returnUrl = '';
+    if (listType === 'fydaa') {
+      returnUrl = `/fydaauserlist?page=${returnPage}`;
+    } else if (listType === 'savestment') {
+      returnUrl = `/savestmentuserlist?page=${returnPage}`;
+    } else {
+      returnUrl = `/userlist?page=${returnPage}`;
+    }
+
+    router.push(returnUrl);
+  };
+
   return (
     <div>
       <PageBreadcrumb pageTitle="User" />
       <div className="space-y-6">
         <div className="mb-4">
           <button 
-            onClick={() => window.location.href = '/userlist'}
+            onClick={handleBackToList}
             className="flex items-center text-blue-600 hover:text-blue-800"
           >
             <svg 

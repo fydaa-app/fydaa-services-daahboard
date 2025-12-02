@@ -106,7 +106,16 @@ export default function UserTablesPage() {
 
     useEffect(() => {
             const query = searchParams.get('search') || "";
+            const pageParam = searchParams.get('page');
+
             setSearchQuery(query);
+
+            if (pageParam) {
+                const pageNum = parseInt(pageParam, 10);
+                if (!isNaN(pageNum) && pageNum > 0) {
+                    setPage(pageNum);
+                }
+            }
           }, [searchParams]);
 
     const fetchData = useCallback(async () => {
@@ -130,25 +139,34 @@ export default function UserTablesPage() {
         fetchData();
     }, [fetchData]);
 
-    useEffect(() => {
-        setPage(1);
-    }, [searchQuery]);
-
     const handlePageChange = (newPage: number) => {
         setPage(newPage);
+
+        const params = new URLSearchParams(searchParams.toString());
+
+        if (searchQuery) {
+            params.set('search', searchQuery);
+        } else {
+            params.delete('search');
+        }
+
+        params.set('page', newPage.toString());
+
+        router.push(`?${params.toString()}`, { scroll: false });
     };
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         setIsSearching(true);
         
-        // Update URL with search query
+        // Update URL with search query and reset page to 1
         const params = new URLSearchParams();
         if (searchQuery) {
             params.set('search', searchQuery);
         } else {
             params.delete('search');
         }
+        params.set('page', '1');
         
         router.push(`?${params.toString()}`, { scroll: false });
         
@@ -218,7 +236,7 @@ export default function UserTablesPage() {
                     </form>
                 </div>
 
-                    <UserListTable users={users} error={error} />
+                    <UserListTable users={users} error={error} currentPage={page} listType="userlist" />
                     {totalUsers > 0 && (
                         <Pagination 
                             currentPage={page} 

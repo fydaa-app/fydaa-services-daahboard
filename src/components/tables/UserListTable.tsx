@@ -42,6 +42,8 @@ export interface UserTableProps {
     relationshipManagerName?: string;
   }[];
   error: string | null;
+  currentPage?: number;
+  listType?: string;
 }
 
 const formatCurrency = (value: number): string =>
@@ -71,7 +73,7 @@ const getCompletionPercentage = (user: UserTableProps['users'][0]): number => {
   return Math.round((completed / checks.length) * 100);
 };
 
-export default function UserListTable({ users, error }: UserTableProps) {
+export default function UserListTable({ users, error, currentPage = 1, listType = 'userlist' }: UserTableProps) {
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="max-w-full overflow-x-auto">
@@ -181,7 +183,7 @@ export default function UserListTable({ users, error }: UserTableProps) {
                     </TableCell>
                     <TableCell>
                         <Link 
-                          href={`/user/${user.id}`} 
+                          href={`/user/${user.id}?returnPage=${currentPage}&listType=${listType}`} 
                           className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-theme-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200"
                           role="button"
                           aria-label={`View details for ${user.fullName}`}
