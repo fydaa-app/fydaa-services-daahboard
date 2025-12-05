@@ -10,7 +10,15 @@ import Badge from "../ui/badge/Badge";
 import { toast } from "react-hot-toast";
 import EditStockModal from "@/components/form/admin-form/EditStock";
 
-// Define a shared Stock type that matches your API response
+interface Rationale {
+  id: number;
+  stockId: number;
+  file: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
 interface Stock {
   id: number;
   scriptcode: number;
@@ -25,9 +33,9 @@ interface Stock {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  rationales?: Rationale[];
 }
 
-// Define StockData type for the form (with optional fields)
 type StockData = Omit<Stock, 'id'> & { id?: number };
 
 export interface StockTableProps {
@@ -71,10 +79,10 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
 
     setIsDeleting(id);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_STOCK_API_URL      ;
+      const apiUrl = process.env.NEXT_PUBLIC_STOCK_API_URL;
       const response = await fetch(`${apiUrl}stocks/${id}`, {
         method: 'DELETE',
-         headers: {
+        headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${document.cookie.split("; ").find(row => row.startsWith("authToken="))?.split("=")[1] || ""}`,
         },
@@ -107,7 +115,6 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
     setEditingStock(null);
   };
 
-
   const handleStockTypeChange = async (id: number, newType: number) => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_STOCK_API_URL;
@@ -133,12 +140,26 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
       toast.error("Error updating stock recommendation type");
     }
   };
-  
+
+  const viewRationaleFile = (fileUrl: string) => {
+    window.open(fileUrl, '_blank');
+  };
+
+  const getLatestRationale = (rationales?: Rationale[]): Rationale | null => {
+    if (!rationales || rationales.length === 0) return null;
+    
+    const activeRationales = rationales.filter(r => !r.deletedAt);
+    if (activeRationales.length === 0) return null;
+    
+    return activeRationales.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )[0];
+  };
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="max-w-full overflow-x-auto">
-        <div className="min-w-[1102px]">
+        <div className="min-w-[1200px]">
           {error && <p className="text-red-500 p-4">{error}</p>}
           {!error && stocks.length > 0 ? (
             <Table>
@@ -162,9 +183,11 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Cap Type
                   </TableCell>
-
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
-                   Stock recommendation type
+                    Recommendation
+                  </TableCell>
+                  <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
+                    Rationale
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Updated At
@@ -177,6 +200,7 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
               <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
                 {stocks.map((stock) => {
                   const change = getPriceChange(stock.currentPrice, stock.yesterdayPrice);
+                  const latestRationale = getLatestRationale(stock.rationales);
                   
                   return (
                     <TableRow key={stock.id}>
@@ -222,9 +246,31 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
                           <option value="3">Sell</option>
                         </select>
                       </TableCell>
-
+                      <TableCell className="px-4 py-3 text-start">
+                        {latestRationale ? (
+                          <button
+                            onClick={() => viewRationaleFile(latestRationale.file)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40 rounded-lg transition-colors"
+                            title="View rationale PDF"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            View PDF
+                          </button>
+                        ) : (
+                          <span className="text-xs text-gray-400 dark:text-gray-500 italic">
+                            No file
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                        {new Date(stock.updatedAt).toLocaleString()}
+                        {new Date(stock.updatedAt).toLocaleDateString('en-IN', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
                       </TableCell>
                       <TableCell className="px-4 py-3">
                         <div className="flex gap-2">                       
@@ -258,7 +304,6 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
             )
           )}
           
-          
           {editingStock && (
             <EditStockModal
               isOpen={isModalOpen}
@@ -270,7 +315,6 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
               }}
             />
           )}
-         
         </div>
       </div>
     </div>
