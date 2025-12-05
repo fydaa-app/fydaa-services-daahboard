@@ -145,6 +145,7 @@ interface Field {
   MinAmountquantity: number;
   MinAmountorderValue: number;
   options?: StockOption[];
+  recommendationStock?: number;
 }
 
 interface Goal {

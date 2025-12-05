@@ -107,12 +107,10 @@ export default function StockTablesPage() {
     const fetchData = useCallback(async () => {
         try {
             setIsSearching(true);
-            // Ensure currentPage is treated as a number for the API call
             const pageNum = Number(currentPage);
             const data = await fetchStocks(pageNum, limit, searchQuery);
             setApiResponse(data);
             
-            // Ensure currentPage stays in sync with API response
             if (Number(data.currentPage) !== pageNum) {
                 setCurrentPage(Number(data.currentPage));
             }
@@ -139,12 +137,9 @@ export default function StockTablesPage() {
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        
-        // Reset to page 1 when searching
         updateUrlParams(searchQuery, 1);
     };
 
-    // Function to update URL parameters and trigger navigation
     const updateUrlParams = (search: string, page: number) => {
         const params = new URLSearchParams();
         
@@ -152,13 +147,11 @@ export default function StockTablesPage() {
             params.set('search', search);
         }
         
-        // Convert page to string explicitly
         params.set('page', String(page));
         router.push(`?${params.toString()}`, { scroll: false });
     };
 
     const handlePageChange = (page: number) => {
-        // Ensure page is a number before comparing
         const pageNum = Number(page);
         if (pageNum !== Number(currentPage)) {
             updateUrlParams(searchQuery, pageNum);
@@ -178,7 +171,7 @@ export default function StockTablesPage() {
             document.removeEventListener("keydown", handleKeyDown);
         };
     }, []);
-
+    
     return (
         <div>
             <PageBreadcrumb pageTitle="Stocks" />
@@ -235,7 +228,7 @@ export default function StockTablesPage() {
                     
                     <CreateStock
                         isOpen={isModalOpen}
-                        onClose={() => setIsModalOpen(false)}                        
+                        onClose={() => setIsModalOpen(false)}
                     />
 
                     <StockListTable stocks={apiResponse.items} error={error} />
