@@ -362,13 +362,6 @@ export default function UserDetails({ params }: PageProps) {
     const listType = searchParams.get('listType') || 'userlist';
     const searchQuery = searchParams.get('search') || '';
 
-    console.log('Back to List - Parameters:', {
-      returnPage,
-      listType,
-      searchQuery,
-      allParams: Array.from(searchParams.entries())
-    });
-
     let returnUrl = '';
     const params = new URLSearchParams();
     params.set('page', returnPage);
@@ -384,7 +377,6 @@ export default function UserDetails({ params }: PageProps) {
       returnUrl = `/userlist?${params.toString()}`;
     }
 
-    console.log('Back to List - Navigating to:', returnUrl);
     router.push(returnUrl);
   };
 

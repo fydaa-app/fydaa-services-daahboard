@@ -110,12 +110,6 @@ export default function UserTablesPage() {
         const pageParam = searchParams.get('page');
         const pageNum = pageParam ? parseInt(pageParam, 10) : 1;
 
-        console.log('UserList - URL Parameters changed:', {
-            search: query,
-            page: pageParam,
-            allParams: Array.from(searchParams.entries())
-        });
-
         // Update both states together and fetch data with URL values directly
         setSearchQuery(query);
         setPage(pageNum);

@@ -110,13 +110,6 @@ export default function UserTablesPage() {
         const pageParam = searchParams.get('page');
         const pageNum = pageParam ? parseInt(pageParam, 10) : 1;
 
-        console.log('FydaaUserList - URL Parameters changed:', {
-            search: query,
-            page: pageParam,
-            allParams: Array.from(searchParams.entries()),
-            currentState: { page, searchQuery }
-        });
-
         // Update both states together and fetch data with URL values directly
         setSearchQuery(query);
         setPage(pageNum);
@@ -124,20 +117,12 @@ export default function UserTablesPage() {
         // Fetch data immediately with URL parameters to avoid state race conditions
         const fetchWithUrlParams = async () => {
             try {
-                console.log('FydaaUserList - fetchData with URL params:', { page: pageNum, searchQuery: query });
-                
                 const { users, error, totalUsers: apiTotalUsers, limit } = await fetchUsers(pageNum, query);
                 setUsers(users);
                 setError(error);
                 
                 if (apiTotalUsers && limit) {
                     const calculatedTotalPages = Math.ceil(apiTotalUsers / limit);
-                    console.log('FydaaUserList - Setting pagination from URL fetch:', { 
-                        apiTotalUsers, 
-                        limit, 
-                        calculatedTotalPages,
-                        searchQuery: query 
-                    });
                     setTotalPages(calculatedTotalPages);
                     setTotalUsers(apiTotalUsers);
                 }
@@ -173,20 +158,12 @@ export default function UserTablesPage() {
 
     const fetchData = useCallback(async () => {
         try {
-            console.log('FydaaUserList - fetchData called with:', { page, searchQuery });
-            
             const { users, error, totalUsers: apiTotalUsers, limit } = await fetchUsers(page, searchQuery);
             setUsers(users);
             setError(error);
             
             if (apiTotalUsers && limit) {
                 const calculatedTotalPages = Math.ceil(apiTotalUsers / limit);
-                console.log('FydaaUserList - Setting pagination:', { 
-                    apiTotalUsers, 
-                    limit, 
-                    calculatedTotalPages,
-                    searchQuery 
-                });
                 setTotalPages(calculatedTotalPages);
                 setTotalUsers(apiTotalUsers);
             }
