@@ -104,19 +104,57 @@ export default function UserTablesPage() {
     const searchParams = useSearchParams();
     const inputRef = useRef<HTMLInputElement>(null);
 
+    // Initialize page and search query from URL parameters
     useEffect(() => {
-            const query = searchParams.get('search') || "";
-            const pageParam = searchParams.get('page');
+        const query = searchParams.get('search') || "";
+        const pageParam = searchParams.get('page');
+        const pageNum = pageParam ? parseInt(pageParam, 10) : 1;
 
-            setSearchQuery(query);
-
-            if (pageParam) {
-                const pageNum = parseInt(pageParam, 10);
-                if (!isNaN(pageNum) && pageNum > 0) {
-                    setPage(pageNum);
+        // Update both states together and fetch data with URL values directly
+        setSearchQuery(query);
+        setPage(pageNum);
+        
+        // Fetch data immediately with URL parameters to avoid state race conditions
+        const fetchWithUrlParams = async () => {
+            try {
+                const { users, error, totalUsers: apiTotalUsers, limit } = await fetchUsers(pageNum, query);
+                setUsers(users);
+                setError(error);
+                
+                if (apiTotalUsers && limit) {
+                    const calculatedTotalPages = Math.ceil(apiTotalUsers / limit);
+                    setTotalPages(calculatedTotalPages);
+                    setTotalUsers(apiTotalUsers);
                 }
+            } catch (err) {
+                console.error("Error in fetchWithUrlParams:", err);
+                setError("Failed to load data");
             }
-          }, [searchParams]);
+        };
+        
+        fetchWithUrlParams();
+    }, [searchParams]);
+
+    // Reset to page 1 when user types in search (not when loading from URL)
+    const [isTyping, setIsTyping] = useState(false);
+    
+    useEffect(() => {
+        if (isTyping && page !== 1) {
+            setPage(1);
+            
+            // Update URL to reflect page 1 when search changes
+            const params = new URLSearchParams(searchParams.toString());
+            if (searchQuery) {
+                params.set('search', searchQuery);
+            } else {
+                params.delete('search');
+            }
+            params.set('page', '1');
+            
+            router.push(`?${params.toString()}`, { scroll: false });
+        }
+        setIsTyping(false);
+    }, [searchQuery]);
 
     const fetchData = useCallback(async () => {
         try {
@@ -135,9 +173,12 @@ export default function UserTablesPage() {
         }
     }, [page, searchQuery]);
 
+    // Only fetch when user is typing (not when loading from URL)
     useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+        if (isTyping) {
+            fetchData();
+        }
+    }, [fetchData, isTyping]);
 
     const handlePageChange = (newPage: number) => {
         setPage(newPage);
@@ -159,6 +200,9 @@ export default function UserTablesPage() {
         e.preventDefault();
         setIsSearching(true);
         
+        // Reset to first page when searching - do this FIRST
+        setPage(1);
+        
         // Update URL with search query and reset page to 1
         const params = new URLSearchParams();
         if (searchQuery) {
@@ -169,9 +213,6 @@ export default function UserTablesPage() {
         params.set('page', '1');
         
         router.push(`?${params.toString()}`, { scroll: false });
-        
-        // Reset to first page when searching
-        setPage(1);
         
         // Reset searching state after a delay
         setTimeout(() => setIsSearching(false), 1000);
@@ -220,7 +261,10 @@ export default function UserTablesPage() {
                                 ref={inputRef}
                                 type="text"
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={(e) => {
+                                    setIsTyping(true);
+                                    setSearchQuery(e.target.value);
+                                }}
                                 placeholder="Search or type command..."
                                 className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-12 pr-14 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:bg-white/[0.03] dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800 xl:w-full"
                                 />
@@ -236,7 +280,7 @@ export default function UserTablesPage() {
                     </form>
                 </div>
 
-                    <UserListTable users={users} error={error} currentPage={page} listType="savestment" />
+                    <UserListTable users={users} error={error} currentPage={page} listType="savestment" searchQuery={searchQuery} />
                     {totalUsers > 0 && (
                         <Pagination 
                             currentPage={page} 

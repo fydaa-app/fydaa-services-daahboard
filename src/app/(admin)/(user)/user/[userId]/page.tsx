@@ -233,6 +233,35 @@ interface RelationshipManager {
   photo: string | null;
 }
 
+interface MutualFundTransaction {
+  transactionId: string;
+  userId: number;
+  userInfo: {
+    firstName: string;
+    lastName: string;
+    email: string | null;
+  };
+  sipId: number;
+  totalOrders: number;
+  successfulOrders: number;
+  failedOrders: number;
+  submittedOrders: number;
+  totalAmount: number;
+  processedAmount: number;
+  status: string;
+  createdAt: string;
+  orders: Array<{
+    id: number;
+    scheme: string;
+    schemeName: string;
+    state: string;
+    amount: number;
+    processed_amount: number;
+    failure_code: string | null;
+    last_error: string | null;
+  }>;
+}
+
 interface UserData {
   userDetails: UserDetails;
   userSubscriptionDetails: UserSubscription[];
@@ -244,6 +273,7 @@ interface UserData {
   referralDetails: ReferralDetails;
   advisor: Advisor;
   relationshipManager: RelationshipManager;
+  transactionsMF?: MutualFundTransaction[];
 }
 
 interface PageProps {
@@ -330,14 +360,21 @@ export default function UserDetails({ params }: PageProps) {
   const handleBackToList = () => {
     const returnPage = searchParams.get('returnPage') || '1';
     const listType = searchParams.get('listType') || 'userlist';
+    const searchQuery = searchParams.get('search') || '';
 
     let returnUrl = '';
+    const params = new URLSearchParams();
+    params.set('page', returnPage);
+    if (searchQuery) {
+      params.set('search', searchQuery);
+    }
+
     if (listType === 'fydaa') {
-      returnUrl = `/fydaauserlist?page=${returnPage}`;
+      returnUrl = `/fydaauserlist?${params.toString()}`;
     } else if (listType === 'savestment') {
-      returnUrl = `/savestmentuserlist?page=${returnPage}`;
+      returnUrl = `/savestmentuserlist?${params.toString()}`;
     } else {
-      returnUrl = `/userlist?page=${returnPage}`;
+      returnUrl = `/userlist?${params.toString()}`;
     }
 
     router.push(returnUrl);
@@ -378,6 +415,7 @@ export default function UserDetails({ params }: PageProps) {
             referralDetails={userData.referralDetails}
             advisor={userData.advisor}
             relationshipManager={userData.relationshipManager}
+            transactionsMF={userData.transactionsMF}
           />
         </ComponentCard>
       </div>
