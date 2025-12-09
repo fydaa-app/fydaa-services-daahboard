@@ -360,16 +360,31 @@ export default function UserDetails({ params }: PageProps) {
   const handleBackToList = () => {
     const returnPage = searchParams.get('returnPage') || '1';
     const listType = searchParams.get('listType') || 'userlist';
+    const searchQuery = searchParams.get('search') || '';
+
+    console.log('Back to List - Parameters:', {
+      returnPage,
+      listType,
+      searchQuery,
+      allParams: Array.from(searchParams.entries())
+    });
 
     let returnUrl = '';
-    if (listType === 'fydaa') {
-      returnUrl = `/fydaauserlist?page=${returnPage}`;
-    } else if (listType === 'savestment') {
-      returnUrl = `/savestmentuserlist?page=${returnPage}`;
-    } else {
-      returnUrl = `/userlist?page=${returnPage}`;
+    const params = new URLSearchParams();
+    params.set('page', returnPage);
+    if (searchQuery) {
+      params.set('search', searchQuery);
     }
 
+    if (listType === 'fydaa') {
+      returnUrl = `/fydaauserlist?${params.toString()}`;
+    } else if (listType === 'savestment') {
+      returnUrl = `/savestmentuserlist?${params.toString()}`;
+    } else {
+      returnUrl = `/userlist?${params.toString()}`;
+    }
+
+    console.log('Back to List - Navigating to:', returnUrl);
     router.push(returnUrl);
   };
 
