@@ -233,6 +233,35 @@ interface RelationshipManager {
   photo: string | null;
 }
 
+interface MutualFundTransaction {
+  transactionId: string;
+  userId: number;
+  userInfo: {
+    firstName: string;
+    lastName: string;
+    email: string | null;
+  };
+  sipId: number;
+  totalOrders: number;
+  successfulOrders: number;
+  failedOrders: number;
+  submittedOrders: number;
+  totalAmount: number;
+  processedAmount: number;
+  status: string;
+  createdAt: string;
+  orders: Array<{
+    id: number;
+    scheme: string;
+    schemeName: string;
+    state: string;
+    amount: number;
+    processed_amount: number;
+    failure_code: string | null;
+    last_error: string | null;
+  }>;
+}
+
 interface UserData {
   userDetails: UserDetails;
   userSubscriptionDetails: UserSubscription[];
@@ -244,6 +273,7 @@ interface UserData {
   referralDetails: ReferralDetails;
   advisor: Advisor;
   relationshipManager: RelationshipManager;
+  transactionsMF?: MutualFundTransaction[];
 }
 
 interface PageProps {
@@ -378,6 +408,7 @@ export default function UserDetails({ params }: PageProps) {
             referralDetails={userData.referralDetails}
             advisor={userData.advisor}
             relationshipManager={userData.relationshipManager}
+            transactionsMF={userData.transactionsMF}
           />
         </ComponentCard>
       </div>
