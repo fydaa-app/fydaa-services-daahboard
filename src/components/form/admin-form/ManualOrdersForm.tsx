@@ -1,6 +1,5 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { stockManagementServiceApi } from '@/services/stockManagementServiceApi'; 
 import Cookies from 'js-cookie';
 
 interface User {
@@ -32,6 +31,36 @@ interface Transaction {
   remarks: string;
 }
 
+// Add interface for Stock API response
+interface StockApiItem {
+  id: number | string;
+  stockName?: string;
+  sector?: string;
+  currentPrice?: number;
+}
+
+// Add interface for preview data
+interface PreviewWarning {
+  warning: string;
+}
+
+interface PreviewItem {
+  stockName: string;
+  orderType: "BUY" | "SELL";
+  qty: number;
+  purchasePrice: number;
+  totalValue: number;
+}
+
+interface PreviewData {
+  data: {
+    totalTransactions: number;
+    orderDate: string;
+    warnings?: PreviewWarning[];
+    preview: PreviewItem[];
+  };
+}
+
 export default function ManualOrdersForm() {
   const [users, setUsers] = useState<User[]>([]);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
@@ -52,7 +81,7 @@ export default function ManualOrdersForm() {
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [previewData, setPreviewData] = useState<any>(null);
+  const [previewData, setPreviewData] = useState<PreviewData | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -129,8 +158,8 @@ export default function ManualOrdersForm() {
         }
       });
       const data = await response.json();
-      const items = data ?? [];
-      const options = items.map((stock: any) => ({
+      const items: StockApiItem[] = data ?? [];
+      const options = items.map((stock) => ({
         value: Number(stock.id),
         label: String(stock.stockName ?? ""),
         sector: String(stock.sector ?? ""),
@@ -173,7 +202,7 @@ export default function ManualOrdersForm() {
     }
   };
 
-  const updateTransaction = (id: string, field: keyof Transaction, value: any) => {
+  const updateTransaction = (id: string, field: keyof Transaction, value: string) => {
     setTransactions(
       transactions.map((t) =>
         t.id === id ? { ...t, [field]: value } : t
@@ -314,11 +343,6 @@ export default function ManualOrdersForm() {
     }
   };
 
-  const getStockName = (stockId: string) => {
-    const stock = stocks.find((s) => s.value === parseInt(stockId));
-    return stock ? stock.label : "";
-  };
-
   return (
     <div className="max-w-6xl mx-auto p-6 bg-white dark:bg-gray-900 rounded-lg shadow">
       <h2 className="text-2xl font-bold mb-6">Create Manual Orders</h2>
@@ -359,7 +383,7 @@ export default function ManualOrdersForm() {
         </div>
       )}
 
-      {/* Portfolio Selection - ✅ UPDATED to use portfolioId */}
+      {/* Portfolio Selection */}
       {selectedUser && (
         <div className="mb-6">
           <label className="block text-sm font-medium mb-2">Select Portfolio *</label>
@@ -538,7 +562,7 @@ export default function ManualOrdersForm() {
           {previewData.data.warnings && previewData.data.warnings.length > 0 && (
             <div className="mb-4 p-3 bg-yellow-100 dark:bg-yellow-800 rounded">
               <p className="font-semibold text-sm mb-2">Warnings:</p>
-              {previewData.data.warnings.map((warning: any, i: number) => (
+              {previewData.data.warnings.map((warning, i) => (
                 <p key={i} className="text-xs">• {warning.warning}</p>
               ))}
             </div>
@@ -556,7 +580,7 @@ export default function ManualOrdersForm() {
                 </tr>
               </thead>
               <tbody>
-                {previewData.data.preview.map((item: any, i: number) => (
+                {previewData.data.preview.map((item, i) => (
                   <tr key={i} className="border-t dark:border-gray-700">
                     <td className="px-3 py-2">{item.stockName}</td>
                     <td className="px-3 py-2">

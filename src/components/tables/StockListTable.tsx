@@ -266,10 +266,13 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
                         )}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                        {new Date(stock.updatedAt).toLocaleDateString('en-IN', {
+                        {new Date(stock.updatedAt).toLocaleString('en-IN', {
                           year: 'numeric',
                           month: 'short',
-                          day: 'numeric'
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit'
                         })}
                       </TableCell>
                       <TableCell className="px-4 py-3">
