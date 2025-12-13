@@ -97,10 +97,15 @@ const navItems: NavItem[] = [
     name: "Mutual Fund",
     path: "/mutual-fund",
   },   
-   {
+  {
     name: "Corporate Actions",
     icon: <SettingIcon />,
     path: "/corporate-actions",
+  },
+  {
+    name: "Manual Orders",
+    icon: <SettingIcon />,
+    path: "/manual-orders",
   },
   {
     name: "Settings",
