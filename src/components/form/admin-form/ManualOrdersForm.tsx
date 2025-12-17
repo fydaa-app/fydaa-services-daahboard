@@ -13,6 +13,7 @@ interface User {
 interface Portfolio {
   portfolioId: number;
   portfolioName: string;
+  portfolioType: string;
 }
 
 interface StockOption {
@@ -31,7 +32,6 @@ interface Transaction {
   remarks: string;
 }
 
-// Add interface for Stock API response
 interface StockApiItem {
   id: number | string;
   stockName?: string;
@@ -39,7 +39,6 @@ interface StockApiItem {
   currentPrice?: number;
 }
 
-// Add interface for preview data
 interface PreviewWarning {
   warning: string;
 }
@@ -49,15 +48,51 @@ interface PreviewItem {
   orderType: "BUY" | "SELL";
   qty: number;
   purchasePrice: number;
+  purchasePriceInr?: number;
   totalValue: number;
+  currency?: string;
 }
 
 interface PreviewData {
   data: {
     totalTransactions: number;
     orderDate: string;
+    portfolioType: string;
+    priceUsdToInr?: number;
     warnings?: PreviewWarning[];
     preview: PreviewItem[];
+  };
+}
+
+interface HistoryOrder {
+  orderId: number;
+  stockName: string;
+  orderType: string;
+  quantity: number;
+  purchasePriceInr?: number;
+  purchasePrice: number;
+  totalValue: number;
+}
+
+interface HistoryTransaction {
+  transactionId: string;
+  orderDate: string;
+  portfolioName: string;
+  portfolioType: string;
+  priceUsdToInr?: number;
+  totalOrders: number;
+  totalBuyValue: number;
+  totalSellValue: number;
+  orders: HistoryOrder[];
+}
+
+interface HistoryData {
+  data: {
+    summary: {
+      totalTransactions: number;
+      totalOrders: number;
+    };
+    history: HistoryTransaction[];
   };
 }
 
@@ -67,8 +102,10 @@ export default function ManualOrdersForm() {
   const [stocks, setStocks] = useState<StockOption[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedPortfolio, setSelectedPortfolio] = useState<string>("");
+  const [selectedPortfolioType, setSelectedPortfolioType] = useState<string>("");
   const [searchUser, setSearchUser] = useState("");
   const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]);
+  const [priceUsdToInr, setPriceUsdToInr] = useState("");
   const [transactions, setTransactions] = useState<Transaction[]>([
     {
       id: Date.now().toString(),
@@ -82,6 +119,8 @@ export default function ManualOrdersForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyData, setHistoryData] = useState<HistoryData | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -132,12 +171,10 @@ export default function ManualOrdersForm() {
       
       const data = await response.json();
       
-      // Check if portfolios exist in response
       if (data.portfolios && Array.isArray(data.portfolios)) {
         setPortfolios(data.portfolios);
       } else {
         setPortfolios([]);
-        console.warn('No portfolios found for user:', userId);
       }
     } catch (error) {
       console.error("Error fetching portfolios:", error);
@@ -172,12 +209,50 @@ export default function ManualOrdersForm() {
     }
   };
 
+  const fetchUserHistory = async (userId: number) => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_STOCK_API_URL}orders/getUserWiseStockHistory`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch history');
+      }
+
+      const data = await response.json();
+      setHistoryData(data);
+      setShowHistory(true);
+    } catch (error) {
+      console.error("Error fetching history:", error);
+      alert('Failed to load history. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleUserSelect = (userId: string) => {
     const user = users.find((u) => u.id === parseInt(userId));
     setSelectedUser(user || null);
     setSelectedPortfolio("");
-    setPortfolios([]); // Clear previous portfolios
+    setSelectedPortfolioType("");
+    setPortfolios([]);
     setShowPreview(false);
+    setShowHistory(false);
+    setPriceUsdToInr("");
+  };
+
+  const handlePortfolioSelect = (portfolioId: string) => {
+    setSelectedPortfolio(portfolioId);
+    const portfolio = portfolios.find(p => p.portfolioId === parseInt(portfolioId));
+    setSelectedPortfolioType(portfolio?.portfolioType || "");
+    setShowPreview(false);
+    setPriceUsdToInr("");
   };
 
   const addTransaction = () => {
@@ -220,6 +295,12 @@ export default function ManualOrdersForm() {
       alert("Please select a portfolio");
       return false;
     }
+    if (selectedPortfolioType === "US-STOCK") {
+      if (!priceUsdToInr || parseFloat(priceUsdToInr) <= 0) {
+        alert("priceUsdToInr is required for US-STOCK portfolio");
+        return false;
+      }
+    }
     if (!orderDate) {
       alert("Please select order date");
       return false;
@@ -246,7 +327,7 @@ export default function ManualOrdersForm() {
 
     setIsLoading(true);
     try {
-      const requestBody = {
+      const requestBody: Record<string, unknown> = {
         userId: selectedUser!.id,
         portfolioId: parseInt(selectedPortfolio),
         orderDate: new Date(orderDate).toISOString(),
@@ -259,6 +340,10 @@ export default function ManualOrdersForm() {
         })),
       };
 
+      if (selectedPortfolioType === "US-STOCK") {
+        requestBody.priceUsdToInr = parseFloat(priceUsdToInr);
+      }
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_STOCK_API_URL}orders/previewManualOrders`,
         {
@@ -268,13 +353,13 @@ export default function ManualOrdersForm() {
         }
       );
 
-      const data = await response.json();
+      const data = (await response.json()) as PreviewData | { message?: string };
       if (!response.ok) {
-        alert(data.message || "Failed to generate preview");
+        alert((data as { message?: string }).message || "Failed to generate preview");
         return;
       }
 
-      setPreviewData(data);
+      setPreviewData(data as PreviewData);
       setShowPreview(true);
     } catch (error) {
       console.error("Preview error:", error);
@@ -289,7 +374,7 @@ export default function ManualOrdersForm() {
 
     setIsLoading(true);
     try {
-      const requestBody = {
+      const requestBody: Record<string, unknown> = {
         userId: selectedUser!.id,
         portfolioId: parseInt(selectedPortfolio),
         orderDate: new Date(orderDate).toISOString(),
@@ -302,6 +387,10 @@ export default function ManualOrdersForm() {
         })),
       };
 
+      if (selectedPortfolioType === "US-STOCK") {
+        requestBody.priceUsdToInr = parseFloat(priceUsdToInr);
+      }
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_STOCK_API_URL}orders/createManualOrders`,
         {
@@ -311,7 +400,7 @@ export default function ManualOrdersForm() {
         }
       );
 
-      const data = await response.json();
+      const data = (await response.json()) as { message?: string };
       if (!response.ok) {
         alert(data.message || "Failed to create orders");
         return;
@@ -322,7 +411,9 @@ export default function ManualOrdersForm() {
       // Reset form
       setSelectedUser(null);
       setSelectedPortfolio("");
+      setSelectedPortfolioType("");
       setPortfolios([]);
+      setPriceUsdToInr("");
       setTransactions([
         {
           id: Date.now().toString(),
@@ -343,9 +434,22 @@ export default function ManualOrdersForm() {
     }
   };
 
+  const isUSStock = selectedPortfolioType === "US-STOCK";
+
   return (
     <div className="max-w-6xl mx-auto p-6 bg-white dark:bg-gray-900 rounded-lg shadow">
-      <h2 className="text-2xl font-bold mb-6">Create Manual Orders</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Create Manual Orders</h2>
+        {selectedUser && (
+          <button
+            onClick={() => fetchUserHistory(selectedUser.id)}
+            disabled={isLoading}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+          >
+            View History
+          </button>
+        )}
+      </div>
 
       {/* User Selection */}
       <div className="mb-6">
@@ -398,20 +502,46 @@ export default function ManualOrdersForm() {
           ) : (
             <select
               value={selectedPortfolio}
-              onChange={(e) => {
-                setSelectedPortfolio(e.target.value);
-                setShowPreview(false);
-              }}
+              onChange={(e) => handlePortfolioSelect(e.target.value)}
               className="w-full px-4 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700"
             >
               <option value="">Select a portfolio</option>
               {portfolios.map((portfolio) => (
                 <option key={portfolio.portfolioId} value={portfolio.portfolioId}>
-                  {portfolio.portfolioName}
+                  {portfolio.portfolioName} {portfolio.portfolioType ? `(${portfolio.portfolioType})` : ''}
                 </option>
               ))}
             </select>
           )}
+        </div>
+      )}
+
+      {/* USD to INR Conversion Rate - Highlighted for US-STOCK */}
+      {selectedPortfolio && isUSStock && (
+        <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900 border-2 border-amber-400 dark:border-amber-600 rounded-lg">
+          <div className="flex items-center mb-2">
+            <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <label className="block text-sm font-bold">
+              USD to INR Conversion Rate *
+            </label>
+          </div>
+          <input
+            type="number"
+            value={priceUsdToInr}
+            onChange={(e) => {
+              setPriceUsdToInr(e.target.value);
+              setShowPreview(false);
+            }}
+            placeholder="Enter current USD to INR rate (e.g., 83.50)"
+            min="0"
+            step="0.01"
+            className="w-full px-4 py-2 border-2 border-amber-300 dark:border-amber-700 rounded-lg dark:bg-gray-800 focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
+          />
+          <p className="text-xs text-amber-700 dark:text-amber-300 mt-2 font-medium">
+            ⚠️ Required: All purchase prices will be entered in USD and automatically converted to INR using this rate
+          </p>
         </div>
       )}
 
@@ -470,7 +600,7 @@ export default function ManualOrdersForm() {
                     <option value="">Select stock</option>
                     {stocks.map((stock) => (
                       <option key={stock.value} value={stock.value}>
-                        {stock.label} - ₹{stock.currentPrice}
+                        {stock.label} - {isUSStock ? '$' : '₹'}{stock.currentPrice}
                       </option>
                     ))}
                   </select>
@@ -502,12 +632,14 @@ export default function ManualOrdersForm() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">Purchase Price *</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Purchase Price * {isUSStock && <span className="text-xs text-blue-600 dark:text-blue-400 font-semibold">(in USD)</span>}
+                  </label>
                   <input
                     type="number"
                     value={txn.purchasePrice}
                     onChange={(e) => updateTransaction(txn.id, "purchasePrice", e.target.value)}
-                    placeholder="Enter price"
+                    placeholder={`Enter price in ${isUSStock ? 'USD' : 'INR'}`}
                     min="0"
                     step="0.01"
                     className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
@@ -526,8 +658,36 @@ export default function ManualOrdersForm() {
                 </div>
 
                 {txn.stockId && txn.qty && txn.purchasePrice && (
-                  <div className="md:col-span-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                    <span className="text-sm font-medium">Total Value: ₹{(parseFloat(txn.qty) * parseFloat(txn.purchasePrice)).toFixed(2)}</span>
+                  <div className="md:col-span-2 p-3 bg-gray-50 dark:bg-gray-800 rounded">
+                    {isUSStock && priceUsdToInr ? (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-600 dark:text-gray-400">Price (USD)</span>
+                          <span className="font-semibold text-blue-600 dark:text-blue-400">
+                            ${parseFloat(txn.purchasePrice).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-600 dark:text-gray-400">Price (INR) @ ₹{priceUsdToInr}</span>
+                          <span className="font-semibold text-green-600 dark:text-green-400">
+                            ₹{(parseFloat(txn.purchasePrice) * parseFloat(priceUsdToInr)).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-600 dark:text-gray-400">Total Value</span>
+                          <span className="font-bold text-lg text-purple-600 dark:text-purple-400">
+                            ₹{(parseFloat(txn.qty) * parseFloat(txn.purchasePrice) * parseFloat(priceUsdToInr)).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Total Value</span>
+                        <span className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                          ₹{(parseFloat(txn.qty) * parseFloat(txn.purchasePrice)).toFixed(2)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -536,13 +696,13 @@ export default function ManualOrdersForm() {
         </div>
       )}
 
-      {/* Preview Button */}
+      {/* Action Buttons */}
       {selectedPortfolio && transactions.length > 0 && (
-        <div className="mb-4">
+        <div className="space-y-3">
           <button
             onClick={handlePreview}
             disabled={isLoading}
-            className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-semibold"
           >
             {isLoading ? "Loading..." : "Preview Orders"}
           </button>
@@ -551,17 +711,35 @@ export default function ManualOrdersForm() {
 
       {/* Preview Section */}
       {showPreview && previewData && (
-        <div className="mt-6 p-4 bg-green-50 dark:bg-green-900 rounded-lg">
+        <div className="mt-6 p-4 bg-green-50 dark:bg-green-900 rounded-lg border-2 border-green-400">
           <h3 className="text-lg font-semibold mb-4">Preview Results</h3>
           
-          <div className="mb-4 text-sm">
-            <p><span className="font-semibold">Total Transactions:</span> {previewData.data.totalTransactions}</p>
-            <p><span className="font-semibold">Order Date:</span> {new Date(previewData.data.orderDate).toLocaleDateString()}</p>
+          <div className="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg">
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <span className="text-gray-600 dark:text-gray-400">Portfolio Type:</span>
+                <span className="ml-2 font-semibold">{previewData.data.portfolioType}</span>
+              </div>
+              {previewData.data.priceUsdToInr && (
+                <div>
+                  <span className="text-gray-600 dark:text-gray-400">USD to INR Rate:</span>
+                  <span className="ml-2 font-semibold text-blue-600">₹{previewData.data.priceUsdToInr}</span>
+                </div>
+              )}
+              <div>
+                <span className="text-gray-600 dark:text-gray-400">Total Transactions:</span>
+                <span className="ml-2 font-semibold">{previewData.data.totalTransactions}</span>
+              </div>
+              <div>
+                <span className="text-gray-600 dark:text-gray-400">Order Date:</span>
+                <span className="ml-2 font-semibold">{new Date(previewData.data.orderDate).toLocaleDateString()}</span>
+              </div>
+            </div>
           </div>
 
           {previewData.data.warnings && previewData.data.warnings.length > 0 && (
-            <div className="mb-4 p-3 bg-yellow-100 dark:bg-yellow-800 rounded">
-              <p className="font-semibold text-sm mb-2">Warnings:</p>
+            <div className="mb-4 p-3 bg-yellow-100 dark:bg-yellow-800 rounded border border-yellow-400">
+              <p className="font-semibold text-sm mb-2">⚠️ Warnings:</p>
               {previewData.data.warnings.map((warning, i) => (
                 <p key={i} className="text-xs">• {warning.warning}</p>
               ))}
@@ -569,14 +747,15 @@ export default function ManualOrdersForm() {
           )}
 
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-100 dark:bg-gray-800">
+            <table className="min-w-full text-sm bg-white dark:bg-gray-800 rounded">
+              <thead className="bg-gray-200 dark:bg-gray-700">
                 <tr>
                   <th className="px-3 py-2 text-left">Stock</th>
                   <th className="px-3 py-2 text-left">Type</th>
                   <th className="px-3 py-2 text-right">Qty</th>
-                  <th className="px-3 py-2 text-right">Price</th>
-                  <th className="px-3 py-2 text-right">Total</th>
+                  {isUSStock && <th className="px-3 py-2 text-right">Price (USD)</th>}
+                  <th className="px-3 py-2 text-right">Price (INR)</th>
+                  <th className="px-3 py-2 text-right">Total (INR)</th>
                 </tr>
               </thead>
               <tbody>
@@ -584,15 +763,24 @@ export default function ManualOrdersForm() {
                   <tr key={i} className="border-t dark:border-gray-700">
                     <td className="px-3 py-2">{item.stockName}</td>
                     <td className="px-3 py-2">
-                      <span className={`px-2 py-1 rounded text-xs ${
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${
                         item.orderType === 'BUY' ? 'bg-green-200 dark:bg-green-700' : 'bg-red-200 dark:bg-red-700'
                       }`}>
                         {item.orderType}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-right">{item.qty}</td>
-                    <td className="px-3 py-2 text-right">₹{item.purchasePrice.toFixed(2)}</td>
-                    <td className="px-3 py-2 text-right font-semibold">₹{item.totalValue.toFixed(2)}</td>
+                    {isUSStock && (
+                      <td className="px-3 py-2 text-right text-blue-600 dark:text-blue-400 font-semibold">
+                        ${item.purchasePrice.toFixed(2)}
+                      </td>
+                    )}
+                    <td className="px-3 py-2 text-right">
+                      ₹{(item.purchasePriceInr || item.purchasePrice).toFixed(2)}
+                    </td>
+                    <td className="px-3 py-2 text-right font-bold text-purple-600 dark:text-purple-400">
+                      ₹{item.totalValue.toFixed(2)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -602,10 +790,132 @@ export default function ManualOrdersForm() {
           <button
             onClick={handleSubmit}
             disabled={isLoading}
-            className="w-full mt-4 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+            className="w-full mt-4 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-bold text-lg"
           >
-            {isLoading ? "Processing..." : "Confirm & Create Orders"}
+            {isLoading ? "Processing..." : "✓ Confirm & Create Orders"}
           </button>
+        </div>
+      )}
+
+      {/* History Modal */}
+      {showHistory && historyData && (
+        <div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
+          <div className="bg-white dark:bg-gray-900 rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white dark:bg-gray-900 p-4 border-b dark:border-gray-700 flex justify-between items-center">
+              <h3 className="text-xl font-bold">Manual Order History</h3>
+              <button
+                onClick={() => setShowHistory(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-4">
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900 rounded">
+                <h4 className="font-semibold mb-2">Summary</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>Total Transactions: <span className="font-bold">{historyData.data.summary.totalTransactions}</span></div>
+                  <div>Total Orders: <span className="font-bold">{historyData.data.summary.totalOrders}</span></div>
+                </div>
+              </div>
+
+              {historyData.data.history.map((txn, idx) => (
+                <div key={idx} className="mb-4 p-4 border rounded-lg dark:border-gray-700">
+                  <div className="mb-3">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h5 className="font-semibold">Transaction ID: {txn.transactionId}</h5>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {txn.portfolioName} ({txn.portfolioType})
+                        </p>
+                      </div>
+                      <div className="text-right text-sm">
+                        <p className="font-semibold">{new Date(txn.orderDate).toLocaleDateString()}</p>
+                        {txn.priceUsdToInr && (
+                          <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold">
+                            USD/INR: ₹{txn.priceUsdToInr}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs mt-2">
+                      <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded">
+                        <span className="font-medium">Orders:</span> {txn.totalOrders}
+                      </div>
+                      <div className="p-2 bg-green-100 dark:bg-green-800 rounded">
+                        <span className="font-medium">Buy:</span> ₹{txn.totalBuyValue.toFixed(2)}
+                      </div>
+                      <div className="p-2 bg-red-100 dark:bg-red-800 rounded">
+                        <span className="font-medium">Sell:</span> ₹{txn.totalSellValue.toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-xs">
+                      <thead className="bg-gray-100 dark:bg-gray-800">
+                        <tr>
+                          <th className="px-2 py-1 text-left">Stock</th>
+                          <th className="px-2 py-1 text-left">Type</th>
+                          <th className="px-2 py-1 text-right">Qty</th>
+                          {txn.portfolioType === 'US-STOCK' ? (
+                            <>
+                              <th className="px-2 py-1 text-right">Price (USD)</th>
+                              <th className="px-2 py-1 text-right">Price (INR)</th>
+                            </>
+                          ) : (
+                            <th className="px-2 py-1 text-right">Price (INR)</th>
+                          )}
+                          <th className="px-2 py-1 text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {txn.orders.map((order, orderIdx) => (
+                          <tr key={orderIdx} className="border-t dark:border-gray-700">
+                            <td className="px-2 py-1">{order.stockName}</td>
+                            <td className="px-2 py-1">
+                              <span className={`px-1 py-0.5 rounded text-xs ${
+                                order.orderType === 'BUY' 
+                                  ? 'bg-green-200 dark:bg-green-700' 
+                                  : 'bg-red-200 dark:bg-red-700'
+                              }`}>
+                                {order.orderType}
+                              </span>
+                            </td>
+                            <td className="px-2 py-1 text-right">{order.quantity}</td>
+                            {txn.portfolioType === 'US-STOCK' && order.purchasePrice ? (
+                              <>
+                                <td className="px-2 py-1 text-right text-blue-600 dark:text-blue-400">
+                                  ${order.purchasePrice.toFixed(2)}
+                                </td>
+                                <td className="px-2 py-1 text-right">
+                                  ₹{(order.purchasePriceInr ?? order.purchasePrice).toFixed(2)}
+                                </td>
+                              </>
+                            ) : (
+                              <td className="px-2 py-1 text-right">
+                                ₹{order.purchasePrice.toFixed(2)}
+                              </td>
+                            )}
+                            <td className="px-2 py-1 text-right font-semibold">
+                              ₹{order.totalValue.toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+
+              {historyData.data.history.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No manual orders found for this user
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
