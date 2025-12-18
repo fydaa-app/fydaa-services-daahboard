@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import Cookies from 'js-cookie';
 
 interface StockOption {
   value: number;
@@ -107,7 +108,7 @@ export default function CorporateActionsForm() {
   const [isLoadingStocks, setIsLoadingStocks] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   useEffect(() => {
     fetchStocks();
@@ -116,9 +117,15 @@ export default function CorporateActionsForm() {
   const fetchStocks = async () => {
     try {
       setIsLoadingStocks(true);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_STOCK_API_URL}stocks`);
+      const authToken = Cookies.get('authToken') || '';
+      const response = await fetch(`${process.env.NEXT_PUBLIC_STOCK_API_URL}${process.env.NEXT_PUBLIC_STOCK_ENDPOINT}`,{
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        }
+      });
       const data = await response.json();
-      const items = (data?.data ?? []) as Array<Record<string, unknown>>;
+      const items = (data ?? []) as Array<Record<string, unknown>>;
 
       const options = items.map((stock) => ({
         value: Number(stock["id"] as number | string | undefined) || 0,
@@ -160,7 +167,6 @@ export default function CorporateActionsForm() {
       }
 
       setHistoryData(data);
-      setShowHistory(true);
     } catch (error) {
       console.error("History error:", error);
       toast.error("Failed to fetch corporate action history");
@@ -201,7 +207,6 @@ export default function CorporateActionsForm() {
     if (stockId) {
       fetchHistory(parseInt(stockId));
     } else {
-      setShowHistory(false);
       setHistoryData(null);
     }
   };
@@ -404,132 +409,35 @@ export default function CorporateActionsForm() {
 
         {/* Stock Details */}
         {selectedStock && (
-          <div className="col-span-full p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="font-semibold">Sector:</span> {selectedStock.sector}
+          <div className="col-span-full">
+            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-semibold">Sector:</span> {selectedStock.sector}
+                </div>
+                <div>
+                  <span className="font-semibold">Cap Type:</span> {selectedStock.capType}
+                </div>
+                <div>
+                  <span className="font-semibold">Stock Type:</span> {selectedStock.stockType}
+                </div>
+                <div>
+                  <span className="font-semibold">Current Price:</span> ₹{selectedStock.currentPrice}
+                </div>
               </div>
-              <div>
-                <span className="font-semibold">Cap Type:</span> {selectedStock.capType}
-              </div>
-              <div>
-                <span className="font-semibold">Stock Type:</span> {selectedStock.stockType}
-              </div>
-              <div>
-                <span className="font-semibold">Current Price:</span> ₹{selectedStock.currentPrice}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* History Section */}
-        {showHistory && historyData && (
-          <div className="col-span-full p-4 bg-indigo-50 dark:bg-indigo-900 rounded-lg">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Corporate Action History</h3>
-              {isLoadingHistory && <span className="text-sm">Loading...</span>}
             </div>
             
-            {historyData.data.totalActions === 0 ? (
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                No corporate actions found for this stock
-              </p>
-            ) : (
-              <>
-                {/* Latest Action Highlight */}
-                {historyData.data.latestAction && (
-                  <div className="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg border-2 border-indigo-300">
-                    <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold mb-2">
-                      LATEST ACTION
-                    </p>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <span className="font-semibold">Type:</span>{" "}
-                        <span className={`inline-block px-2 py-1 rounded text-xs ${getActionTypeBadgeColor(historyData.data.latestAction.actionType)}`}>
-                          {getActionTypeLabel(historyData.data.latestAction.actionType)}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="font-semibold">Date:</span>{" "}
-                        {new Date(historyData.data.latestAction.actionDate).toLocaleDateString()}
-                      </div>
-                      <div>
-                        <span className="font-semibold">Ratio:</span> {historyData.data.latestAction.ratio}
-                      </div>
-                      <div>
-                        <span className="font-semibold">Users Affected:</span> {historyData.data.latestAction.totalUsersAffected}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Full History Table with Users */}
-                <div className="overflow-x-auto max-h-96 overflow-y-auto">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-xs">
-                    <thead className="bg-gray-100 dark:bg-gray-800 sticky top-0">
-                      <tr>
-                        <th className="px-2 py-2 text-left text-xs font-medium uppercase">Date</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium uppercase">Action</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium uppercase">Ratio</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium uppercase">User ID</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium uppercase">Name</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium uppercase">Email</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium uppercase">Portfolio</th>
-                        <th className="px-2 py-2 text-right text-xs font-medium uppercase">Qty Received</th>
-                        <th className="px-2 py-2 text-right text-xs font-medium uppercase">Price</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {historyData.data.history.map((action, actionIndex) => (
-                        action.users && action.users.length > 0 ? (
-                          action.users.map((user, userIndex) => (
-                            <tr key={`${actionIndex}-${userIndex}`} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                              {userIndex === 0 && (
-                                <>
-                                  <td className="px-2 py-2 text-sm border-r border-gray-300 dark:border-gray-600" rowSpan={action.users.length}>
-                                    {new Date(action.actionDate).toLocaleDateString()}
-                                  </td>
-                                  <td className="px-2 py-2 text-sm border-r border-gray-300 dark:border-gray-600" rowSpan={action.users.length}>
-                                    <span className={`inline-block px-2 py-1 rounded text-xs ${getActionTypeBadgeColor(action.actionType)}`}>
-                                      {getActionTypeLabel(action.actionType)}
-                                    </span>
-                                  </td>
-                                  <td className="px-2 py-2 text-sm border-r border-gray-300 dark:border-gray-600" rowSpan={action.users.length}>
-                                    {action.ratio}
-                                  </td>
-                                </>
-                              )}
-                              <td className="px-2 py-2 text-sm">{user.userId}</td>
-                              <td className="px-2 py-2 text-sm">{user.userName}</td>
-                              <td className="px-2 py-2 text-sm">{user.email}</td>
-                              <td className="px-2 py-2 text-sm">{user.portfolioId}</td>
-                              <td className="px-2 py-2 text-sm text-right font-semibold">{user.qtyReceived}</td>
-                              <td className="px-2 py-2 text-sm text-right">₹{user.purchasePrice}</td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr key={actionIndex} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                            <td className="px-2 py-2 text-sm">
-                              {new Date(action.actionDate).toLocaleDateString()}
-                            </td>
-                            <td className="px-2 py-2 text-sm">
-                              <span className={`inline-block px-2 py-1 rounded text-xs ${getActionTypeBadgeColor(action.actionType)}`}>
-                                {getActionTypeLabel(action.actionType)}
-                              </span>
-                            </td>
-                            <td className="px-2 py-2 text-sm">{action.ratio}</td>
-                            <td colSpan={6} className="px-2 py-2 text-sm text-gray-500">No users data</td>
-                          </tr>
-                        )
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                
-                <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-                  Total Actions: {historyData.data.totalActions}
-                </p>
-              </>
+            {/* View History Button */}
+            {historyData && (
+              <button
+                onClick={() => setShowHistoryModal(true)}
+                className="mt-3 w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center justify-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                </svg>
+                View Corporate Action History
+              </button>
             )}
           </div>
         )}
@@ -707,6 +615,197 @@ export default function CorporateActionsForm() {
           >
             {isLoading ? "Processing..." : "Apply Corporate Action"}
           </button>
+        </div>
+      )}
+
+      {/* History Modal */}
+      {showHistoryModal && historyData && (
+        <div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b dark:border-gray-700">
+              <div>
+                <h3 className="text-xl font-bold">Corporate Action History</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {historyData.data.stockName}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {isLoadingHistory ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+                    <p className="mt-4 text-gray-600 dark:text-gray-400">Loading history...</p>
+                  </div>
+                </div>
+              ) : historyData.data.totalActions === 0 ? (
+                <div className="text-center py-12">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p className="mt-4 text-gray-600 dark:text-gray-400">
+                    No corporate actions found for this stock
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Latest Action Highlight */}
+                  {historyData.data.latestAction && (
+                    <div className="mb-6 p-4 bg-indigo-50 dark:bg-indigo-900 rounded-lg border-2 border-indigo-300">
+                      <div className="flex items-center gap-2 mb-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-600 dark:text-indigo-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        <p className="text-sm text-indigo-600 dark:text-indigo-400 font-semibold">
+                          LATEST ACTION
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Type</p>
+                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getActionTypeBadgeColor(historyData.data.latestAction.actionType)}`}>
+                            {getActionTypeLabel(historyData.data.latestAction.actionType)}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Date</p>
+                          <p className="text-sm font-semibold">
+                            {new Date(historyData.data.latestAction.actionDate).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Ratio</p>
+                          <p className="text-sm font-semibold">{historyData.data.latestAction.ratio}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Users Affected</p>
+                          <p className="text-sm font-semibold">{historyData.data.latestAction.totalUsersAffected}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Summary Stats */}
+                  <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Total Corporate Actions</span>
+                      <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+                        {historyData.data.totalActions}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Full History Table */}
+                  <div className="border dark:border-gray-700 rounded-lg overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead className="bg-gray-100 dark:bg-gray-800">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                              Date
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                              Action
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                              Ratio
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                              User ID
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                              Name
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                              Email
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                              Portfolio
+                            </th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                              Qty Received
+                            </th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                              Price
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                          {historyData.data.history.map((action, actionIndex) => (
+                            action.users && action.users.length > 0 ? (
+                              action.users.map((user, userIndex) => (
+                                <tr key={`${actionIndex}-${userIndex}`} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                  {userIndex === 0 && (
+                                    <>
+                                      <td className="px-4 py-3 text-sm border-r border-gray-300 dark:border-gray-600" rowSpan={action.users.length}>
+                                        {new Date(action.actionDate).toLocaleDateString()}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm border-r border-gray-300 dark:border-gray-600" rowSpan={action.users.length}>
+                                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getActionTypeBadgeColor(action.actionType)}`}>
+                                          {getActionTypeLabel(action.actionType)}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-3 text-sm font-medium border-r border-gray-300 dark:border-gray-600" rowSpan={action.users.length}>
+                                        {action.ratio}
+                                      </td>
+                                    </>
+                                  )}
+                                  <td className="px-4 py-3 text-sm">{user.userId}</td>
+                                  <td className="px-4 py-3 text-sm">{user.userName}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{user.email}</td>
+                                  <td className="px-4 py-3 text-sm">{user.portfolioId}</td>
+                                  <td className="px-4 py-3 text-sm text-right font-semibold text-green-600 dark:text-green-400">
+                                    {user.qtyReceived}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-right">₹{user.purchasePrice.toFixed(2)}</td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr key={actionIndex} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                <td className="px-4 py-3 text-sm">
+                                  {new Date(action.actionDate).toLocaleDateString()}
+                                </td>
+                                <td className="px-4 py-3 text-sm">
+                                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getActionTypeBadgeColor(action.actionType)}`}>
+                                    {getActionTypeLabel(action.actionType)}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-sm font-medium">{action.ratio}</td>
+                                <td colSpan={6} className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+                                  No user data available
+                                </td>
+                              </tr>
+                            )
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-800">
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

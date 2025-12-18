@@ -567,12 +567,7 @@ export default function ManualOrdersForm() {
         <div className="mb-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">Transactions</h3>
-            <button
-              onClick={addTransaction}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-            >
-              + Add Transaction
-            </button>
+            
           </div>
 
           {transactions.map((txn, index) => (
@@ -693,6 +688,14 @@ export default function ManualOrdersForm() {
               </div>
             </div>
           ))}
+          <div className="flex justify-end">
+            <button
+              onClick={addTransaction}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            >
+              + Add Transaction
+            </button>
+          </div>
         </div>
       )}
 
