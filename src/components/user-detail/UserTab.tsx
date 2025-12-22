@@ -1331,7 +1331,7 @@ export default function UserTab({
 
       {/* Referral Mapping Modal */}
       {showReferralMapping && (
-<div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
+        <div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
               Map Referral Code
@@ -1379,7 +1379,7 @@ export default function UserTab({
 
       {/* Advisor Modal */}
       {showAdvisorModal && (
-<div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
+        <div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
               Change Advisor
@@ -1427,7 +1427,7 @@ export default function UserTab({
 
       {/* Relationship Manager Modal */}
       {showRMModal && (
-<div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
+        <div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
               Change Relationship Manager

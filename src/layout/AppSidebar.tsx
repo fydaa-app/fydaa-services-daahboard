@@ -42,6 +42,7 @@ const navItems: NavItem[] = [
       { name: "Savestment Users", path: "/savestmentuserlist" },
       { name: "Mapped Users", path: "/mappeduserlist" },
       { name: "Unmapped Users", path: "/unmappeduserlist" },
+      { name: "Old Users", path: "/olduserlist" },  
     ]
   },
   {
