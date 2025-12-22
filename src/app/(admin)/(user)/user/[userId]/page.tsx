@@ -362,6 +362,7 @@ export default function UserDetails({ params }: PageProps) {
     const listType = searchParams.get('listType') || 'userlist';
     const searchQuery = searchParams.get('search') || '';
 
+
     let returnUrl = '';
     const params = new URLSearchParams();
     params.set('page', returnPage);
@@ -369,16 +370,23 @@ export default function UserDetails({ params }: PageProps) {
       params.set('search', searchQuery);
     }
 
+
     if (listType === 'fydaa') {
       returnUrl = `/fydaauserlist?${params.toString()}`;
     } else if (listType === 'savestment') {
       returnUrl = `/savestmentuserlist?${params.toString()}`;
+    } else if (listType === 'mapped') {
+      returnUrl = `/mappeduserlist?${params.toString()}`;
+    } else if (listType === 'Unmapped') {
+      returnUrl = `/unmappeduserlist?${params.toString()}`;
     } else {
       returnUrl = `/userlist?${params.toString()}`;
     }
 
+
     router.push(returnUrl);
   };
+
 
   return (
     <div>
