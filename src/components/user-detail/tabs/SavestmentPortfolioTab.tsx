@@ -98,11 +98,14 @@ export default function SavestmentPortfolioTab({
                     <h3 className="text-lg font-semibold dark:text-gray-400">
                       {mfPortfolio.portfolioName || (mfPortfolio.goal?.[0]?.name) || `Mutual Fund Portfolio ${index + 1}`}
                     </h3>
-                    {mfPortfolio.goal && mfPortfolio.goal.length > 0 && (
-                      <div className="mt-2">
-                        <Badge color="info">{mfPortfolio.goal[0].name}</Badge>
-                      </div>
-                    )}
+                    {Array.isArray(mfPortfolio.goal) &&
+                      mfPortfolio.goal
+                        .filter(Boolean)
+                        .map((g, idx) => (
+                          <div key={idx} className="mt-2">
+                            <Badge color="info">{g.name}</Badge>
+                          </div>
+                        ))}
                   </div>
                   
                   {/* Action Buttons */}
@@ -197,7 +200,7 @@ export default function SavestmentPortfolioTab({
               </div>
 
               {/* SIP Details if available - Sales CRM Style */}
-              {mfPortfolio.sip && mfPortfolio.sip.length > 0 && (
+              {mfPortfolio.sip && mfPortfolio.sip.length > 0 && mfPortfolio.sip[0] && (
                 <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                   <p className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-2">SIP Details</p>
                   <div className="grid grid-cols-2 gap-2 text-sm">
