@@ -1117,7 +1117,7 @@ export default function UserTab({
                       Referral Information
                     </p>
                   </div>
-                  {userDetails.referredBy ? (
+                  {userDetails.referredBy && referralDetails ? (
                     <>
                       <div className="space-y-3">
                         <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
