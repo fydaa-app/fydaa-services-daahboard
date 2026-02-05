@@ -9,6 +9,7 @@ import {
 import Badge from "../ui/badge/Badge";
 import ConfirmationDialog from "../ui/dialog/ConfirmationDialog";
 import ResultDialog from "../ui/dialog/ResultDialog";
+import { ApproveAmountModal } from "../ui/modal/ApproveAmountModal";
 import { toast } from "react-hot-toast";
 import Cookies from 'js-cookie';
 
@@ -96,6 +97,14 @@ export default function PaymentApproveTable({ payments, error, onRefresh, onLedg
     isSuccess: false
   });
 
+  // Approve amount modal (for single payment approve - collect amount to collect)
+  const [approveAmountModal, setApproveAmountModal] = useState<{
+    isOpen: boolean;
+    ledgerId: number;
+    fullBalance: number;
+    paymentName: string;
+  }>({ isOpen: false, ledgerId: 0, fullBalance: 0, paymentName: '' });
+
   // Function to handle opening ledger details modal for a specific user
   const handleLedgerClick = (payment: Payment) => {
     if (onLedgerClick) {
@@ -140,17 +149,30 @@ export default function PaymentApproveTable({ payments, error, onRefresh, onLedg
   });
 
   const handlePaymentAction = (ledgerId: number, action: 'approve' | 'disapprove') => {
-    const payment = payments.find(p => p.ledgerId === ledgerId);
+    const payment = payments.find(p => Number(p.ledgerId) === Number(ledgerId));
+    const paymentName = payment ? `${payment.firstName} ${payment.lastName}` : 'Unknown User';
+
+    if (action === 'approve') {
+      const fullBalance = payment ? Math.abs(parseFloat(String(payment.balance))) : 0;
+      setApproveAmountModal({
+        isOpen: true,
+        ledgerId,
+        fullBalance,
+        paymentName
+      });
+      return;
+    }
+
     setConfirmDialog({
       isOpen: true,
       type: 'single',
-      action,
+      action: 'disapprove',
       ledgerId,
-      paymentName: payment ? `${payment.firstName} ${payment.lastName}` : 'Unknown User'
+      paymentName
     });
   };
 
-  const executePaymentAction = async (ledgerId: number, action: 'approve' | 'disapprove') => {
+  const executePaymentAction = async (ledgerId: number, action: 'approve' | 'disapprove', amount?: number) => {
     setIsProcessing(ledgerId);
     setActionType(action);
     
@@ -166,7 +188,8 @@ export default function PaymentApproveTable({ payments, error, onRefresh, onLedg
         },
         body: JSON.stringify({
           ledgerIds: [ledgerId],
-          status: action === 'approve'
+          status: action === 'approve',
+          ...(action === 'approve' && amount != null && { amount })
         }),
       });
 
@@ -314,6 +337,11 @@ export default function PaymentApproveTable({ payments, error, onRefresh, onLedg
       setIsBulkProcessing(false);
       setActionType(null);
     }
+  };
+
+  const handleApproveAmountConfirm = (amount: number) => {
+    executePaymentAction(approveAmountModal.ledgerId, 'approve', amount);
+    setApproveAmountModal(prev => ({ ...prev, isOpen: false }));
   };
 
   // Handle confirmation dialog actions
@@ -554,6 +582,16 @@ export default function PaymentApproveTable({ payments, error, onRefresh, onLedg
         onClose={handleResultDialogClose}
         result={resultDialog.result}
         isSuccess={resultDialog.isSuccess}
+      />
+
+      {/* Approve amount modal - enter amount to collect */}
+      <ApproveAmountModal
+        isOpen={approveAmountModal.isOpen}
+        onClose={() => setApproveAmountModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={handleApproveAmountConfirm}
+        fullBalance={approveAmountModal.fullBalance}
+        paymentName={approveAmountModal.paymentName}
+        isLoading={isProcessing === approveAmountModal.ledgerId}
       />
     </div>
   );
