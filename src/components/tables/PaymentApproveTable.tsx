@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -10,7 +10,6 @@ import Badge from "../ui/badge/Badge";
 import ConfirmationDialog from "../ui/dialog/ConfirmationDialog";
 import ResultDialog from "../ui/dialog/ResultDialog";
 import { ApproveAmountModal } from "../ui/modal/ApproveAmountModal";
-import { toast } from "react-hot-toast";
 import Cookies from 'js-cookie';
 
 // Define the Payment interface that matches your API response
@@ -69,20 +68,18 @@ const getBalanceStatus = (balance: string) => {
 export default function PaymentApproveTable({ payments, error, onRefresh, onLedgerClick }: PaymentApproveTableProps) {
   const [isProcessing, setIsProcessing] = useState<number | null>(null);
   const [actionType, setActionType] = useState<'approve' | 'disapprove' | null>(null);
-  const [selectedPayments, setSelectedPayments] = useState<Set<number>>(new Set());
-  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  
+  // Store savestment autopay status for each userId
+  const [savestmentAutopayStatus, setSavestmentAutopayStatus] = useState<Map<number, boolean>>(new Map());
   
   // Confirmation dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
-    type: 'single' | 'bulk';
     action: 'approve' | 'disapprove';
     ledgerId?: number;
     paymentName?: string;
-    count?: number;
   }>({
     isOpen: false,
-    type: 'single',
     action: 'approve'
   });
 
@@ -116,37 +113,67 @@ export default function PaymentApproveTable({ payments, error, onRefresh, onLedg
     }
   };
 
+  // Fetch savestment autopay status for a user
+  const fetchSavestmentAutopayStatus = async (userId: number): Promise<boolean> => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_PAYMENT_API_URL;
+      const token = Cookies.get('authToken') || '';
+      
+      const response = await fetch(`${apiUrl}/subscription/savestment-autopay-status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId }),
+      });
 
-
-  // Handle individual checkbox selection
-  const handleRowSelect = (ledgerId: number) => {
-    const newSelected = new Set(selectedPayments);
-    if (newSelected.has(ledgerId)) {
-      newSelected.delete(ledgerId);
-    } else {
-      newSelected.add(ledgerId);
+      if (response.ok) {
+        const result = await response.json();
+        // Response is directly true or false
+        return result === true;
+      }
+      return false;
+    } catch (err) {
+      console.error(`Error fetching savestment autopay status for user ${userId}:`, err);
+      return false;
     }
-    setSelectedPayments(newSelected);
   };
 
-  // Handle select all checkbox
-  const handleSelectAll = () => {
-    if (selectedPayments.size === payments.length) {
-      setSelectedPayments(new Set());
+  // Calculate emandate amount based on autopay status and emandate_status
+  const getEmandateAmount = (payment: Payment): number => {
+    const hasSavestmentAutopay = savestmentAutopayStatus.get(payment.userId) || false;
+    const isEmandateActive = payment.emandate_status === 1;
+
+    if (hasSavestmentAutopay && isEmandateActive) {
+      return 15000;
+    } else if (isEmandateActive) {
+      return 100000;
     } else {
-      setSelectedPayments(new Set(payments.map(p => p.ledgerId)));
+      return 0;
     }
   };
 
-  // Check if all payments are selected
-  const isAllSelected = selectedPayments.size === payments.length && payments.length > 0;
-  const isIndeterminate = selectedPayments.size > 0 && selectedPayments.size < payments.length;
+  // Fetch savestment autopay status for all payments when they change
+  useEffect(() => {
+    const fetchAllStatuses = async () => {
+      const uniqueUserIds = [...new Set(payments.map(p => p.userId))];
+      const statusMap = new Map<number, boolean>();
 
-  // Check if any selected payments have inactive emandate status
-  const hasInactiveEmandate = Array.from(selectedPayments).some(ledgerId => {
-    const payment = payments.find(p => p.ledgerId === ledgerId);
-    return payment && payment.emandate_status !== 1;
-  });
+      await Promise.all(
+        uniqueUserIds.map(async (userId) => {
+          const status = await fetchSavestmentAutopayStatus(userId);
+          statusMap.set(userId, status);
+        })
+      );
+
+      setSavestmentAutopayStatus(statusMap);
+    };
+
+    if (payments.length > 0) {
+      fetchAllStatuses();
+    }
+  }, [payments]);
 
   const handlePaymentAction = (ledgerId: number, action: 'approve' | 'disapprove') => {
     const payment = payments.find(p => Number(p.ledgerId) === Number(ledgerId));
@@ -165,14 +192,13 @@ export default function PaymentApproveTable({ payments, error, onRefresh, onLedg
 
     setConfirmDialog({
       isOpen: true,
-      type: 'single',
       action: 'disapprove',
       ledgerId,
       paymentName
     });
   };
 
-  const executePaymentAction = async (ledgerId: number, action: 'approve' | 'disapprove', amount?: number) => {
+  const executePaymentAction = async (ledgerId: number, action: 'approve' | 'disapprove', amount?: number[]) => {
     setIsProcessing(ledgerId);
     setActionType(action);
     
@@ -180,17 +206,22 @@ export default function PaymentApproveTable({ payments, error, onRefresh, onLedg
       const apiUrl = process.env.NEXT_PUBLIC_PAYMENT_API_URL;
       const token = Cookies.get('authToken') || '';
       
+      const payload: { ledgerIds: number[]; status: boolean; amount?: number[] } = {
+        ledgerIds: [ledgerId],
+        status: action === 'approve',
+      };
+      
+      if (action === 'approve' && amount && Array.isArray(amount) && amount.length > 0) {
+        payload.amount = amount;
+      }
+
       const response = await fetch(`${apiUrl}/subscription/approve-payment`, {
         method: 'POST',
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          ledgerIds: [ledgerId],
-          status: action === 'approve',
-          ...(action === 'approve' && amount != null && { amount })
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.status === 401) {
@@ -248,108 +279,15 @@ export default function PaymentApproveTable({ payments, error, onRefresh, onLedg
     }
   };
 
-  // Handle bulk payment actions
-  const handleBulkPaymentAction = (action: 'approve' | 'disapprove') => {
-    if (selectedPayments.size === 0) {
-      toast.error('Please select at least one payment');
-      return;
-    }
-
-    setConfirmDialog({
-      isOpen: true,
-      type: 'bulk',
-      action,
-      count: selectedPayments.size
-    });
-  };
-
-  const executeBulkPaymentAction = async (action: 'approve' | 'disapprove') => {
-    setIsBulkProcessing(true);
-    setActionType(action);
-    
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_PAYMENT_API_URL;
-      const token = Cookies.get('authToken') || '';
-      
-      const response = await fetch(`${apiUrl}/subscription/approve-payment`, {
-        method: 'POST',
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ledgerIds: Array.from(selectedPayments),
-          status: action === 'approve'
-        }),
-      });
-
-      if (response.status === 401) {
-        Cookies.remove('authToken'); 
-        window.location.href = "/signin";
-        return;        
-      }
-
-      if (!response.ok) {
-        throw new Error(`Failed to ${action} payments`);
-      }
-
-      const result = await response.json();
-      
-      // Check if there are any failures - if so, treat as error
-      const hasFailures = result.failed && result.failed.length > 0;
-      
-      if (hasFailures) {
-        // Show error dialog for any failures
-        setResultDialog({
-          isOpen: true,
-          result: {
-            status: 'error',
-            message: result.message || `Failed to process ${result.failed.length} payment(s)`,
-            error: `${result.failed.length} payment(s) failed to process. Please try again or contact support.`
-          },
-          isSuccess: false
-        });
-      } else {
-        // Show success dialog only if everything succeeded
-        setResultDialog({
-          isOpen: true,
-          result: result,
-          isSuccess: true
-        });
-      }
-      
-      setSelectedPayments(new Set()); // Clear selection after successful action
-      onRefresh?.();
-    } catch (err) {
-      console.error(`Error ${action}ing payments:`, err);
-      
-      // Show error result dialog
-      setResultDialog({
-        isOpen: true,
-        result: {
-          status: 'error',
-          message: `Failed to process payments: ${err instanceof Error ? err.message : 'Unknown error'}`,
-          error: err instanceof Error ? err.stack : String(err)
-        },
-        isSuccess: false
-      });
-    } finally {
-      setIsBulkProcessing(false);
-      setActionType(null);
-    }
-  };
-
   const handleApproveAmountConfirm = (amount: number) => {
-    executePaymentAction(approveAmountModal.ledgerId, 'approve', amount);
+    executePaymentAction(approveAmountModal.ledgerId, 'approve', [amount]);
     setApproveAmountModal(prev => ({ ...prev, isOpen: false }));
   };
 
   // Handle confirmation dialog actions
   const handleConfirmAction = () => {
-    if (confirmDialog.type === 'single' && confirmDialog.ledgerId) {
+    if (confirmDialog.ledgerId) {
       executePaymentAction(confirmDialog.ledgerId, confirmDialog.action);
-    } else if (confirmDialog.type === 'bulk') {
-      executeBulkPaymentAction(confirmDialog.action);
     }
     setConfirmDialog({ ...confirmDialog, isOpen: false });
   };
@@ -367,61 +305,18 @@ export default function PaymentApproveTable({ payments, error, onRefresh, onLedg
     const action = confirmDialog.action;
     const actionText = action === 'approve' ? 'approve' : 'disapprove';
     
-    if (confirmDialog.type === 'single') {
-      return {
-        title: `${action === 'approve' ? 'Approve' : 'Disapprove'} Payment`,
-        message: `Are you sure you want to ${actionText} the payment for ${confirmDialog.paymentName}? This action cannot be undone.`,
-        confirmText: action === 'approve' ? 'Approve Payment' : 'Disapprove Payment',
-        variant: action === 'approve' ? 'info' as const : 'danger' as const
-      };
-    } else {
-      return {
-        title: `${action === 'approve' ? 'Approve' : 'Disapprove'} Multiple Payments`,
-        message: `Are you sure you want to ${actionText} ${confirmDialog.count} selected payment(s)? This action cannot be undone.`,
-        confirmText: action === 'approve' ? 'Approve All' : 'Disapprove All',
-        variant: action === 'approve' ? 'info' as const : 'danger' as const
-      };
-    }
+    return {
+      title: `${action === 'approve' ? 'Approve' : 'Disapprove'} Payment`,
+      message: `Are you sure you want to ${actionText} the payment for ${confirmDialog.paymentName}? This action cannot be undone.`,
+      confirmText: action === 'approve' ? 'Approve Payment' : 'Disapprove Payment',
+      variant: action === 'approve' ? 'info' as const : 'danger' as const
+    };
   };
 
   const dialogContent = getDialogContent();
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-      {/* Bulk Actions Bar */}
-      {selectedPayments.size > 0 && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-gray-200 dark:border-white/[0.05] px-5 py-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
-              {selectedPayments.size} payment(s) selected
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleBulkPaymentAction('approve')}
-                disabled={isBulkProcessing || hasInactiveEmandate}
-                className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                title={hasInactiveEmandate ? 'Cannot approve: Some selected payments have inactive emandate status' : 'Approve selected payments'}
-              >
-                {isBulkProcessing && actionType === 'approve' ? 'Approving...' : 'Approve Selected'}
-              </button>
-              <button
-                onClick={() => handleBulkPaymentAction('disapprove')}
-                disabled={isBulkProcessing}
-                className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isBulkProcessing && actionType === 'disapprove' ? 'Disapproving...' : 'Disapprove Selected'}
-              </button>
-              <button
-                onClick={() => setSelectedPayments(new Set())}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-              >
-                Clear Selection
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="max-w-full overflow-x-auto">
         <div className="min-w-[1102px]">
           {error && <p className="text-red-500 p-4">{error}</p>}
@@ -429,20 +324,6 @@ export default function PaymentApproveTable({ payments, error, onRefresh, onLedg
             <Table>
               <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                 <TableRow>
-                  <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={isAllSelected}
-                        ref={(input) => {
-                          if (input) input.indeterminate = isIndeterminate;
-                        }}
-                        onChange={handleSelectAll}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        aria-label="Select all payments"
-                      />
-                    </div>
-                  </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     User Details
                   </TableCell>
@@ -453,10 +334,10 @@ export default function PaymentApproveTable({ payments, error, onRefresh, onLedg
                     Balance
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
-                    Status
+                    Emandate Status
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
-                    Emandate Status
+                    Emandate Amount
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Date
@@ -472,19 +353,9 @@ export default function PaymentApproveTable({ payments, error, onRefresh, onLedg
               <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
                 {payments.map((payment) => {
                   const balanceStatus = getBalanceStatus(payment.balance);
-                  const isSelected = selectedPayments.has(payment.ledgerId);
                   
                   return (
-                    <TableRow key={payment.ledgerId} className={isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : ''}>
-                      <TableCell className="px-5 py-4">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleRowSelect(payment.ledgerId)}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                          aria-label={`Select payment for ${payment.firstName} ${payment.lastName}`}
-                        />
-                      </TableCell>
+                    <TableRow key={payment.ledgerId}>
                       <TableCell className="px-5 py-4 sm:px-6 text-start">
                         <div className="flex items-center gap-3">
                           <div>
@@ -507,14 +378,14 @@ export default function PaymentApproveTable({ payments, error, onRefresh, onLedg
                         </span>
                       </TableCell>
                       <TableCell className="px-4 py-3 text-start">
-                        <Badge color={balanceStatus.isNegative ? "error" : balanceStatus.isPositive ? "success" : "light"}>
-                          {balanceStatus.isNegative ? "Deficit" : balanceStatus.isPositive ? "Credit" : "Zero"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-start">
                         <Badge color={payment.emandate_status === 1 ? "success" : "error"}>
                           {payment.emandate_status === 1 ? "Active" : "Inactive"}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-start">
+                        <span className="font-medium text-gray-900 dark:text-white">
+                          {formatCurrency(String(getEmandateAmount(payment)))}
+                        </span>
                       </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                         {new Date(payment.date).toLocaleString()}
@@ -532,7 +403,7 @@ export default function PaymentApproveTable({ payments, error, onRefresh, onLedg
                         <div className="flex gap-2">                       
                           <button
                             onClick={() => handlePaymentAction(payment.ledgerId, 'approve')}
-                            disabled={isProcessing === payment.ledgerId || isBulkProcessing || payment.emandate_status !== 1}
+                            disabled={isProcessing === payment.ledgerId || payment.emandate_status !== 1}
                             className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-theme-sm font-medium text-green-600 shadow-theme-xs hover:bg-gray-50 hover:text-green-800 dark:border-gray-700 dark:bg-gray-800 dark:text-green-400 dark:hover:bg-white/[0.03] dark:hover:text-green-300 disabled:opacity-50 disabled:cursor-not-allowed"
                             aria-label={`Approve payment for ${payment.firstName} ${payment.lastName}`}
                             title={payment.emandate_status !== 1 ? 'Cannot approve: Emandate status is inactive' : `Approve payment for ${payment.firstName} ${payment.lastName}`}
@@ -541,7 +412,7 @@ export default function PaymentApproveTable({ payments, error, onRefresh, onLedg
                           </button>
                           <button
                             onClick={() => handlePaymentAction(payment.ledgerId, 'disapprove')}
-                            disabled={isProcessing === payment.ledgerId || isBulkProcessing}
+                            disabled={isProcessing === payment.ledgerId}
                             className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-theme-sm font-medium text-red-600 shadow-theme-xs hover:bg-gray-50 hover:text-red-800 dark:border-gray-700 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-white/[0.03] dark:hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
                             aria-label={`Disapprove payment for ${payment.firstName} ${payment.lastName}`}
                           >
@@ -573,7 +444,7 @@ export default function PaymentApproveTable({ payments, error, onRefresh, onLedg
         message={dialogContent.message}
         confirmText={dialogContent.confirmText}
         variant={dialogContent.variant}
-        isLoading={isProcessing !== null || isBulkProcessing}
+        isLoading={isProcessing !== null}
       />
 
       {/* Result Dialog */}

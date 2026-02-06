@@ -107,7 +107,8 @@ async function sendEmailReport(
   recipient: string,
   subject: string,
   startDate: string,
-  endDate: string
+  endDate: string,
+  userId?: string
 ): Promise<boolean> {
   try {
     const url = `${process.env.NEXT_PUBLIC_PAYMENT_API_URL}/subscription/send-report`;
@@ -122,7 +123,8 @@ async function sendEmailReport(
         startDate: startDate || null,
         endDate: endDate || null,
         email: recipient,
-        subject: subject || null
+        subject: subject || null,
+        userId: userId || null
       })
     });
 
@@ -247,7 +249,7 @@ export default function AccountLedgerPage() {
     }
   };
 
-  const handleSendEmail = async (emailData: { recipient: string; subject: string; startDate: Date | null; endDate: Date | null }) => {
+  const handleSendEmail = async (emailData: { recipient: string; subject: string; startDate: Date | null; endDate: Date | null; userId?: string }) => {
     setIsEmailLoading(true);
     setEmailSuccess(null);
     
@@ -257,6 +259,7 @@ export default function AccountLedgerPage() {
         emailData.subject,
         emailData.startDate ? emailData.startDate.toISOString().split('T')[0] : '',
         emailData.endDate ? emailData.endDate.toISOString().split('T')[0] : '',
+        emailData.userId
       );
       
       setEmailSuccess("Email report sent successfully!");
@@ -360,6 +363,7 @@ export default function AccountLedgerPage() {
         onClose={() => setIsEmailModalOpen(false)}
         onSendEmail={handleSendEmail}
         isLoading={isEmailLoading}
+        searchQuery={searchQuery}
       />
     </div>
   );
