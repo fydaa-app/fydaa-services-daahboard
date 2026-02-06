@@ -8,7 +8,8 @@ import { DateRangePicker } from "../DateRangePicker";
 interface EmailModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSendEmail: (emailData: { recipient: string; subject: string; startDate: Date | null; endDate: Date | null }) => void;
+  onSendEmail: (emailData: { recipient: string; subject: string; startDate: Date | null; endDate: Date | null; userId?: string }) => void;
+  searchQuery?: string;
   isLoading?: boolean;
 }
 
@@ -16,13 +17,23 @@ export const EmailModal: React.FC<EmailModalProps> = ({
   isOpen,
   onClose,
   onSendEmail,
-  isLoading = false
+  isLoading = false,
+  searchQuery
 }) => {
   const [recipient, setRecipient] = useState("finance@fydaa.com");
   const [subject, setSubject] = useState("Account Ledger Report");
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
+  const [userId, setUserId] = useState<string>("");
   const [errors, setErrors] = useState<{ recipient?: string; subject?: string; dateRange?: string }>({});
+
+  React.useEffect(() => {
+    if (searchQuery && !isNaN(Number(searchQuery.trim()))) {
+      setUserId(searchQuery.trim());
+    } else {
+      setUserId("");
+    }
+  }, [searchQuery, isOpen]);
 
   const validateForm = () => {
     const newErrors: { recipient?: string; subject?: string; dateRange?: string } = {};
@@ -51,7 +62,8 @@ export const EmailModal: React.FC<EmailModalProps> = ({
         recipient: recipient.trim(),
         subject: subject.trim(),
         startDate,
-        endDate
+        endDate,
+        userId: userId.trim()
       });
     }
   };
@@ -61,6 +73,7 @@ export const EmailModal: React.FC<EmailModalProps> = ({
     setSubject("Account Ledger Report");
     setStartDate(null);
     setEndDate(null);
+    setUserId("");
     setErrors({});
     onClose();
   };
@@ -87,6 +100,20 @@ export const EmailModal: React.FC<EmailModalProps> = ({
         </div>
 
         <div className="space-y-4">
+          {/* User ID */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              User ID
+            </label>
+            <input
+              type="text"
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+              placeholder="Enter user ID (optional)"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/10 focus:border-brand-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-400"
+            />
+          </div>
+
           {/* Recipient Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
