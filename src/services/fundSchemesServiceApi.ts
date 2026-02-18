@@ -172,7 +172,7 @@ export const fetchFundSchemes = async (filters: FundSchemeFilters): Promise<{
     if (filters.page !== undefined) params.append('page', filters.page.toString());
     if (filters.size !== undefined) params.append('size', filters.size.toString());
     if (filters.investment_option) params.append('investment_option', filters.investment_option);
-    if (filters.category) params.append('category', filters.category);
+    if (filters.category) params.append('category', filters.category.trim());
     if (filters.plan_type) params.append('plan_type', filters.plan_type);
     if (filters.delivery_mode) params.append('delivery_mode', filters.delivery_mode);
 
