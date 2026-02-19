@@ -36,6 +36,7 @@ interface User {
   isNRI: boolean;
   advisorName?: string;
   relationshipManagerName?: string;
+  referredByName?: string;
 }
 
 interface ApiResponse {

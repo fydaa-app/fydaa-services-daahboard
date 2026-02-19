@@ -40,6 +40,7 @@ export interface UserTableProps {
     isNRI: boolean;
     advisorName?: string;
     relationshipManagerName?: string;
+    referredByName?: string;
   }[];
   error: string | null;
   currentPage?: number;
@@ -111,6 +112,9 @@ export default function UserListTable({ users, error, currentPage = 1, listType 
                     PAN KYC Status
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
+                    Referred By
+                  </TableCell>
+                  <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Advisor
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
@@ -170,6 +174,9 @@ export default function UserListTable({ users, error, currentPage = 1, listType 
                       <Badge color={user.panStatus === 'KYC_SUCCESS' ? 'success' : 'error'}>
                         {user.panStatus}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                      {user.referredByName || 'N/A'}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">                      
                       {user.advisorName}
