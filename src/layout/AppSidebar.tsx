@@ -46,6 +46,11 @@ const navItems: NavItem[] = [
     ]
   },
   {
+    icon: <GridIcon />,
+    name: "Pending Action",
+    path: "/pending-action",
+  },
+  {
     icon: <MoneyIcon />,
     name: "Payments",
     path: "/payment-list",
