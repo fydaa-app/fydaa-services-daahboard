@@ -67,7 +67,7 @@ async function fetchUsers(
                     Authorization: `Bearer ${document.cookie.split("; ").find(row => row.startsWith("authToken="))?.split("=")[1] || ""}`,
                 }
             }
-        );
+        );  
   
         if (response.status === 401) {
             Cookies.remove('authToken'); 
