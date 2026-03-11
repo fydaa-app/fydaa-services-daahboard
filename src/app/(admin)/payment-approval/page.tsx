@@ -32,6 +32,7 @@ interface Payment {
     lastName: string;
     mobile: string;
     emandate_status: number;
+    remark?: string;
 }
 
 interface ApiResponse {

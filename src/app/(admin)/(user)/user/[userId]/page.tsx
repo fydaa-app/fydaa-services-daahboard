@@ -424,6 +424,7 @@ export default function UserDetails({ params }: PageProps) {
             advisor={userData.advisor}
             relationshipManager={userData.relationshipManager}
             transactionsMF={userData.transactionsMF}
+            onDeactivateSuccess={handleBackToList}
           />
         </ComponentCard>
       </div>

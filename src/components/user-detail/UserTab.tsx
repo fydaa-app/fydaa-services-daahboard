@@ -1,10 +1,16 @@
 // FILE: components/user-detail/UserTab.tsx
 "use client";
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Badge from "../ui/badge/Badge";
 import PerformanceXIRRTable from "../tables/PerformanceXIRRTable";
 import { xirrService, XIRRTableData } from "@/services/xirrService";
+import {
+  getUserDeletionEligibility,
+  deactivateUser,
+} from "@/services/userServiceApi";
+import ConfirmationDialog from "../ui/dialog/ConfirmationDialog";
 
 // Import tab components
 import FydaaPortfolioTab from "./tabs/FydaaPortfolioTab";
@@ -275,6 +281,8 @@ interface UserTabProps {
   advisor: Advisor;
   relationshipManager: RelationshipManager;
   transactionsMF?: MutualFundTransaction[];
+  /** Called after user is successfully deactivated; if not provided, navigates to /userlist */
+  onDeactivateSuccess?: () => void;
 }
 
 interface OrderData {
@@ -363,8 +371,10 @@ export default function UserTab({
   referralDetails,
   advisor,
   relationshipManager,
-  transactionsMF
+  transactionsMF,
+  onDeactivateSuccess
 }: UserTabProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<string>('Portfolio');
   const [downloading, setDownloading] = useState<string | null>(null);
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null);
@@ -394,12 +404,69 @@ export default function UserTab({
   const [loadingXIRR, setLoadingXIRR] = useState(false);
   const [xirrError, setXirrError] = useState<string | null>(null);
 
+  // State for deactivate user flow
+  const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
+  const [deactivateSuccessOpen, setDeactivateSuccessOpen] = useState(false);
+  const [eligibilityResult, setEligibilityResult] = useState<{
+    pendingSip: boolean;
+    pendingDues: boolean;
+    message: string;
+  } | null>(null);
+  const [loadingEligibility, setLoadingEligibility] = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
+
+  const goToUserList = () => {
+    setDeactivateSuccessOpen(false);
+    if (onDeactivateSuccess) {
+      onDeactivateSuccess();
+    } else {
+      router.push("/userlist");
+    }
+  };
+
   // Format currency values
   const formatCurrency = (value: number) => 
     new Intl.NumberFormat('en-IN', { 
       style: 'currency', 
       currency: 'INR' 
     }).format(value);
+
+  const handleDeactivateClick = async () => {
+    try {
+      setLoadingEligibility(true);
+      setEligibilityResult(null);
+      const result = await getUserDeletionEligibility(userDetails.id);
+      setEligibilityResult(result);
+      setDeactivateDialogOpen(true);
+    } catch (err) {
+      console.error("Error checking deletion eligibility:", err);
+      alert(err instanceof Error ? err.message : "Failed to check eligibility. Please try again.");
+    } finally {
+      setLoadingEligibility(false);
+    }
+  };
+
+  const handleDeactivateConfirm = async () => {
+    try {
+      setDeactivating(true);
+      await deactivateUser(userDetails.id);
+      setDeactivateDialogOpen(false);
+      setEligibilityResult(null);
+      setDeactivateSuccessOpen(true);
+    } catch (err) {
+      console.error("Error deactivating user:", err);
+      alert(err instanceof Error ? err.message : "Failed to deactivate user. Please try again.");
+    } finally {
+      setDeactivating(false);
+    }
+  };
+
+  const handleDeactivateDialogClose = () => {
+    if (!deactivating) {
+      setDeactivateDialogOpen(false);
+      setEligibilityResult(null);
+    }
+  };
 
   const fetchEmployeesWithReferralCodes = async () => {
     try {
@@ -1175,11 +1242,50 @@ export default function UserTab({
                     </div>
                   )}
                 </div>
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    type="button"
+                    onClick={handleDeactivateClick}
+                    disabled={loadingEligibility}
+                    className="w-full px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    {loadingEligibility ? "Checking…" : "Deactivate User"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Deactivate user confirmation dialog */}
+      <ConfirmationDialog
+        isOpen={deactivateDialogOpen}
+        onClose={handleDeactivateDialogClose}
+        onConfirm={handleDeactivateConfirm}
+        title="Deactivate User"
+        message={
+          eligibilityResult?.pendingSip || eligibilityResult?.pendingDues
+            ? `${eligibilityResult?.message || ""} Do you still want to deactivate this user?`
+            : "Are you sure you want to deactivate this user? This action may affect the user's access."
+        }
+        confirmText="Deactivate"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={deactivating}
+      />
+
+      {/* Deactivate success dialog */}
+      <ConfirmationDialog
+        isOpen={deactivateSuccessOpen}
+        onClose={goToUserList}
+        onConfirm={goToUserList}
+        title="Success"
+        message="Successfully deactivated the user."
+        confirmText="Back to User List"
+        cancelText="Close"
+        variant="info"
+      />
 
       {/* Right Column - Tabs Content */}
       <div className="col-span-12 xl:col-span-8 p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6">
