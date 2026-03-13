@@ -22,6 +22,7 @@ interface Payment {
   lastName: string;
   mobile: string;
   emandate_status: number;
+  remark?: string;
 }
 
 interface PaymentResult {
@@ -348,6 +349,9 @@ export default function PaymentApproveTable({ payments, error, onRefresh, onLedg
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Actions
                   </TableCell>
+                  <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
+                    Remark
+                  </TableCell>
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
@@ -419,6 +423,9 @@ export default function PaymentApproveTable({ payments, error, onRefresh, onLedg
                             {isProcessing === payment.ledgerId && actionType === 'disapprove' ? 'Disapproving...' : 'Disapprove'}
                           </button>
                         </div>                     
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-gray-600 text-theme-sm dark:text-gray-400 max-w-[180px]">
+                        {payment.remark ?? '—'}
                       </TableCell>
                     </TableRow>
                   );
