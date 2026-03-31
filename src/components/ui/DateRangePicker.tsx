@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { CalenderIcon } from "@/icons";
 
 interface DateRangePickerProps {
@@ -35,14 +35,22 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   };
 
   const getDisplayText = (): string => {
-    if (startDate && endDate) {
-      return `${formatDate(startDate)} - ${formatDate(endDate)}`;
-    } else if (startDate) {
-      return `${formatDate(startDate)} - Select end date`;
-    } else if (endDate) {
-      return `Select start date - ${formatDate(endDate)}`;
+    const s = isOpen ? tempStartDate : startDate;
+    const e = isOpen ? tempEndDate : endDate;
+    if (s && e) {
+      return `${formatDate(s)} - ${formatDate(e)}`;
+    } else if (s) {
+      return `${formatDate(s)} - Select end date`;
+    } else if (e) {
+      return `Select start date - ${formatDate(e)}`;
     }
     return "Select date range";
+  };
+
+  const closeWithoutApply = () => {
+    setTempStartDate(startDate);
+    setTempEndDate(endDate);
+    setIsOpen(false);
   };
 
   const handleDateSelect = (date: Date) => {
@@ -52,12 +60,18 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       setTempEndDate(null);
     } else {
       // Complete selection
-      if (date >= tempStartDate) {
+      const start = tempStartDate;
+      if (date >= start) {
         setTempEndDate(date);
+        // Auto-apply once the range is complete so it remains visible after closing.
+        onDateChange(start, date);
+        setIsOpen(false);
       } else {
         // If end date is before start date, swap them
-        setTempEndDate(tempStartDate);
         setTempStartDate(date);
+        setTempEndDate(start);
+        onDateChange(date, start);
+        setIsOpen(false);
       }
     }
   };
@@ -102,26 +116,54 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     return days;
   };
 
-  const [currentMonth, setCurrentMonth] = useState(() => {
-    const now = new Date();
-    return { year: now.getFullYear(), month: now.getMonth() };
-  });
+  const now = new Date();
+  const minCalendarYear = now.getFullYear() - 25;
+  const maxCalendarYear = now.getFullYear() + 1;
+  const yearOptions = Array.from(
+    { length: maxCalendarYear - minCalendarYear + 1 },
+    (_, i) => minCalendarYear + i
+  );
+
+  const [currentMonth, setCurrentMonth] = useState(() => ({
+    year: now.getFullYear(),
+    month: now.getMonth(),
+  }));
+
+  const prevIsOpen = useRef(false);
+  useEffect(() => {
+    if (isOpen && !prevIsOpen.current) {
+      const anchor = endDate ?? startDate ?? new Date();
+      const y = Math.min(
+        maxCalendarYear,
+        Math.max(minCalendarYear, anchor.getFullYear())
+      );
+      setCurrentMonth({
+        year: y,
+        month: anchor.getMonth(),
+      });
+    }
+    prevIsOpen.current = isOpen;
+  }, [isOpen, startDate, endDate, minCalendarYear, maxCalendarYear]);
 
   const calendarDays = generateCalendarDays(currentMonth.year, currentMonth.month);
 
   const goToPreviousMonth = () => {
-    setCurrentMonth(prev => {
+    setCurrentMonth((prev) => {
       if (prev.month === 0) {
-        return { year: prev.year - 1, month: 11 };
+        const ny = prev.year - 1;
+        if (ny < minCalendarYear) return prev;
+        return { year: ny, month: 11 };
       }
       return { year: prev.year, month: prev.month - 1 };
     });
   };
 
   const goToNextMonth = () => {
-    setCurrentMonth(prev => {
+    setCurrentMonth((prev) => {
       if (prev.month === 11) {
-        return { year: prev.year + 1, month: 0 };
+        const ny = prev.year + 1;
+        if (ny > maxCalendarYear) return prev;
+        return { year: ny, month: 0 };
       }
       return { year: prev.year, month: prev.month + 1 };
     });
@@ -139,36 +181,81 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between px-4 h-10 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:focus:ring-brand-800"
       >
-        <span className={startDate && endDate ? "text-gray-900 dark:text-white" : "text-gray-500 dark:text-gray-400"}>
+        <span
+          className={
+            (isOpen ? tempStartDate && tempEndDate : startDate && endDate)
+              ? "text-gray-900 dark:text-white"
+              : "text-gray-500 dark:text-gray-400"
+          }
+        >
           {getDisplayText()}
         </span>
-        <CalenderIcon className="h-4 w-4 text-gray-400" />
+        <CalenderIcon className="h-6 w-6 text-gray-400" />
       </button>
 
       {/* Calendar Dropdown */}
       {isOpen && (
         <div className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 min-w-[320px]">
-          {/* Calendar Header */}
-          <div className="flex items-center justify-between mb-4">
-            <button
-              onClick={goToPreviousMonth}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-            >
-              <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-              {monthNames[currentMonth.month]} {currentMonth.year}
-            </h3>
-            <button
-              onClick={goToNextMonth}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-            >
-              <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
+          {/* Calendar header: month & year dropdowns + prev/next */}
+          <div className="flex flex-col gap-2 mb-4">
+            <div className="flex items-center gap-2">
+              <select
+                value={currentMonth.month}
+                onChange={(e) =>
+                  setCurrentMonth((prev) => ({
+                    ...prev,
+                    month: Number(e.target.value),
+                  }))
+                }
+                className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white py-1.5 pl-2 pr-7 text-sm font-medium text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                aria-label="Select month"
+              >
+                {monthNames.map((name, idx) => (
+                  <option key={name} value={idx}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={currentMonth.year}
+                onChange={(e) =>
+                  setCurrentMonth((prev) => ({
+                    ...prev,
+                    year: Number(e.target.value),
+                  }))
+                }
+                className="w-[5.5rem] shrink-0 rounded-md border border-gray-300 bg-white py-1.5 pl-2 pr-2 text-sm font-medium text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                aria-label="Select year"
+              >
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center justify-center gap-6">
+              <button
+                type="button"
+                onClick={goToPreviousMonth}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                aria-label="Previous month"
+              >
+                <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={goToNextMonth}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                aria-label="Next month"
+              >
+                <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* Calendar Grid */}
@@ -214,7 +301,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             </button>
             <div className="flex gap-2">
               <button
-                onClick={() => setIsOpen(false)}
+                onClick={closeWithoutApply}
                 className="px-3 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
               >
                 Cancel
@@ -235,7 +322,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       {isOpen && (
         <div
           className="fixed inset-0 z-40"
-          onClick={() => setIsOpen(false)}
+          onClick={closeWithoutApply}
         />
       )}
     </div>

@@ -66,6 +66,11 @@ const navItems: NavItem[] = [
     path: "/payment-approval",
   },
   {
+    icon: <CheckCircleIcon />,
+    name: "Subsequent Payment Approvals",
+    path: "/payment-approval/subsequent-payment",
+  },
+  {
     icon: <LeaderboardIcon />,
     name: "Goals",
     path: "/goal",
