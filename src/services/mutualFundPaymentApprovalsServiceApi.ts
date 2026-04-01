@@ -40,12 +40,21 @@ const handleUnauthorized = (): void => {
 
 export async function getSubsequentPaymentApprovalsPending(
   page: number,
-  limit: number
+  limit: number,
+  search?: string
 ): Promise<SubsequentPaymentApprovalsPendingResponse> {
   const baseUrl = getBaseUrl();
   const token = getAuthToken();
 
-  const url = `${baseUrl}/mutualFund/payment-approvals/pending?page=${page}&limit=${limit}`;
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+  if (search && search.trim()) {
+    params.set("search", search.trim());
+  }
+
+  const url = `${baseUrl}/mutualFund/payment-approvals/pending?${params.toString()}`;
   const response = await fetch(url, {
     method: "GET",
     headers: {
