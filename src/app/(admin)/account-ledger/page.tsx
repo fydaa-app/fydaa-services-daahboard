@@ -5,103 +5,13 @@ import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import AccountLedgerTable from "@/components/tables/AccountLedgerTable";
 import { EmailModal } from "@/components/ui/modal/EmailModal";
 import Button from "@/components/ui/button/Button";
-import Cookies from 'js-cookie';
+import Cookies from "js-cookie";
 import { useRouter, useSearchParams } from "next/navigation";
 import Pagination from "@/components/tables/Pagination";
-
-interface AccountLedger {
-  ledgerId: number;
-  userId: number;
-  date: string;
-  particulars: string;
-  paymentType: string;
-  paymentNo: string;
-  debit: string;
-  credit: string;
-  balance: string;
-  balanceType: string;
-  status: string;
-  firstName: string | null;
-  lastName: string | null;
-  mobile: string | null;
-}
-
-interface ApiResponse {
-  data: AccountLedger[];
-  meta: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
-}
-
-async function fetchAccountLedgers(
-  page: number = 1,
-  limit: number = 10,
-  searchQuery: string = "",
-  startDate: Date | null = null,
-  endDate: Date | null = null
-): Promise<ApiResponse> {
-  try {
-    // Ensure page and limit are properly converted to numbers
-    const pageNum = Number(page);
-    const limitNum = Number(limit);
-    
-    let url = `${process.env.NEXT_PUBLIC_PAYMENT_API_URL}/subscription/account-ledgers?page=${pageNum}&limit=${limitNum}`;
-    
-    if (searchQuery) {
-      url += `&search=${encodeURIComponent(searchQuery)}`;
-    }
-
-    // Add date filters if provided
-    if (startDate) {
-      url += `&startDate=${startDate.toISOString().split('T')[0]}`;
-    }
-    if (endDate) {
-      url += `&endDate=${endDate.toISOString().split('T')[0]}`;
-    }
-
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${Cookies.get('authToken') || ''}`,
-      }
-    });
-
-    if (response.status === 401) {
-      Cookies.remove('authToken'); 
-      window.location.href = "/signin";
-      throw new Error("Unauthorized");
-    }
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch account ledgers");
-    }
-
-    const result = await response.json();
-    
-    return {
-      data: result.data || [],
-      meta: {
-        total: result.meta?.total || 0,
-        page: result.meta?.page || 1,
-        limit: result.meta?.limit || 10,
-        totalPages: result.meta?.totalPages || 0
-      }
-    };
-  } catch (err) {
-    console.error("Error fetching account ledgers:", err);
-    return {
-      data: [],
-      meta: {
-        total: 0,
-        page: 1,
-        limit: 10,
-        totalPages: 0
-      }
-    };
-  }
-}
+import {
+  AccountLedgerResponse,
+  getAccountLedgersList,
+} from "@/services/paymentSearchDataServiceApi";
 
 async function sendEmailReport(
   recipient: string,
@@ -146,7 +56,7 @@ async function sendEmailReport(
 }
 
 export default function AccountLedgerPage() {
-  const [apiResponse, setApiResponse] = useState<ApiResponse>({
+  const [apiResponse, setApiResponse] = useState<AccountLedgerResponse>({
     data: [],
     meta: {
       total: 0,
@@ -183,7 +93,7 @@ export default function AccountLedgerPage() {
 
   const loadData = async (page: number, search: string) => {
     try {
-      const data = await fetchAccountLedgers(page, limit, search);
+      const data = await getAccountLedgersList(page, limit, search);
       
       // Sort ledger entries: entries with credit/debit on top, zero amounts at bottom
       const sortedData = {
