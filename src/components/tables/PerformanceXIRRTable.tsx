@@ -1,6 +1,5 @@
 "use client";
 import React from "react";
-import { Table, TableBody, TableCell, TableHeader, TableRow } from "../ui/table";
 import Badge from "../ui/badge/Badge";
 
 
@@ -82,119 +81,64 @@ export default function PerformanceXIRRTable({
   const portfolio = portfolioXIRR;
   const benchmark = benchmarkXIRR;
 
+  const periods = [
+    { key: 'oneMonth', label: '1 Month' },
+    { key: 'threeMonth', label: '3 Month' },
+    { key: 'sixMonth', label: '6 Month' },
+    { key: 'oneYear', label: '1 Year' },
+    { key: 'threeYear', label: '3 Year' },
+    { key: 'fiveYear', label: '5 Year' },
+    { key: 'allTime', label: 'All Time' },
+  ];
+
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-          <TableRow>
-            <TableCell 
-              isHeader 
-              className="px-5 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400"
-            >
-              XIRR
-            </TableCell>
-            <TableCell 
-              isHeader 
-              className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
-            >
-              1 Month
-            </TableCell>
-            <TableCell 
-              isHeader 
-              className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
-            >
-              3 Month
-            </TableCell>
-            <TableCell 
-              isHeader 
-              className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
-            >
-              6 Month
-            </TableCell>
-            <TableCell 
-              isHeader 
-              className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
-            >
-              1 Year
-            </TableCell>
-            <TableCell 
-              isHeader 
-              className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
-            >
-              3 Year
-            </TableCell>
-            <TableCell 
-              isHeader 
-              className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
-            >
-              5 Year
-            </TableCell>
-            <TableCell 
-              isHeader 
-              className="px-5 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400"
-            >
-              All Time
-            </TableCell>
-          </TableRow>
-        </TableHeader>
-        <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-          {/* Portfolio XIRR Row - Always show if not both null */}
-          <TableRow className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-            <TableCell className="px-4 py-3 text-gray-900 dark:text-gray-100 text-start text-theme-sm font-medium">
-              Portfolio 
-            </TableCell>
-            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-              {formatValue(portfolio?.oneMonth)}
-            </TableCell>
-            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-              {formatValue(portfolio?.threeMonth)}
-            </TableCell>
-            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-              {formatValue(portfolio?.sixMonth)}
-            </TableCell>
-            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-              {formatValue(portfolio?.oneYear)}
-            </TableCell>
-            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-              {formatValue(portfolio?.threeYear)}
-            </TableCell>
-            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-              {formatValue(portfolio?.fiveYear)}
-            </TableCell>
-            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-              {formatValue(portfolio?.allTime)}
-            </TableCell>
-          </TableRow>
-          
-          {/* Nifty 50 Benchmark Row - Always show if not both null */}
-          <TableRow className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-            <TableCell className="px-4 py-3 text-gray-900 dark:text-gray-100 text-start text-theme-sm font-medium">
-              Nifty 50 Benchmark
-            </TableCell>
-            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-              {formatValue(benchmark?.oneMonth)}
-            </TableCell>
-            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-              {formatValue(benchmark?.threeMonth)}
-            </TableCell>
-            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-              {formatValue(benchmark?.sixMonth)}
-            </TableCell>
-            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-              {formatValue(benchmark?.oneYear)}
-            </TableCell>
-            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-              {formatValue(benchmark?.threeYear)}
-            </TableCell>
-            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-              {formatValue(benchmark?.fiveYear)}
-            </TableCell>
-            <TableCell className="px-4 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
-              {formatValue(benchmark?.allTime)}
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
+    <div className="grid grid-cols-2 sm:grid-cols-8 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+      {/* Header Row - hidden on mobile, shown in grid */}
+      <div className="contents">
+        <div className="hidden sm:block px-3 py-3 font-medium text-gray-900 text-start text-theme-sm dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+          XIRR
+        </div>
+        {periods.map((period) => (
+          <div
+            key={period.key}
+            className="hidden sm:block px-3 py-3 font-medium text-gray-900 text-center text-theme-sm dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 border-b border-l border-gray-200 dark:border-gray-700"
+          >
+            {period.label}
+          </div>
+        ))}
+      </div>
+
+      {/* Portfolio Row */}
+      <div className="contents">
+        <div className="col-span-2 sm:col-span-1 px-3 py-3 text-gray-900 dark:text-gray-100 text-start text-theme-sm font-medium border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-white/[0.03]">
+          Portfolio
+        </div>
+        {periods.map((period) => (
+          <div
+            key={period.key}
+            className="col-span-2 sm:col-span-1 px-3 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400 border-b border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-white/[0.03] sm:bg-transparent"
+          >
+            <span className="sm:hidden mr-2 font-medium text-gray-700 dark:text-gray-300">{period.label}:</span>
+            {formatValue(portfolio?.[period.key as keyof typeof portfolio])}
+          </div>
+        ))}
+      </div>
+
+      {/* Benchmark Row */}
+      <div className="contents">
+        <div className="col-span-2 sm:col-span-1 px-3 py-3 text-gray-900 dark:text-gray-100 text-start text-theme-sm font-medium border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-white/[0.03]">
+          Nifty 50 Benchmark
+        </div>
+        {periods.map((period) => (
+          <div
+            key={period.key}
+            className="col-span-2 sm:col-span-1 px-3 py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400 border-b border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-white/[0.03] sm:bg-transparent"
+          >
+            <span className="sm:hidden mr-2 font-medium text-gray-700 dark:text-gray-300">{period.label}:</span>
+            {formatValue(benchmark?.[period.key as keyof typeof benchmark])}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

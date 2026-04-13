@@ -118,6 +118,7 @@ interface UserDetails {
   subscription_date: string;
   main_subscription_status: number;
   fromApp: string;
+  old_user?: number;
 }
 
 interface Subscription {
@@ -1242,6 +1243,7 @@ export default function UserTab({
                     </div>
                   )}
                 </div>
+                {userDetails.old_user !== 1 && (
                 <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <button
                     type="button"
@@ -1252,6 +1254,7 @@ export default function UserTab({
                     {loadingEligibility ? "Checking…" : "Deactivate User"}
                   </button>
                 </div>
+              )}
               </div>
             </div>
           </div>
@@ -1604,18 +1607,12 @@ export default function UserTab({
           <div className="border-b border-gray-100 dark:border-white/[0.05] pb-4 mb-6">
             <h3 className="text-lg font-semibold dark:text-gray-400">Performance Metrics (XIRR)</h3>
           </div>
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-            <div className="max-w-full overflow-x-auto">
-              <div className="min-w-[1200px]">
-                <PerformanceXIRRTable 
-                  portfolioXIRR={xirrData.portfolioXIRR}
-                  benchmarkXIRR={xirrData.benchmarkXIRR}
-                  loading={loadingXIRR}
-                  error={xirrError}
-                />
-              </div>
-            </div>
-          </div>
+          <PerformanceXIRRTable 
+            portfolioXIRR={xirrData.portfolioXIRR}
+            benchmarkXIRR={xirrData.benchmarkXIRR}
+            loading={loadingXIRR}
+            error={xirrError}
+          />
         </div>
       )}
     </div>
