@@ -100,6 +100,7 @@ interface UserDetails {
   subscription_date: string;
   main_subscription_status: number;
   fromApp: string;
+  old_user?: number;
 }
 
 interface ReferralDetails {

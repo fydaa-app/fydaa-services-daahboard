@@ -118,6 +118,7 @@ interface UserDetails {
   subscription_date: string;
   main_subscription_status: number;
   fromApp: string;
+  old_user?: number;
 }
 
 interface Subscription {
@@ -1242,6 +1243,7 @@ export default function UserTab({
                     </div>
                   )}
                 </div>
+                {userDetails.old_user !== 1 && (
                 <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <button
                     type="button"
@@ -1252,6 +1254,7 @@ export default function UserTab({
                     {loadingEligibility ? "Checking…" : "Deactivate User"}
                   </button>
                 </div>
+              )}
               </div>
             </div>
           </div>
