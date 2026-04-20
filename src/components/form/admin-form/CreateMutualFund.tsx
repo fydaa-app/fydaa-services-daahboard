@@ -14,6 +14,13 @@ interface CreateMutualFundProps {
   prefilledData?: FundScheme | null;
 }
 
+interface ReturnEntry {
+  period: string;
+  returnValue: string;
+  asOfDate: string;
+}
+
+
 interface MutualFundData {
   stockName: string;
   ticker: string;
@@ -23,7 +30,16 @@ interface MutualFundData {
   CapType: string;
   sector: string;
   switchMultiples: string;
+  returns: ReturnEntry[]; 
 }
+
+const DEFAULT_RETURNS: ReturnEntry[] = [
+  { period: "1year", returnValue: "", asOfDate: "" },
+  { period: "2year", returnValue: "", asOfDate: "" },
+  { period: "3year", returnValue: "", asOfDate: "" },
+  { period: "5year", returnValue: "", asOfDate: "" },
+  { period: "MAX", returnValue: "", asOfDate: "" },
+];
 
 const DEFAULT_MUTUAL_FUND_DATA: MutualFundData = {
   stockName: '',
@@ -33,7 +49,8 @@ const DEFAULT_MUTUAL_FUND_DATA: MutualFundData = {
   StockType: '',
   CapType: '',
   sector: '',
-  switchMultiples: ''
+  switchMultiples: '',
+  returns: DEFAULT_RETURNS
 };
 
 // Helper function to map fund category to stock type
@@ -105,6 +122,14 @@ export default function CreateMutualFund({
   const [mutualFundData, setMutualFundData] = useState<MutualFundData>(DEFAULT_MUTUAL_FUND_DATA);
   const [isLoading, setIsLoading] = useState(false);
 
+  const handleReturnChange = (index: number, field: keyof ReturnEntry, value: string) => {
+    setMutualFundData(prev => {
+      const updatedReturns = [...prev.returns];
+      updatedReturns[index] = { ...updatedReturns[index], [field]: value };
+      return { ...prev, returns: updatedReturns };
+    });
+  };
+
   // Effect to populate form when prefilledData changes
   useEffect(() => {
     if (prefilledData && isOpen) {
@@ -116,7 +141,8 @@ export default function CreateMutualFund({
         StockType: mapFundCategoryToStockType(prefilledData.fund_category || ''),
         CapType: mapFundCategoryToCapType(prefilledData.fund_category || ''),
         sector: mapFundCategoryToSector(prefilledData.fund_category || ''),
-        switchMultiples: prefilledData.switch_multiples?.toString() || ''
+        switchMultiples: prefilledData.switch_multiples?.toString() || '',
+        returns: DEFAULT_RETURNS
       };
       
       setMutualFundData(mappedData);
@@ -155,7 +181,10 @@ export default function CreateMutualFund({
           "Content-Type": "application/json",
           Authorization: `Bearer ${document.cookie.split("; ").find(row => row.startsWith("authToken="))?.split("=")[1] || ""}`,
         },
-        body: JSON.stringify(mutualFundData)
+       body: JSON.stringify({
+          ...mutualFundData,
+          returns: mutualFundData.returns.filter(r => r.returnValue !== "" || r.asOfDate !== "")
+        })
       });
   
       if (!response.ok) {
@@ -340,6 +369,51 @@ export default function CreateMutualFund({
               />
             </div>
           </div>
+          {/* Returns Section */}
+          <div className="mt-4">
+            <Label htmlFor="returns">Returns</Label>
+            <div className="mt-2 border rounded-lg overflow-hidden dark:border-gray-700">
+              {/* Header */}
+              <div className="grid grid-cols-3 bg-gray-50 dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300">
+                <span>Period</span>
+                <span>Return (%)</span>
+                <span>As of Date</span>
+              </div>
+
+              {/* Rows */}
+              {mutualFundData.returns.map((entry, index) => (
+                <div
+                  key={entry.period}
+                  className="grid grid-cols-3 items-center gap-3 px-4 py-3 border-t dark:border-gray-700"
+                >
+                  {/* Period label */}
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {entry.period === "1year" ? "1 Year" :
+                      entry.period === "2year" ? "2 Years" :
+                      entry.period === "3year" ? "3 Years" :
+                      entry.period === "5year" ? "5 Years" : "MAX"}
+                  </span>
+
+                  {/* Return value */}
+                  <Input
+                    type="number"
+                    step="any"
+                    value={entry.returnValue}
+                    onChange={(e) => handleReturnChange(index, "returnValue", e.target.value)}
+                    placeholder="e.g. 10.5"
+                  />
+
+                  {/* As of Date */}
+                  <Input
+                    type="date"
+                    value={entry.asOfDate}
+                    onChange={(e) => handleReturnChange(index, "asOfDate", e.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="flex justify-end gap-3 pt-4">
             <button
               type="button"
