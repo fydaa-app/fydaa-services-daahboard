@@ -10,6 +10,12 @@ import Badge from "../ui/badge/Badge";
 import { toast } from "react-hot-toast";
 import EditMyMutualFundModal from "@/components/form/admin-form/EditMyMutualFund";
 
+interface ReturnEntry {
+  period: string;
+  returnValue: string;
+  asOfDate: string;
+}
+
 interface MutualFund {
   id: number;
   scriptcode: number;
@@ -21,6 +27,7 @@ interface MutualFund {
   CapType: string;
   sector: number;
   switchMultiples:string;
+  returns: ReturnEntry[];  
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;

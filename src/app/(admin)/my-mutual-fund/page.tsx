@@ -20,6 +20,11 @@ interface MutualFund {
     CapType: string;
     sector: number;
     switchMultiples: string;
+    returns: {
+        period: string;
+        returnValue: string;
+        asOfDate: string;
+    }[];
     createdAt: string;
     updatedAt: string;
     deletedAt: string | null;

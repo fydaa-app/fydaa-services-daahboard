@@ -43,6 +43,7 @@ const navItems: NavItem[] = [
       { name: "Mapped Users", path: "/mappeduserlist" },
       { name: "Unmapped Users", path: "/unmappeduserlist" },
       { name: "Old Users", path: "/olduserlist" },  
+      { name: "Filter Users", path: "/filteruserlist" },
     ]
   },
   {
