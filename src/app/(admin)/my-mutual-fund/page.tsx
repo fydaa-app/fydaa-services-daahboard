@@ -9,6 +9,12 @@ import Cookies from 'js-cookie';
 import { useRouter, useSearchParams } from "next/navigation";
 import Pagination from "@/components/tables/Pagination";
 
+interface ReturnEntry {
+  period: string;
+  returnValue: string;
+  asOfDate: string;
+}
+
 interface MutualFund {
     id: number;
     scriptcode: number;
@@ -20,11 +26,7 @@ interface MutualFund {
     CapType: string;
     sector: number;
     switchMultiples: string;
-    returns: {
-        period: string;
-        returnValue: string;
-        asOfDate: string;
-    }[];
+    returns: ReturnEntry[]; 
     createdAt: string;
     updatedAt: string;
     deletedAt: string | null;
@@ -243,7 +245,7 @@ export default function MutualFundTablesPage() {
                         onClose={() => setIsModalOpen(false)}                        
                     />
 
-                    <MyMutualFundListTable mutualfunds={apiResponse.items} error={error} />
+                    <MyMutualFundListTable mutualfunds={apiResponse.items} error={error} onRefresh={fetchData} />
                     
                     {apiResponse.totalItems > 0 && (
                         <div className="mt-4">

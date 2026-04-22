@@ -61,25 +61,32 @@ returns: DEFAULT_RETURNS,
 export default function MutualFundModal({ 
     isOpen, 
     onClose,
-    mutualFundData: initialData
+    mutualFundData: initialData,
+    onSuccess
   }: MutualFundModalProps) {
     const router = useRouter();
     const [mutualFundData, setMutualFundData] = useState<MutualFundData>(DEFAULT_MUTUAL_FUND_DATA);
     const [isLoading, setIsLoading] = useState(false);
   
-    // useEffect(() => {
-    //   if (initialData) {
-    //     setMutualFundData(initialData);
-    //   } else {
-    //     setMutualFundData(DEFAULT_MUTUAL_FUND_DATA);
-    //   }
-    // }, [initialData]);
-
     useEffect(() => {
       if (initialData) {
+        let parsedReturns: ReturnEntry[] = DEFAULT_RETURNS;
+
+        try {
+          const raw = initialData.returns;
+          if (typeof raw === "string") {
+            const parsed = JSON.parse(raw);
+            parsedReturns = Array.isArray(parsed) && parsed.length ? parsed : DEFAULT_RETURNS;
+          } else if (Array.isArray(raw) && raw.length) {
+            parsedReturns = raw;
+          }
+        } catch {
+          parsedReturns = DEFAULT_RETURNS;
+        }
+
         setMutualFundData({
           ...initialData,
-          returns: initialData.returns?.length ? initialData.returns : DEFAULT_RETURNS,  // ← fallback
+          returns: parsedReturns,
         });
       } else {
         setMutualFundData(DEFAULT_MUTUAL_FUND_DATA);
@@ -146,12 +153,13 @@ export default function MutualFundModal({
         throw new Error(response.statusText);
       }
 
-      toast.success(isEditing ? 'Stock updated successfully' : 'Stock added successfully');
+      toast.success(isEditing ? 'Mutual Fund updated successfully' : 'Mutual Fund added successfully');
       router.refresh();
+      onSuccess?.();
       closeModal();
     } catch (error) {
-      console.error('Error saving stock:', error);
-      toast.error(`Failed to ${mutualFundData.id ? 'update' : 'add'} stock. Please try again.`);
+      console.error('Error saving Mutual Fund:', error);
+      toast.error(`Failed to ${mutualFundData.id ? 'update' : 'add'} Mutual Fund. Please try again.`);
     } finally {
       setIsLoading(false);
     }
@@ -402,3 +410,7 @@ export default function MutualFundModal({
     </div>
   );
 }
+
+// function onSuccess() {
+//   throw new Error('Function not implemented.');
+// }
