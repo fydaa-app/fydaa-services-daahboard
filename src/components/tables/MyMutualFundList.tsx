@@ -26,7 +26,7 @@ interface MutualFund {
   StockType: string;
   CapType: string;
   sector: number;
-  switchMultiples:string;
+  riskType: string;
   returns: ReturnEntry[];  
   createdAt: string;
   updatedAt: string;
@@ -141,7 +141,7 @@ export default function MutualFundListTable({ mutualfunds, error, onRefresh }: M
                     Cap Type
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
-                    Switch Multiples
+                    Risk Type
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Updated At
@@ -189,7 +189,7 @@ export default function MutualFundListTable({ mutualfunds, error, onRefresh }: M
                         </Badge>
                       </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {mutualfund.switchMultiples}%
+                        {mutualfund.riskType}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                         {new Date(mutualfund.updatedAt).toLocaleString()}

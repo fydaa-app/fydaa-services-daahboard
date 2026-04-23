@@ -26,15 +26,15 @@ interface MutualFundData {
   StockType: string;
   CapType: string;
   sector: string;
-  switchMultiples:string;
+  riskType: string;
   returns: ReturnEntry[]; 
 }
 
 const DEFAULT_RETURNS: ReturnEntry[] = [
   { period: "1year", returnValue: "", asOfDate: "" },
-  { period: "2year", returnValue: "", asOfDate: "" },
   { period: "3year", returnValue: "", asOfDate: "" },
   { period: "5year", returnValue: "", asOfDate: "" },
+  { period: "10year", returnValue: "", asOfDate: "" },
   { period: "MAX", returnValue: "", asOfDate: "" },
 ];
 
@@ -46,7 +46,7 @@ const DEFAULT_MUTUAL_FUND_DATA: MutualFundData = {
   StockType: '',
   CapType: '',
   sector: '',
-  switchMultiples: '',
+  riskType: '',
   returns: DEFAULT_RETURNS,
 };
 
@@ -66,7 +66,7 @@ export default function CreateMutualFund({
     if (!mutualFundData.StockType) return false;
     if (!mutualFundData.CapType) return false;
     if (!mutualFundData.sector) return false;
-    if (!mutualFundData.switchMultiples) return false;
+    if (!mutualFundData.riskType) return false;
     return true;
   };
 
@@ -254,20 +254,22 @@ export default function CreateMutualFund({
               />
             </div>
             <div>
-              <Label htmlFor="switchMultiples">Switch Multiples *</Label>
-              <Input
-                id="switchMultiples"
-                type="number"
-                step="any"
-                value={mutualFundData.switchMultiples}
+              <Label htmlFor="riskType">Risk Type *</Label>
+              <Select
+                value={mutualFundData.riskType}
                 onChange={(e) => setMutualFundData(prev => ({
                   ...prev,
-                  switchMultiples: e.target.value
+                  riskType: e.value
                 }))}
-                placeholder="Enter switch multiples"
-                required
+                options={[
+                  { value: "", label: "Select Risk Type" },
+                  { value: "Aggressive", label: "Aggressive" },
+                  { value: "Moderate", label: "Moderate" },
+                  { value: "Conservative", label: "Conservative" },
+                ]}
               />
             </div>
+
           </div>
           {/* Returns Section */}
           <div className="mt-4">
@@ -289,9 +291,9 @@ export default function CreateMutualFund({
                   {/* Period label */}
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     {entry.period === "1year" ? "1 Year" :
-                    entry.period === "2year" ? "2 Years" :
                     entry.period === "3year" ? "3 Years" :
-                    entry.period === "5year" ? "5 Years" : "MAX"}
+                    entry.period === "5year" ? "5 Years" :
+                    entry.period === "10year" ? "10 Years" : "MAX"}
                   </span>
 
                   {/* Return value */}
