@@ -30,7 +30,7 @@ interface MutualFundData {
   StockType: string;
   CapType: string;
   sector: number;
-  switchMultiples:string;
+  riskType: string;
   returns: ReturnEntry[];
   createdAt?: string;
   updatedAt?: string;
@@ -39,9 +39,9 @@ interface MutualFundData {
 
 const DEFAULT_RETURNS: ReturnEntry[] = [
   { period: "1year", returnValue: "", asOfDate: "" },
-  { period: "2year", returnValue: "", asOfDate: "" },
   { period: "3year", returnValue: "", asOfDate: "" },
   { period: "5year", returnValue: "", asOfDate: "" },
+  { period: "10year", returnValue: "", asOfDate: "" },
   { period: "MAX", returnValue: "", asOfDate: "" },
 ];
 
@@ -53,7 +53,7 @@ const DEFAULT_MUTUAL_FUND_DATA: MutualFundData = {
   StockType: '',
   CapType: '',
   sector: 0, // Changed from empty string to 0
-  switchMultiples: '',
+  riskType: '',
 returns: DEFAULT_RETURNS,
 };
 
@@ -119,10 +119,10 @@ export default function MutualFundModal({
       return false;
     }
 
-    if (!mutualFundData.switchMultiples) {
-      toast.error('Switch Multiples is required');
-      return false;
-    }
+      if (!mutualFundData.riskType) {
+        toast.error('Risk type is required');
+        return false;
+      }
     return true;
   };
 
@@ -324,8 +324,21 @@ export default function MutualFundModal({
                 ]}
               />
             </div>
-            
             <div>
+              <Label htmlFor="riskType">Risk Type *</Label>
+              <Select
+                value={mutualFundData.riskType}
+                onChange={handleSelectChange('riskType')}
+                options={[
+                  { value: "", label: "Select Risk Type" },
+                  { value: "Aggressive", label: "Aggressive" },
+                  { value: "Moderate", label: "Moderate" },
+                  { value: "Conservative", label: "Conservative" },
+                ]}
+              />
+            </div>
+
+            {/* <div>
               <Label htmlFor="switchMultiples">Switch Multiples *</Label>
               <Input
                 id="switchMultiples"
@@ -339,7 +352,7 @@ export default function MutualFundModal({
                 placeholder="Enter switch multiples"
                 required
               />
-            </div>
+            </div> */}
           </div>
 
                  {/* Returns Section */}
@@ -362,9 +375,9 @@ export default function MutualFundModal({
                   {/* Period label */}
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     {entry.period === "1year" ? "1 Year" :
-                    entry.period === "2year" ? "2 Years" :
                     entry.period === "3year" ? "3 Years" :
-                    entry.period === "5year" ? "5 Years" : "MAX"}
+                    entry.period === "5year" ? "5 Years" :
+                    entry.period === "10year" ? "10 Years" : "MAX"}
                   </span>
 
                   {/* Return value */}
@@ -411,6 +424,3 @@ export default function MutualFundModal({
   );
 }
 
-// function onSuccess() {
-//   throw new Error('Function not implemented.');
-// }

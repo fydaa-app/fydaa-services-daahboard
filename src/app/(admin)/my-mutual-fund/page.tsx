@@ -25,7 +25,7 @@ interface MutualFund {
     StockType: string;
     CapType: string;
     sector: number;
-    switchMultiples: string;
+    riskType: string;
     returns: ReturnEntry[]; 
     createdAt: string;
     updatedAt: string;
