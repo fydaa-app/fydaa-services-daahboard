@@ -30,6 +30,7 @@ interface MutualFundData {
   CapType: string;
   sector: string;
   riskType: string;
+  planType: string;
   returns: ReturnEntry[]; 
 }
 
@@ -50,7 +51,8 @@ const DEFAULT_MUTUAL_FUND_DATA: MutualFundData = {
   CapType: '',
   sector: '',
   riskType: '',
-  returns: DEFAULT_RETURNS
+  returns: DEFAULT_RETURNS,
+  planType: '',
 };
 
 // Helper function to map fund category to stock type
@@ -142,6 +144,7 @@ export default function CreateMutualFund({
         CapType: mapFundCategoryToCapType(prefilledData.fund_category || ''),
         sector: mapFundCategoryToSector(prefilledData.fund_category || ''),
         riskType:  '',
+        planType: prefilledData.plan_type || '',
         returns: DEFAULT_RETURNS
       };
       
@@ -161,6 +164,7 @@ export default function CreateMutualFund({
     if (!mutualFundData.CapType) return false;
     if (!mutualFundData.sector) return false;
     if (!mutualFundData.riskType) return false;
+    if (!mutualFundData.planType) return false;
     return true;
   };
 
@@ -368,8 +372,21 @@ export default function CreateMutualFund({
                 ]}
               />
             </div>
-            
-            
+            <div>
+              <Label htmlFor="planType">Plan Type *</Label>
+              <Select
+                value={mutualFundData.planType}
+                onChange={(e) => setMutualFundData(prev => ({
+                  ...prev,
+                  planType: e.value
+                }))}
+                options={[
+                  { value: "", label: "Select Plan Type" },
+                  { value: "REGULAR", label: "Regular" },
+                  { value: "DIRECT", label: "Direct" },
+                ]}
+              />
+            </div>
           </div>
           {/* Returns Section */}
           <div className="mt-4">

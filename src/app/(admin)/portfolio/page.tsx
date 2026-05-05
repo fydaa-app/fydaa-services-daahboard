@@ -27,6 +27,7 @@ interface Portfolio {
     packageId: string;
     termId: string;
     riskScore: string;
+    planType: string;
     investMentType: string;
     minimumInvestment: string
     fundType: number;

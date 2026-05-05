@@ -155,6 +155,39 @@ class AMCService {
       };
     }
   }
+
+  async getMutualFundListByPlanType(planType: string): Promise<MutualFundAPIResponse> {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_STOCK_API_URL}mutualFund/plan-wise?plantype=${planType}`,
+        {
+          headers: {
+            Authorization: `Bearer ${this.getAuthToken()}`,
+            'Content-Type': 'application/json',
+          }
+        }
+      );
+
+      const data = await this.handleResponse(response);
+
+      const mutualFunds = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.data)
+          ? data.data
+          : [];
+
+      return {
+        data: mutualFunds,
+        error: null
+      };
+    } catch (error) {
+      console.error("Error fetching mutual fund data by plan type:", error);
+      return {
+        data: [],
+        error: error instanceof Error ? error.message : "Error fetching mutual fund data"
+      };
+    }
+  }
 }
 
 export const amcService = new AMCService();

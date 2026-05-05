@@ -37,6 +37,7 @@ export interface Portfolio {
   assetClass: AssetClass;
   assetClassStock: AssetClassStock;  
   portfolioType: string; 
+  planType: string;
 } 
 
 export interface PortfolioTableProps {

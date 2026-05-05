@@ -27,6 +27,7 @@ interface MutualFund {
   CapType: string;
   sector: number;
   riskType: string;
+  planType: string;
   returns: ReturnEntry[];  
   createdAt: string;
   updatedAt: string;
@@ -144,6 +145,9 @@ export default function MutualFundListTable({ mutualfunds, error, onRefresh }: M
                     Risk Type
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
+                    Plan Type
+                  </TableCell>
+                  <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Updated At
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
@@ -190,6 +194,9 @@ export default function MutualFundListTable({ mutualfunds, error, onRefresh }: M
                       </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                         {mutualfund.riskType}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                        {mutualfund.planType}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                         {new Date(mutualfund.updatedAt).toLocaleString()}

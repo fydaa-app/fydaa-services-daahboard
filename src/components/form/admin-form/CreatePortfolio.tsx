@@ -114,6 +114,7 @@ interface PortfolioData {
   investMentType: string;
   fundType:number;
   portfolioType: string; 
+  planType: string;
 }
 
 interface StockOption {
@@ -178,6 +179,7 @@ const DEFAULT_PORTFOLIO_DATA: PortfolioData = {
   investMentType: '',
   fundType: 0,
   portfolioType: 'STOCK',
+  planType: 'DIRECT',
 };
 
 export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
@@ -232,18 +234,18 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
        
         setInitialUOptions(uoptions);
 
-        const mutualFundListData = await amcService.getMutualFundList();    
-        const moptions = mutualFundListData.data.map((mutualFund: MutualFund) => ({
-          value: mutualFund.id,
-          label: mutualFund.stockName,
-          sector: mutualFund.sector.toString(),
-          capType: mutualFund.CapType,
-          stockType: mutualFund.StockType,
-          currentPrice: mutualFund.currentPrice,
-          switchMultiples: mutualFund.switchMultiples,
-        }));      
+        // const mutualFundListData = await amcService.getMutualFundList();    
+        // const moptions = mutualFundListData.data.map((mutualFund: MutualFund) => ({
+        //   value: mutualFund.id,
+        //   label: mutualFund.stockName,
+        //   sector: mutualFund.sector.toString(),
+        //   capType: mutualFund.CapType,
+        //   stockType: mutualFund.StockType,
+        //   currentPrice: mutualFund.currentPrice,
+        //   switchMultiples: mutualFund.switchMultiples,
+        // }));      
        
-        setInitialMOptions(moptions);  
+        // setInitialMOptions(moptions);  
 
       } catch (error) {
         toast.error('Failed to fetch data');
@@ -253,6 +255,27 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
 
     fetchData();
   }, []);
+
+  // planType change hone par mutual funds reload karo
+  const fetchMutualFundsByPlanType = async (planType: string) => {
+    if (!planType) return;
+    try {
+      const mutualFundListData = await amcService.getMutualFundListByPlanType(planType);
+      const moptions = mutualFundListData.data.map((mutualFund: MutualFund) => ({
+        value: mutualFund.id,
+        label: mutualFund.stockName,
+        sector: mutualFund.sector.toString(),
+        capType: mutualFund.CapType,
+        stockType: mutualFund.StockType,
+        currentPrice: mutualFund.currentPrice,
+        switchMultiples: mutualFund.switchMultiples,
+      }));
+      setInitialMOptions(moptions);
+    } catch (error) {
+      toast.error('Failed to fetch mutual funds');
+      console.error('Error fetching mutual funds:', error);
+    }
+  };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -637,12 +660,15 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
       const isSelected = prev.includes(mcategory);
       if (isSelected) {
         const newSelectedMainCategories = prev.filter((cat) => cat !== mcategory);
-        // Clear all sub-category selections when main category is deselected
         setSelectedCategories([]);
         setFieldstock({});
         setTotalWeights({});
         return newSelectedMainCategories;
       } else {
+        // MutualFunds select kiya aur planType already set hai
+        if (mcategory === 'MutualFunds' && portfolioDetails.planType) {
+          fetchMutualFundsByPlanType(portfolioDetails.planType);
+        }
         return [...prev, mcategory];
       }
     });
@@ -976,7 +1002,28 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
               ]}
             />
           </div>
-  
+          <div>
+            <Label htmlFor="planType">Plan Type</Label>
+            <Select
+              value={portfolioDetails.planType}
+             onChange={(e) => {
+                setPortfolioDetails({
+                  ...portfolioDetails,
+                  planType: e.value
+                });
+                // MutualFunds selected hai tab hi reload karo
+                if (selectedMainCategories.includes('MutualFunds')) {
+                  fetchMutualFundsByPlanType(e.value);
+                }
+              }}
+              options={[
+                { value: "", label: "Select Plan Type" },
+                { value: "DIRECT", label: "DIRECT" },
+                { value: "REGULAR", label: "REGULAR" }
+              ]}
+            />
+          </div>
+
           <div>
             <Label htmlFor="minimumInvestment">User Minimum Amount</Label>
             <Input
