@@ -18,7 +18,8 @@ async function sendEmailReport(
   subject: string,
   startDate: string,
   endDate: string,
-  userId?: string
+  userId?: string,
+  isUser: boolean = false
 ): Promise<boolean> {
   try {
     const url = `${process.env.NEXT_PUBLIC_PAYMENT_API_URL}/subscription/send-report`;
@@ -34,7 +35,8 @@ async function sendEmailReport(
         endDate: endDate || null,
         email: recipient,
         subject: subject || null,
-        userId: userId || null
+        userId: userId || null,
+        isUser
       })
     });
 
@@ -159,7 +161,8 @@ export default function AccountLedgerPage() {
     }
   };
 
-  const handleSendEmail = async (emailData: { recipient: string; subject: string; startDate: Date | null; endDate: Date | null; userId?: string }) => {
+  const handleSendEmail = async (emailData: { recipient: string; subject: string; startDate: Date | null; endDate: Date | null; userId?: string; isUser?: boolean }) => {
+    const isUser = Boolean(emailData.isUser);
     setIsEmailLoading(true);
     setEmailSuccess(null);
     
@@ -169,10 +172,13 @@ export default function AccountLedgerPage() {
         emailData.subject,
         emailData.startDate ? emailData.startDate.toISOString().split('T')[0] : '',
         emailData.endDate ? emailData.endDate.toISOString().split('T')[0] : '',
-        emailData.userId
+        emailData.userId,
+        isUser
       );
       
-      setEmailSuccess("Email report sent successfully!");
+      setEmailSuccess(
+        isUser ? "User email report sent successfully!" : "Finance email report sent successfully!"
+      );
       setIsEmailModalOpen(false);
       
       // Clear success message after 3 seconds

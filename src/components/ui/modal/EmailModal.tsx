@@ -8,7 +8,7 @@ import { DateRangePicker } from "../DateRangePicker";
 interface EmailModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSendEmail: (emailData: { recipient: string; subject: string; startDate: Date | null; endDate: Date | null; userId?: string }) => void;
+  onSendEmail: (emailData: { recipient: string; subject: string; startDate: Date | null; endDate: Date | null; userId?: string; isUser?: boolean }) => void;
   searchQuery?: string;
   isLoading?: boolean;
 }
@@ -25,7 +25,8 @@ export const EmailModal: React.FC<EmailModalProps> = ({
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [userId, setUserId] = useState<string>("");
-  const [errors, setErrors] = useState<{ recipient?: string; subject?: string; dateRange?: string }>({});
+  const [isUser, setIsUser] = useState(false);
+  const [errors, setErrors] = useState<{ recipient?: string; subject?: string; dateRange?: string; userId?: string }>({});
 
   React.useEffect(() => {
     if (searchQuery && !isNaN(Number(searchQuery.trim()))) {
@@ -36,11 +37,11 @@ export const EmailModal: React.FC<EmailModalProps> = ({
   }, [searchQuery, isOpen]);
 
   const validateForm = () => {
-    const newErrors: { recipient?: string; subject?: string; dateRange?: string } = {};
+    const newErrors: { recipient?: string; subject?: string; dateRange?: string; userId?: string } = {};
     
-    if (!recipient.trim()) {
+    if (!isUser && !recipient.trim()) {
       newErrors.recipient = "Recipient email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+    } else if (recipient.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
       newErrors.recipient = "Please enter a valid email address";
     }
     
@@ -50,6 +51,10 @@ export const EmailModal: React.FC<EmailModalProps> = ({
 
     if (!startDate || !endDate) {
       newErrors.dateRange = "Please select both start and end dates";
+    }
+
+    if (isUser && !userId.trim()) {
+      newErrors.userId = "User ID is required when sending to user";
     }
     
     setErrors(newErrors);
@@ -63,7 +68,8 @@ export const EmailModal: React.FC<EmailModalProps> = ({
         subject: subject.trim(),
         startDate,
         endDate,
-        userId: userId.trim()
+        userId: userId.trim(),
+        isUser
       });
     }
   };
@@ -74,6 +80,7 @@ export const EmailModal: React.FC<EmailModalProps> = ({
     setStartDate(null);
     setEndDate(null);
     setUserId("");
+    setIsUser(false);
     setErrors({});
     onClose();
   };
@@ -100,35 +107,67 @@ export const EmailModal: React.FC<EmailModalProps> = ({
         </div>
 
         <div className="space-y-4">
+          {/* Is User Checkbox */}
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isUser}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setIsUser(checked);
+                  if (!checked) {
+                    setErrors((prev) => ({ ...prev, userId: undefined }));
+                  }
+                }}
+                className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+              />
+              Send to user
+            </label>
+          </div>
+
           {/* User ID */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              User ID
+              User ID {isUser ? "*" : "(optional)"}
             </label>
             <input
               type="text"
               value={userId}
-              onChange={(e) => setUserId(e.target.value)}
+              onChange={(e) => {
+                setUserId(e.target.value);
+                if (e.target.value.trim()) {
+                  setErrors((prev) => ({ ...prev, userId: undefined }));
+                }
+              }}
               placeholder="Enter user ID (optional)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/10 focus:border-brand-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-400"
+              className={`w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-400 ${
+                errors.userId
+                  ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10'
+                  : 'border-gray-300 focus:border-brand-300'
+              }`}
             />
+            {errors.userId && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.userId}</p>
+            )}
           </div>
 
           {/* Recipient Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Recipient Email *
+              Recipient Email {isUser ? "(disabled for user reports)" : "*"}
             </label>
             <input
               type="email"
               value={recipient}
               onChange={(e) => setRecipient(e.target.value)}
               placeholder="Enter recipient email address"
+              disabled={isUser}
               className={`w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-400 ${
                 errors.recipient 
                   ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' 
                   : 'border-gray-300 focus:border-brand-300'
-              }`}
+              } ${isUser ? 'opacity-60 cursor-not-allowed bg-gray-100 dark:bg-gray-700' : ''}`}
             />
             {errors.recipient && (
               <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.recipient}</p>
