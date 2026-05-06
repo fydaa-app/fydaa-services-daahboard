@@ -27,6 +27,7 @@ interface MutualFund {
     sector: number;
     riskType: string;
     returns: ReturnEntry[]; 
+    planType: string;
     createdAt: string;
     updatedAt: string;
     deletedAt: string | null;

@@ -28,6 +28,7 @@ interface MutualFundData {
   sector: string;
   riskType: string;
   returns: ReturnEntry[]; 
+  planType: string;
 }
 
 const DEFAULT_RETURNS: ReturnEntry[] = [
@@ -48,6 +49,7 @@ const DEFAULT_MUTUAL_FUND_DATA: MutualFundData = {
   sector: '',
   riskType: '',
   returns: DEFAULT_RETURNS,
+  planType: '',
 };
 
 export default function CreateMutualFund({ 
@@ -67,6 +69,7 @@ export default function CreateMutualFund({
     if (!mutualFundData.CapType) return false;
     if (!mutualFundData.sector) return false;
     if (!mutualFundData.riskType) return false;
+    if (!mutualFundData.planType) return false;
     return true;
   };
 
@@ -266,6 +269,21 @@ export default function CreateMutualFund({
                   { value: "Aggressive", label: "Aggressive" },
                   { value: "Moderate", label: "Moderate" },
                   { value: "Conservative", label: "Conservative" },
+                ]}
+              />
+            </div>
+            <div>
+              <Label htmlFor="planType">Plan Type *</Label>
+              <Select
+                value={mutualFundData.planType}
+                onChange={(e) => setMutualFundData(prev => ({
+                  ...prev,
+                  planType: e.value
+                }))}
+                options={[
+                  { value: "", label: "Select Plan Type" },
+                  { value: "DIRECT", label: "Direct" },
+                  { value: "REGULAR", label: "Regular" },
                 ]}
               />
             </div>

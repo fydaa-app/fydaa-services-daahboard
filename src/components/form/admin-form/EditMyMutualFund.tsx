@@ -31,6 +31,7 @@ interface MutualFundData {
   CapType: string;
   sector: number;
   riskType: string;
+  planType: string;
   returns: ReturnEntry[];
   createdAt?: string;
   updatedAt?: string;
@@ -54,7 +55,8 @@ const DEFAULT_MUTUAL_FUND_DATA: MutualFundData = {
   CapType: '',
   sector: 0, // Changed from empty string to 0
   riskType: '',
-returns: DEFAULT_RETURNS,
+  planType: '',
+  returns: DEFAULT_RETURNS,
 };
 
 
@@ -119,10 +121,15 @@ export default function MutualFundModal({
       return false;
     }
 
-      if (!mutualFundData.riskType) {
-        toast.error('Risk type is required');
-        return false;
-      }
+    if (!mutualFundData.riskType) {
+      toast.error('Risk type is required');
+      return false;
+    }
+    
+    if (!mutualFundData.planType) {
+      toast.error('Plan type is required');
+      return false;
+    }
     return true;
   };
 
@@ -334,6 +341,18 @@ export default function MutualFundModal({
                   { value: "Aggressive", label: "Aggressive" },
                   { value: "Moderate", label: "Moderate" },
                   { value: "Conservative", label: "Conservative" },
+                ]}
+              />
+            </div>
+            <div>
+              <Label htmlFor="planType">Plan Type *</Label>
+              <Select
+                value={mutualFundData.planType}
+                onChange={handleSelectChange('planType')}
+                options={[
+                  { value: "", label: "Select Plan Type" },
+                  { value: "DIRECT", label: "Direct" },
+                  { value: "REGULAR", label: "Regular" },
                 ]}
               />
             </div>

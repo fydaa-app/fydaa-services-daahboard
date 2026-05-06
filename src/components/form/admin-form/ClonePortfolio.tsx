@@ -114,6 +114,7 @@ interface PortfolioData {
   assetClass: WeightsState;
   assetClassStock: FieldsState;
   portfolioType: string; 
+  planType: string;
 }
 
 interface StockOption {
@@ -181,6 +182,7 @@ const DEFAULT_PORTFOLIO_DATA: PortfolioData = {
   goalName: null,
   packageName: null,
   portfolioType: 'STOCK',
+  planType: '',
 };
 
 export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = 'clone'}: EditStockProps) {
@@ -205,7 +207,6 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
 
   // Fetch goals and packages on component mount
   useEffect(() => {
-   
     const fetchData = async () => {
       try {
         const [goalsResponse, packagesResponse] = await Promise.all([
@@ -220,116 +221,122 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
         const options = stockListData.data.map((stock: Stock) => ({
           value: stock.id,
           label: stock.stockName,
-          sector: stock.sector.toString(), // Convert number to string if needed
+          sector: stock.sector.toString(),
           capType: stock.CapType,
           stockType: stock.StockType,
           currentPrice: stock.currentPrice,
         }));      
-        console.log(fields);
-        console.log(sectorWeights);
         setInitialOptions(options);
 
-        const mutualFundListData = await amcService.getMutualFundList();    
-          const moptions = mutualFundListData.data.map((mutualFund: MutualFund) => ({
-            value: mutualFund.id,
-            label: mutualFund.stockName,
-            sector: mutualFund.sector.toString(),
-            capType: mutualFund.CapType,
-            stockType: mutualFund.StockType,
-            currentPrice: mutualFund.currentPrice,
-            switchMultiples: mutualFund.switchMultiples,
-          }));      
-          
-          setInitialMOptions(moptions);
+        const usstockListData = await stockManagementServiceApi.getUsStockList();    
+        const uoptions = usstockListData.data.map((stock: Stock) => ({
+          value: stock.id,
+          label: stock.stockName,
+          sector: stock.sector.toString(),
+          capType: stock.CapType,
+          stockType: stock.StockType,
+          currentPrice: stock.currentPrice,
+        }));      
+        setInitialUOptions(uoptions);
 
-          const usstockListData = await stockManagementServiceApi.getUsStockList();    
-            const uoptions = usstockListData.data.map((stock: Stock) => ({
-              value: stock.id,
-              label: stock.stockName,
-              sector: stock.sector.toString(),
-              capType: stock.CapType,
-              stockType: stock.StockType,
-              currentPrice: stock.currentPrice,
-            }));      
-            
-            setInitialUOptions(uoptions);
-       
-        if ((type === "clone" ) && PortfolioData) {
-         
+        // ✅ Mutual fund: planType ke according load karo (clone data se ya default DIRECT)
+        const planTypeToUse = PortfolioData?.planType || 'DIRECT';
+        const mutualFundListData = await amcService.getMutualFundListByPlanType(planTypeToUse);
+        const moptions = mutualFundListData.data.map((mutualFund: MutualFund) => ({
+          value: mutualFund.id,
+          label: mutualFund.stockName,
+          sector: mutualFund.sector.toString(),
+          capType: mutualFund.CapType,
+          stockType: mutualFund.StockType,
+          currentPrice: mutualFund.currentPrice,
+          switchMultiples: mutualFund.switchMultiples,
+        }));      
+        setInitialMOptions(moptions);
+
+        if ((type === "clone") && PortfolioData) {
           const stockIdsArray = PortfolioData?.stockIds?.replace(/'/g, "").split(",") || [];
           const weightsArray = PortfolioData?.weights?.replace(/'/g, "").split(",") || [];
           const newFields = stockIdsArray.map((id: string, index: number) => ({
-              id: index + 1,
-              selectValue: id,
-              weight: weightsArray[index] || '',
-              currentPrice: '',
-              MinAmountquantity: 0,
-              MinAmountorderValue: 0,
-              options,
+            id: index + 1,
+            selectValue: id,
+            weight: weightsArray[index] || '',
+            currentPrice: '',
+            MinAmountquantity: 0,
+            MinAmountorderValue: 0,
+            options,
           }));
           setFields(newFields);
-                   
-          const newFields1 =   PortfolioData?.assetClassStock;
+                  
+          const newFields1 = PortfolioData?.assetClassStock;
+
+          // ✅ portfolioType ke hisaab se sahi options use karo currentPrice fill karne ke liye
+          const optionsForType = 
+            PortfolioData.portfolioType === 'MUTUALFUND' ? moptions :
+            PortfolioData.portfolioType === 'USSTOCK' ? uoptions :
+            options;
 
           for (const category in newFields1) {
-              if (newFields1.hasOwnProperty(category)) {
-                  newFields1[category].forEach((item: Field) => {
-                      const stock  =  options.find((option: { value: string; }) => parseInt(option.value) === parseInt(item.selectValue));
-                      item.options =  options;  // Replace with the new option(s)
-                      if (stock) {
-                          item.currentPrice = stock.currentPrice;                          
-                      } else {
-                          console.warn(`No stock found for selectValue: ${item.selectValue}`);
-                      }
-                  });
-              }
+            if (newFields1.hasOwnProperty(category)) {
+              newFields1[category].forEach((item: Field) => {
+                const found = optionsForType.find(
+                  (option) => parseInt(option.value) === parseInt(item.selectValue)
+                );
+                item.options = optionsForType;
+                if (found) {
+                  item.currentPrice = found.currentPrice;                          
+                } else {
+                  console.warn(`No option found for selectValue: ${item.selectValue}`);
+                }
+              });
+            }
           }
           
           setFieldstock(newFields1);
           setSelectedCategories(Object.keys(PortfolioData?.assetClass));
           setTotalWeights(PortfolioData?.assetClass);
           calculateSectorWeights(newFields1);   
-          setFieldstock(newFields1);
           calculateCapTypeWeights(newFields1);
           calculateStockTypeWeights(newFields1);
           calculateSummary(newFields1);
-          // setSelectedMainCategories(PortfolioData.portfolioType == "MUTUALFUND" ? ['MutualFunds'] : ['Stocks'] );
 
-          if (PortfolioData.portfolioType === 'USSTOCK'){
-              setSelectedMainCategories(['UsStocks']);             
+          if (PortfolioData.portfolioType === 'USSTOCK') {
+            setSelectedMainCategories(['UsStocks']);             
           } else if (PortfolioData.portfolioType === 'MUTUALFUND') {
-              setSelectedMainCategories(['MutualFunds']);              
-          }else if (PortfolioData.portfolioType === 'STOCK') {
-              setSelectedMainCategories(['Stocks']);
+            setSelectedMainCategories(['MutualFunds']);              
+          } else if (PortfolioData.portfolioType === 'STOCK') {
+            setSelectedMainCategories(['Stocks']);
           }
+          console.log(fields);
+          console.log(sectorWeights);
           
-          const portfolioDetails: PortfolioData = {
-              portfolioName: PortfolioData?.portfolioName || '',
-              planId: PortfolioData?.planId || '',
-              termId: PortfolioData?.termId || '',
-              goalId: PortfolioData?.goalId || '',
-              packageId: PortfolioData?.packageId || '',
-              stockIds: stockIdsArray.join(','),
-              weights: weightsArray.join(','),
-              riskScore: PortfolioData?.riskScore || '',
-              minimumInvestment: PortfolioData?.minimumInvestment || '',
-              orderAmount: PortfolioData?.orderAmount || '',
-              assetClass: PortfolioData?.assetClass || {},
-              assetClassStock: PortfolioData?.assetClassStock || {},
-              investMentType: PortfolioData?.investMentType || '',
-              fundType: PortfolioData?.fundType || 0,
-              goalName: PortfolioData?.goalName || null,
-              packageName: PortfolioData?.packageName || null,
-              portfolioType: PortfolioData.portfolioType || 'STOCK',
+          const portfolioDetailsData: PortfolioData = {
+            portfolioName: PortfolioData?.portfolioName || '',
+            planId: PortfolioData?.planId || '',
+            termId: PortfolioData?.termId || '',
+            goalId: PortfolioData?.goalId || '',
+            packageId: PortfolioData?.packageId || '',
+            stockIds: stockIdsArray.join(','),
+            weights: weightsArray.join(','),
+            riskScore: PortfolioData?.riskScore || '',
+            minimumInvestment: PortfolioData?.minimumInvestment || '',
+            orderAmount: PortfolioData?.orderAmount || '',
+            assetClass: PortfolioData?.assetClass || {},
+            assetClassStock: PortfolioData?.assetClassStock || {},
+            investMentType: PortfolioData?.investMentType || '',
+            fundType: PortfolioData?.fundType || 0,
+            goalName: PortfolioData?.goalName || null,
+            packageName: PortfolioData?.packageName || null,
+            portfolioType: PortfolioData.portfolioType || 'STOCK',
+            planType: PortfolioData.planType || 'DIRECT',
           };                    
-          setPortfolioDetails(portfolioDetails);
-          calculateOrderValue(newFields1,PortfolioData?.assetClass,portfolioDetails);
+          setPortfolioDetails(portfolioDetailsData);
+          calculateOrderValue(newFields1, PortfolioData?.assetClass, portfolioDetailsData);
           setTimeout(() => {
-              calculateOrderValue(newFields1,PortfolioData?.assetClass,portfolioDetails);
+            calculateOrderValue(newFields1, PortfolioData?.assetClass, portfolioDetailsData);
           }, 1000);          
-      } else {
-          setFields([{ id: 1, selectValue: '', weight: '',currentPrice:'', options , MinAmountquantity:0,MinAmountorderValue:0}]);
-      }
+        } else {
+          setFields([{ id: 1, selectValue: '', weight: '', currentPrice: '', options, MinAmountquantity: 0, MinAmountorderValue: 0 }]);
+        }
       } catch (error) {
         toast.error('Failed to fetch data');
         console.error('Error fetching data:', error);
@@ -339,6 +346,26 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
     fetchData();
   }, [PortfolioData, type]);
 
+  // planType change hone par mutual funds reload karo
+  const fetchMutualFundsByPlanType = async (planType: string) => {
+    if (!planType) return;
+    try {
+      const mutualFundListData = await amcService.getMutualFundListByPlanType(planType);
+      const moptions = mutualFundListData.data.map((mutualFund: MutualFund) => ({
+        value: mutualFund.id,
+        label: mutualFund.stockName,
+        sector: mutualFund.sector.toString(),
+        capType: mutualFund.CapType,
+        stockType: mutualFund.StockType,
+        currentPrice: mutualFund.currentPrice,
+        switchMultiples: mutualFund.switchMultiples,
+      }));
+      setInitialMOptions(moptions);
+    } catch (error) {
+      toast.error('Failed to fetch mutual funds');
+      console.error('Error fetching mutual funds:', error);
+    }
+  };
   
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -752,7 +779,11 @@ const updateTotalWeight = (category: string, weight: number) => {
         setTotalWeights({});
         return newSelectedMainCategories;
       } else {
-        return [...prev, mcategory];
+         // MutualFunds select kiya aur planType already set hai
+          if (mcategory === 'MutualFunds' && portfolioDetails.planType) {
+            fetchMutualFundsByPlanType(portfolioDetails.planType);
+          }
+          return [...prev, mcategory];
       }
     });
   };
@@ -1084,6 +1115,29 @@ const updateTotalWeight = (category: string, weight: number) => {
               ]}
             />
           </div>
+
+          <div>
+            <Label htmlFor="planType">Plan Type</Label>
+            <Select
+              value={portfolioDetails.planType}
+             onChange={(e) => {
+                  setPortfolioDetails({
+                    ...portfolioDetails,
+                    planType: e.value
+                  });
+                  // MutualFunds selected hai tab hi reload karo
+                  if (selectedMainCategories.includes('MutualFunds')) {
+                    fetchMutualFundsByPlanType(e.value);
+                  }
+                }}
+              options={[
+                { value: "", label: "Select Plan Type" },
+                { value: "DIRECT", label: "DIRECT" },
+                { value: "REGULAR", label: "REGULAR" }
+              ]}
+            />
+          </div>
+
   
           <div>
             <Label htmlFor="minimumInvestment">User Minimum Amount</Label>
