@@ -212,6 +212,7 @@ export default function CreateMutualFund({
                   { value: "RealEstate", label: "Real Estate" },
                   { value: "Gold", label: "Gold" },
                   { value: "WorldStock", label: "World" },
+                  
                 ]}
               />
             </div>
