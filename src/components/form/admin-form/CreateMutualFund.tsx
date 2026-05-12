@@ -63,6 +63,8 @@ const mapFundCategoryToStockType = (category: string): string => {
     return 'IndianStock';
   } else if (categoryLower.includes('international') || categoryLower.includes('global')) {
     return 'GlobalStock';
+  } else if (categoryLower.includes('world')) {
+    return 'WorldStock';
   } else if (categoryLower.includes('debt') || categoryLower.includes('bond') || categoryLower.includes('fixed')) {
     return 'FixedIncomeBonds';
   } else if (categoryLower.includes('real estate') || categoryLower.includes('reit')) {
@@ -311,6 +313,7 @@ export default function CreateMutualFund({
                   { value: "FixedIncomeBonds", label: "Fixed Income Bonds" },
                   { value: "RealEstate", label: "Real Estate" },
                   { value: "Gold", label: "Gold" },
+                  { value: "WorldStock", label: "World" },
                 ]}
               />
             </div>

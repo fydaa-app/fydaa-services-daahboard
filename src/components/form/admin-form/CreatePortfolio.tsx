@@ -64,6 +64,7 @@ const stock: Record<string | number, string> = {
   'Gold': 'Gold',
   'RealEstate': 'Real Estate',
   'GlobalStock':'Global Stock',
+  'WorldStock': 'World Stock',
   'FixedIncomeBonds':'Fixed Bonds',
   'UsStocks':'Us Stocks'
 };

@@ -330,6 +330,7 @@ export default function StockModal({
                   { value: "RealEstate", label: "Real Estate" },
                   { value: "Gold", label: "Gold" },
                   { value: "UsStock", label: "US Stock" },
+                  { value: "WorldStock", label: "World Stock" },
                 ]}
               />
             </div>

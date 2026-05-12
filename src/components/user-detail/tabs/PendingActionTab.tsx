@@ -30,6 +30,7 @@ interface BuyRecommendationData {
   IndianStock: number;
   RealEstate: number;
   GlobalStock: number;
+  WorldStock: number;
   portfolioId: number;
   portfolioName: string;
 }
@@ -50,6 +51,7 @@ const capTypeBadgeColor: Record<string, string> = {
 const stockTypeBadgeColor: Record<string, string> = {
   IndianStock: "bg-green-100 text-green-700",
   GlobalStock: "bg-sky-100 text-sky-700",
+  WorldStock: "bg-indigo-100 text-indigo-700",
   Gold: "bg-yellow-100 text-yellow-700",
   FixedIncomeBonds: "bg-rose-100 text-rose-700",
   RealEstate: "bg-teal-100 text-teal-700",
@@ -134,12 +136,13 @@ export default function PendingActionTab({
     );
   }
 
-  const { data, minimumamount, orderValue, portfolioName, IndianStock, GlobalStock, Gold, FixedBonds, RealEstate } =
+  const { data, minimumamount, orderValue, portfolioName, IndianStock, GlobalStock, WorldStock, Gold, FixedBonds, RealEstate } =
     recommendation;
 
   const allocationSummary = [
     { label: "Indian Stock", value: IndianStock, color: "bg-green-500" },
     { label: "Global Stock", value: GlobalStock, color: "bg-sky-500" },
+    { label: "World Stock", value: WorldStock, color: "bg-indigo-500" },
     { label: "Gold", value: Gold, color: "bg-yellow-500" },
     { label: "Fixed Bonds", value: FixedBonds, color: "bg-rose-500" },
     { label: "Real Estate", value: RealEstate, color: "bg-teal-500" },

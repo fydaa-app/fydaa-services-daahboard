@@ -183,6 +183,7 @@ export default function CreateStock({
                 { value: "FixedIncomeBonds", label: "Fixed Income Bonds" },
                 { value: "RealEstate", label: "Real Estate" },
                 { value: "Gold", label: "Gold" },
+                { value: "WorldStock", label: "World Stock" },
               ]}
             />
           </div>
