@@ -492,10 +492,10 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
       optionsToUse = initialMOptions.filter(opt => opt.stockType === category);
       placeholderText = `Select ${stock[category] || 'mutual fund'}`;
     } else if (isUsStockCategory && !isStockCategory && !isMutualFundCategory && !isWorldStockCategory) {
-      optionsToUse = initialUOptions.filter(opt => opt.stockType === category);
+      optionsToUse = initialUOptions;
       placeholderText = `Select ${stock[category] || 'US stock'}`;
     } else if (isWorldStockCategory && !isStockCategory && !isMutualFundCategory && !isUsStockCategory) {
-      optionsToUse = initialWOptions.filter(opt => opt.stockType === category);
+      optionsToUse = initialWOptions;
       placeholderText = `Select ${stock[category] || 'World stock'}`;
     } else {
       // Both or neither selected - show appropriate message

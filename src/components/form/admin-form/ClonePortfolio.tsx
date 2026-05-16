@@ -509,10 +509,10 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
     let placeholderText = "Select option";
     
     if (isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory) {
-      optionsToUse = initialOptions;
+      optionsToUse = initialOptions.filter(opt => opt.stockType === category);
       placeholderText = `Select ${stock[category] || 'stock/ETF'}`;
     } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory && !isWorldStockCategory) {
-      optionsToUse = initialMOptions;
+      optionsToUse = initialMOptions.filter(opt => opt.stockType === category);
       placeholderText = `Select ${stock[category] || 'mutual fund'}`;
     } else if (isUsStockCategory && !isStockCategory && !isMutualFundCategory && !isWorldStockCategory) {
       optionsToUse = initialUOptions;
