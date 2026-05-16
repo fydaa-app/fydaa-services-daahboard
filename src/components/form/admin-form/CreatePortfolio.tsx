@@ -716,6 +716,7 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
                         ? Math.max(...categoryFields.map(field => field.id)) + 1 
                         : 1;
         
+        const isStockCategory = selectedMainCategories.includes('Stocks');
         const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
         const isUsStockCategory = selectedMainCategories.includes('UsStocks');
         const isWorldStockCategory = selectedMainCategories.includes('WorldStocks');
@@ -794,6 +795,7 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
     const stockTypeWeightMap: { [stockType: string]: number } = {};
     let totalWeight = 0;
     
+    const isStockCategory = selectedMainCategories.includes('Stocks');
     const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
     const isUsStockCategory = selectedMainCategories.includes('UsStocks');
     const isWorldStockCategory = selectedMainCategories.includes('WorldStocks');
@@ -841,7 +843,6 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
     const capTypeWeightMap: { [capType: string]: number } = {};
     let totalWeight = 0;
 
-    // Use appropriate options based on main category selection
     const isStockCategory = selectedMainCategories.includes('Stocks');
     const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
     const isUsStockCategory = selectedMainCategories.includes('UsStocks');

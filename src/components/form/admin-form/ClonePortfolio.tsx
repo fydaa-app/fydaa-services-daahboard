@@ -607,10 +607,6 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
 
         const idsSet = new Set(idsArr);
         
-        // Determine which options to use based on main category selection
-        const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
-        const isUsStockCategory = selectedMainCategories.includes('UsStocks');
-        const isWorldStockCategory = selectedMainCategories.includes('WorldStocks');
         let optionsToFilter: (StockOption | MutualFundOption)[] = [];
         if(portfolioDetails.portfolioType === 'USSTOCK') {
           optionsToFilter = initialUOptions;
@@ -763,6 +759,7 @@ const updateTotalWeight = (category: string, weight: number) => {
         calculateOrderValue(newFields, totalWeights, portfolioDetails);
         return newSelectedCategories;
       } else {
+        const isStockCategory = selectedMainCategories.includes('Stocks');
         const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
         const isUsStockCategory = selectedMainCategories.includes('UsStocks');
         const isWorldStockCategory = selectedMainCategories.includes('WorldStocks');
@@ -838,14 +835,17 @@ const updateTotalWeight = (category: string, weight: number) => {
         const isStockCategory = selectedMainCategories.includes('Stocks');
         const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
         const isUsStockCategory = selectedMainCategories.includes('UsStocks');
+        const isWorldStockCategory = selectedMainCategories.includes('WorldStocks');
         let optionsToUse: (StockOption | MutualFundOption)[] = [];
         
-        if (isStockCategory && !isMutualFundCategory && !isUsStockCategory) {
+        if (isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory) {
           optionsToUse = initialOptions;
-        } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory) {
+        } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory && !isWorldStockCategory) {
           optionsToUse = initialMOptions;
-        }else if (isUsStockCategory && !isStockCategory && !isMutualFundCategory) {
+        }else if (isUsStockCategory && !isStockCategory && !isMutualFundCategory && !isWorldStockCategory) {
           optionsToUse = initialUOptions;
+        }else if (isWorldStockCategory && !isStockCategory && !isMutualFundCategory && !isUsStockCategory) {
+          optionsToUse = initialWOptions;
         }
 
         const newField: Field = { 
@@ -915,17 +915,20 @@ const updateTotalWeight = (category: string, weight: number) => {
     const isStockCategory = selectedMainCategories.includes('Stocks');
     const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
     const isUsStockCategory = selectedMainCategories.includes('UsStocks');
+    const isWorldStockCategory = selectedMainCategories.includes('WorldStocks');
     let optionsToUse: (StockOption | MutualFundOption)[] = [];
     
-    if (isStockCategory && !isMutualFundCategory && !isUsStockCategory) {
+    if (isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory) {
       optionsToUse = initialOptions;
-    } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory) {
+    } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory && !isWorldStockCategory) {
       optionsToUse = initialMOptions;
-    } else if (isUsStockCategory && !isStockCategory && !isMutualFundCategory) {
+    } else if (isUsStockCategory && !isStockCategory && !isMutualFundCategory && !isWorldStockCategory) {
       optionsToUse = initialUOptions;
+    } else if (isWorldStockCategory && !isStockCategory && !isMutualFundCategory && !isUsStockCategory) {
+      optionsToUse = initialWOptions;
     }
     else {
-      optionsToUse = [...initialOptions, ...initialMOptions, ...initialUOptions];
+      optionsToUse = [...initialOptions, ...initialMOptions, ...initialUOptions, ...initialWOptions];
     }
     
     allFields.forEach(field => {
@@ -961,17 +964,20 @@ const updateTotalWeight = (category: string, weight: number) => {
     const isStockCategory = selectedMainCategories.includes('Stocks');
     const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
     const isUsStockCategory = selectedMainCategories.includes('UsStocks');
+    const isWorldStockCategory = selectedMainCategories.includes('WorldStocks');
     let optionsToUse: (StockOption | MutualFundOption)[] = [];
     
-    if (isStockCategory && !isMutualFundCategory && !isUsStockCategory) {
+    if (isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory) {
       optionsToUse = initialOptions;
-    } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory) {
+    } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory && !isWorldStockCategory) {
       optionsToUse = initialMOptions;
-    } else if (isUsStockCategory && !isStockCategory && !isMutualFundCategory) {
+    } else if (isUsStockCategory && !isStockCategory && !isMutualFundCategory && !isWorldStockCategory) {
       optionsToUse = initialUOptions;
+    } else if (isWorldStockCategory && !isStockCategory && !isMutualFundCategory && !isUsStockCategory) {
+      optionsToUse = initialWOptions;
     }
     else {
-      optionsToUse = [...initialOptions, ...initialMOptions, ...initialUOptions];
+      optionsToUse = [...initialOptions, ...initialMOptions, ...initialUOptions, ...initialWOptions];
     }
 
     Object.values(fields).forEach((categoryFields) => {

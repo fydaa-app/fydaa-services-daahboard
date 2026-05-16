@@ -585,10 +585,6 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
 
         const idsSet = new Set(idsArr);
         
-        // Determine which options to use based on main category selection
-        const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
-        const isUsStockCategory = selectedMainCategories.includes('UsStocks');
-        const isWorldStockCategory = selectedMainCategories.includes('WorldStocks');
         let optionsToFilter: (StockOption | MutualFundOption)[] = [];
         if(portfolioDetails.portfolioType === 'USSTOCK') {
           optionsToFilter = initialUOptions;
@@ -812,6 +808,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
                         ? Math.max(...categoryFields.map(field => field.id)) + 1 
                         : 1;
         
+        const isStockCategory = selectedMainCategories.includes('Stocks');
         const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
         const isUsStockCategory = selectedMainCategories.includes('UsStocks');
         const isWorldStockCategory = selectedMainCategories.includes('WorldStocks');
@@ -891,6 +888,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
     let totalWeight = 0;
     
     // Use appropriate options based on main category selection
+    const isStockCategory = selectedMainCategories.includes('Stocks');
     const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
     const isUsStockCategory = selectedMainCategories.includes('UsStocks');
     const isWorldStockCategory = selectedMainCategories.includes('WorldStocks');
@@ -938,6 +936,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
     let totalWeight = 0;
 
     // Use appropriate options based on main category selection
+    const isStockCategory = selectedMainCategories.includes('Stocks');
     const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
     const isUsStockCategory = selectedMainCategories.includes('UsStocks');
     const isWorldStockCategory = selectedMainCategories.includes('WorldStocks');
