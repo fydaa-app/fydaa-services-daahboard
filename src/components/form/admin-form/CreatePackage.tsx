@@ -131,6 +131,7 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
     if (isOpen) {
       fetchServices();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   // For temporarily skipping file uploads when S3 bucket issues occur

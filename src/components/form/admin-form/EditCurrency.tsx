@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import Input from '@/components/form/input/InputField';
 import Label from "@/components/form/Label";
-import Image from "next/image";
 import { currencyServiceApi, Currency } from '@/services/currencyServiceApi';
 
 interface EditCurrencyProps {
@@ -150,6 +149,7 @@ export default function EditCurrency({ isOpen, onClose, currency }: EditCurrency
               <div className="space-y-1 text-center">
                 {currencyData.icon ? (
                   <div className="relative inline-block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img 
                       src={getImageUrl(currencyData.icon)} 
                       alt="Icon preview" 
