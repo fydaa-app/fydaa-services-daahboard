@@ -73,6 +73,11 @@ const navItems: NavItem[] = [
     path: "/payment-approval/subsequent-payment",
   },
   {
+    icon: <MoneyIcon />,
+    name: "Payouts",
+    path: "/payouts",
+  },
+  {
     icon: <LeaderboardIcon />,
     name: "Goals",
     path: "/goal",
