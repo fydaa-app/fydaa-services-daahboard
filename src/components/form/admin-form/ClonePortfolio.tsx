@@ -362,6 +362,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
     };
 
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [PortfolioData, type]);
 
   // planType change hone par mutual funds reload karo

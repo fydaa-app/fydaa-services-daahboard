@@ -269,6 +269,7 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
     };
 
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // planType change hone par mutual funds reload karo

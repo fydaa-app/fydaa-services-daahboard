@@ -53,7 +53,7 @@ class CurrencyServiceApi extends API {
       });
       
       const data = await this.handleResponse<Currency[] | { data: Currency[] }>(response);
-      const currencies = Array.isArray(data) ? data : (data as any).data || [];
+      const currencies = Array.isArray(data) ? data : (data as { data?: Currency[] }).data || [];
       
       return {
         data: currencies,
@@ -68,7 +68,7 @@ class CurrencyServiceApi extends API {
     }
   }
 
-  async addCurrency(params: FormData | { name: string, price: number, icon?: string }): Promise<any> {
+  async addCurrency(params: FormData | { name: string, price: number, icon?: string }): Promise<unknown> {
     const isFormData = params instanceof FormData;
     const response = await fetch(`${this.getBaseUrl()}currency`, {
       method: 'POST',
@@ -81,7 +81,7 @@ class CurrencyServiceApi extends API {
     return this.handleResponse(response);
   }
 
-  async updateCurrency(id: string, params: FormData | { name?: string, price?: number, icon?: string }): Promise<any> {
+  async updateCurrency(id: string, params: FormData | { name?: string, price?: number, icon?: string }): Promise<unknown> {
     const isFormData = params instanceof FormData;
     const response = await fetch(`${this.getBaseUrl()}currency/${id}`, {
       method: 'PATCH',
@@ -94,7 +94,7 @@ class CurrencyServiceApi extends API {
     return this.handleResponse(response);
   }
 
-  async deleteCurrency(id: string): Promise<any> {
+  async deleteCurrency(id: string): Promise<unknown> {
     const response = await fetch(`${this.getBaseUrl()}currency/${id}`, {
       method: 'DELETE',
       headers: {

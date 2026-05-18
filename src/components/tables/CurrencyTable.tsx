@@ -10,7 +10,6 @@ import {
 import { toast } from "react-hot-toast";
 import { currencyServiceApi, Currency } from "@/services/currencyServiceApi";
 import EditCurrencyModal from "@/components/form/admin-form/EditCurrency";
-import Image from "next/image";
 
 export interface CurrencyTableProps {
   currencies: Currency[];
