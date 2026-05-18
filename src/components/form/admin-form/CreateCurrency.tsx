@@ -35,7 +35,6 @@ export default function CreateCurrency({ isOpen, onClose }: CreateCurrencyProps)
     if (!currencyData.name) newErrors.name = 'Currency name is required';
     if (!currencyData.price) newErrors.price = 'Current price is required';
     if (isNaN(Number(currencyData.price))) newErrors.price = 'Price must be a valid number';
-    if (!currencyData.icon) newErrors.icon = 'Icon is required';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -136,7 +135,7 @@ export default function CreateCurrency({ isOpen, onClose }: CreateCurrencyProps)
           </div>
 
           <div className="space-y-2">
-            <Label>Currency Icon *</Label>
+            <Label>Currency Icon</Label>
             <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-700 border-dashed rounded-xl hover:border-blue-400 dark:hover:border-blue-500 transition-colors cursor-pointer group relative">
               <input
                 type="file"

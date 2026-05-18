@@ -62,7 +62,6 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
     if (!trimmedSubtitle) newErrors.subtitle = 'Subtitle is required';
     if (!trimmedDescription) newErrors.description = 'Description is required';
     if (packageData.points.length === 0) newErrors.points = 'At least one feature is required';
-    if (!skipFileUploads && !packageData.icon) newErrors.icon = 'Icon is required';
 
 
     setErrors(newErrors);
@@ -390,7 +389,7 @@ export default function CreatePackage({ isOpen, onClose }: CreatePackageProps) {
           </div>
 
           <div>
-            <Label htmlFor="icon">Icon {skipFileUploads ? '' : '*'}</Label>
+            <Label htmlFor="icon">Icon</Label>
             <input
               type="file"
               ref={iconInputRef}
