@@ -17,6 +17,7 @@ import {
   MoneyIcon, 
   StockIcon, 
   FundIcon, 
+  DollarLineIcon,
 } from "../icons/index";
 
 type NavItem = {
@@ -110,7 +111,12 @@ const navItems: NavItem[] = [
     icon: <FundIcon />,
     name: "Mutual Fund",
     path: "/mutual-fund",
-  },   
+  },
+  {
+    icon: <DollarLineIcon />,
+    name: "Currency",
+    path: "/currency",
+  },
   {
     name: "Corporate Actions",
     icon: <SettingIcon />,
