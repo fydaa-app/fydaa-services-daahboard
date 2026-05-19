@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import Input from '@/components/form/input/InputField';
@@ -11,6 +11,7 @@ interface CreateCurrencyProps {
   onClose: () => void;
 }
 
+interface CurrencyData {
   name: string;
   price: string;
   icon: string;
@@ -113,7 +114,7 @@ export default function CreateCurrency({ isOpen, onClose }: CreateCurrencyProps)
             {errors.price && <p className="text-red-500 text-xs font-medium">{errors.price}</p>}
           </div>
 
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label htmlFor="icon">Icon URL (Optional)</Label>
             <Input
               id="icon"
@@ -121,7 +122,7 @@ export default function CreateCurrency({ isOpen, onClose }: CreateCurrencyProps)
               value={currencyData.icon}
               onChange={(e) => setCurrencyData(prev => ({ ...prev, icon: e.target.value }))}
             />
-          </div>
+          </div> */}
 
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
             <button
