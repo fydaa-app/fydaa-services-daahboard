@@ -3,8 +3,8 @@ import Cookies from 'js-cookie';
 export interface Currency {
   id: number;
   name: string;
-  icon: string;
   price: number;
+  icon?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -68,28 +68,26 @@ class CurrencyServiceApi extends API {
     }
   }
 
-  async addCurrency(params: FormData | { name: string, price: number, icon?: string }): Promise<unknown> {
-    const isFormData = params instanceof FormData;
+  async addCurrency(params: { name: string, price: number, icon?: string }): Promise<unknown> {
     const response = await fetch(`${this.getBaseUrl()}currency`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this.getAuthToken()}`,
-        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+        'Content-Type': 'application/json',
       },
-      body: isFormData ? params : JSON.stringify(params),
+      body: JSON.stringify(params),
     });
     return this.handleResponse(response);
   }
 
-  async updateCurrency(id: string, params: FormData | { name?: string, price?: number, icon?: string }): Promise<unknown> {
-    const isFormData = params instanceof FormData;
+  async updateCurrency(id: string, params: { name?: string, price?: number, icon?: string }): Promise<unknown> {
     const response = await fetch(`${this.getBaseUrl()}currency/${id}`, {
       method: 'PATCH',
       headers: {
         Authorization: `Bearer ${this.getAuthToken()}`,
-        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+        'Content-Type': 'application/json',
       },
-      body: isFormData ? params : JSON.stringify(params),
+      body: JSON.stringify(params),
     });
     return this.handleResponse(response);
   }

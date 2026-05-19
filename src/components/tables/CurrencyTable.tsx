@@ -99,21 +99,7 @@ export default function CurrencyTable({ currencies, error, onRefresh }: Currency
                     <TableCell className="px-6 py-4">
                       <div className="flex items-center gap-4">
                         <div className="relative h-12 w-12 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden border border-gray-100 dark:border-gray-700">
-                          {currency.icon ? (
-                            <img 
-                              src={currency.icon} 
-                              alt={currency.name} 
-                              className="w-full h-full object-contain p-2"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                                if (e.currentTarget.parentElement) {
-                                  e.currentTarget.parentElement.innerHTML = `<span class="text-xl font-bold text-gray-400">${currency.name.charAt(0)}</span>`;
-                                }
-                              }}
-                            />
-                          ) : (
-                            <span className="text-xl font-bold text-gray-400">{currency.name.charAt(0)}</span>
-                          )}
+                          <span className="text-xl font-bold text-gray-400">{currency.name.charAt(0)}</span>
                         </div>
                         <div>
                           <span className="block font-semibold text-gray-900 text-sm dark:text-white">

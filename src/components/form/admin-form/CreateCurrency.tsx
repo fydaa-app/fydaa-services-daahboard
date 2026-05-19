@@ -11,15 +11,15 @@ interface CreateCurrencyProps {
   onClose: () => void;
 }
 
-interface CurrencyData {
   name: string;
   price: string;
-  icon?: File | string;
+  icon: string;
 }
 
 const DEFAULT_CURRENCY_DATA: CurrencyData = {
   name: "",
   price: "",
+  icon: "",
 };
 
 export default function CreateCurrency({ isOpen, onClose }: CreateCurrencyProps) {
@@ -27,7 +27,6 @@ export default function CreateCurrency({ isOpen, onClose }: CreateCurrencyProps)
   const [currencyData, setCurrencyData] = useState<CurrencyData>(DEFAULT_CURRENCY_DATA);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const iconInputRef = useRef<HTMLInputElement>(null);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -46,15 +45,11 @@ export default function CreateCurrency({ isOpen, onClose }: CreateCurrencyProps)
     setIsLoading(true);
     
     try {
-      const formData = new FormData();
-      formData.append('name', currencyData.name);
-      formData.append('price', currencyData.price);
-      
-      if (currencyData.icon instanceof File) {
-        formData.append('icon', currencyData.icon);
-      }
-
-      await currencyServiceApi.addCurrency(formData);
+      await currencyServiceApi.addCurrency({
+        name: currencyData.name,
+        price: Number(currencyData.price),
+        icon: currencyData.icon
+      });
 
       toast.success('Currency created successfully');
       router.refresh();
@@ -71,21 +66,6 @@ export default function CreateCurrency({ isOpen, onClose }: CreateCurrencyProps)
     setCurrencyData(DEFAULT_CURRENCY_DATA);
     setErrors({});
     onClose();
-  };
-
-  const handleIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setCurrencyData(prev => ({
-        ...prev,
-        icon: e.target.files![0]
-      }));
-    }
-  };
-
-  const getImageUrl = (image: File | string | undefined) => {
-    if (!image) return '';
-    if (typeof image === 'string') return image;
-    return URL.createObjectURL(image);
   };
 
   if (!isOpen) return null;
@@ -134,53 +114,13 @@ export default function CreateCurrency({ isOpen, onClose }: CreateCurrencyProps)
           </div>
 
           <div className="space-y-2">
-            <Label>Currency Icon</Label>
-            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-700 border-dashed rounded-xl hover:border-blue-400 dark:hover:border-blue-500 transition-colors cursor-pointer group relative">
-              <input
-                type="file"
-                ref={iconInputRef}
-                onChange={handleIconUpload}
-                accept="image/*"
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              />
-              <div className="space-y-1 text-center">
-                {currencyData.icon ? (
-                  <div className="relative inline-block">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img 
-                      src={getImageUrl(currencyData.icon)} 
-                      alt="Icon preview" 
-                      className="h-20 w-20 object-contain rounded-lg"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        if (e.currentTarget.parentElement) {
-                          e.currentTarget.parentElement.innerHTML = `<svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg><p class="text-xs text-red-500 mt-2">Invalid Image</p>`;
-                        }
-                      }}
-                    />
-                    <div className="absolute -top-2 -right-2 bg-blue-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <svg className="mx-auto h-12 w-12 text-gray-400 group-hover:text-blue-500 transition-colors" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                      <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    <div className="flex text-sm text-gray-600 dark:text-gray-400">
-                      <span className="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none transition-colors">
-                        Upload an icon
-                      </span>
-                      <p className="pl-1">or drag and drop</p>
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-500">PNG, JPG, SVG up to 2MB</p>
-                  </>
-                )}
-              </div>
-            </div>
-            {errors.icon && <p className="text-red-500 text-xs font-medium">{errors.icon}</p>}
+            <Label htmlFor="icon">Icon URL (Optional)</Label>
+            <Input
+              id="icon"
+              placeholder="e.g. https://url-to-your-icon-image.png"
+              value={currencyData.icon}
+              onChange={(e) => setCurrencyData(prev => ({ ...prev, icon: e.target.value }))}
+            />
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
