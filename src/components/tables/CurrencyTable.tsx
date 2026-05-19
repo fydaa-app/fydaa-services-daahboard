@@ -58,6 +58,7 @@ export default function CurrencyTable({ currencies, error, onRefresh }: Currency
   const handleCloseEditModal = () => {
     setIsModalOpen(false);
     setEditingCurrency(null);
+    onRefresh?.();
   };
 
   return (
