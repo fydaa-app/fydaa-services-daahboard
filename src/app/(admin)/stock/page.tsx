@@ -231,7 +231,7 @@ export default function StockTablesPage() {
                         onClose={() => setIsModalOpen(false)}
                     />
 
-                    <StockListTable stocks={apiResponse.items} error={error} />
+                    <StockListTable stocks={apiResponse.items} error={error} onRefresh={fetchData} />
                     
                     {apiResponse.totalItems > 0 && (
                         <div className="mt-4">
