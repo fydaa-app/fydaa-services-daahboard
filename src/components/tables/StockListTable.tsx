@@ -9,6 +9,7 @@ import {
 import Badge from "../ui/badge/Badge";
 import { toast } from "react-hot-toast";
 import EditStockModal from "@/components/form/admin-form/EditStock";
+import ConfirmationDialog from "../ui/dialog/ConfirmationDialog";
 
 interface Rationale {
   id: number;
@@ -54,6 +55,12 @@ const formatCurrency = (value: string): string => {
   }).format(numValue);
 };
 
+const RECOMMENDATION_LABELS: Record<number, string> = {
+  1: "Buy",
+  2: "Hold",
+  3: "Sell",
+};
+
 const getPriceChange = (current: string, previous: string) => {
   const currentPrice = parseFloat(current);
   const prevPrice = parseFloat(previous);
@@ -71,6 +78,14 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [editingStock, setEditingStock] = useState<StockData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isUpdatingRecommendation, setIsUpdatingRecommendation] = useState(false);
+  const [recommendationConfirm, setRecommendationConfirm] = useState<{
+    isOpen: boolean;
+    stockId?: number;
+    stockName?: string;
+    newType?: number;
+    previousType?: number;
+  }>({ isOpen: false });
 
   const handleDeleteStock = async (id: number) => {
     if (!confirm('Are you sure you want to delete this stock? This action cannot be undone.')) {
@@ -138,7 +153,40 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
     } catch (error) {
       console.error(error);
       toast.error("Error updating stock recommendation type");
+      throw error;
     }
+  };
+
+  const handleRecommendationSelect = (stock: Stock, newType: number) => {
+    const currentType = Number(stock.recommendationStock);
+    if (newType === currentType) return;
+
+    setRecommendationConfirm({
+      isOpen: true,
+      stockId: stock.id,
+      stockName: stock.stockName,
+      newType,
+      previousType: currentType,
+    });
+  };
+
+  const handleConfirmRecommendationChange = async () => {
+    const { stockId, newType } = recommendationConfirm;
+    if (stockId === undefined || newType === undefined) return;
+
+    setIsUpdatingRecommendation(true);
+    try {
+      await handleStockTypeChange(stockId, newType);
+      setRecommendationConfirm({ isOpen: false });
+    } catch {
+      // Error toast is shown in handleStockTypeChange
+    } finally {
+      setIsUpdatingRecommendation(false);
+    }
+  };
+
+  const handleCancelRecommendationChange = () => {
+    setRecommendationConfirm({ isOpen: false });
   };
 
   const viewRationaleFile = (fileUrl: string) => {
@@ -238,7 +286,7 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
                       <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                         <select
                           value={Number(stock.recommendationStock)}
-                          onChange={(e) => handleStockTypeChange(stock.id, Number(e.target.value))}
+                          onChange={(e) => handleRecommendationSelect(stock, Number(e.target.value))}
                           className="w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
                         >
                           <option value="1">Buy</option>
@@ -318,6 +366,24 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
               }}
             />
           )}
+
+          <ConfirmationDialog
+            isOpen={recommendationConfirm.isOpen}
+            onClose={handleCancelRecommendationChange}
+            onConfirm={handleConfirmRecommendationChange}
+            title="Change Stock Recommendation"
+            message={
+              recommendationConfirm.stockName &&
+              recommendationConfirm.previousType !== undefined &&
+              recommendationConfirm.newType !== undefined
+                ? `Are you sure you want to change the recommendation for ${recommendationConfirm.stockName} from ${RECOMMENDATION_LABELS[recommendationConfirm.previousType]} to ${RECOMMENDATION_LABELS[recommendationConfirm.newType]}?`
+                : "Are you sure you want to continue?"
+            }
+            confirmText="Yes, Continue"
+            cancelText="Cancel"
+            variant="warning"
+            isLoading={isUpdatingRecommendation}
+          />
         </div>
       </div>
     </div>
