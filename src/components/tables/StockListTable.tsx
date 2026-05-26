@@ -31,6 +31,7 @@ interface Stock {
   recommendationStock: number;
   CapType: string;
   sector: number;
+  geography?: string;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -232,6 +233,9 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
                     Cap Type
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
+                    Geography
+                  </TableCell>
+                  <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
                     Recommendation
                   </TableCell>
                   <TableCell isHeader className="px-5 py-3 font-bold text-gray-900 text-start text-theme-xs dark:text-gray-400">
@@ -282,6 +286,18 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
                         <Badge color="primary">
                           {stock.CapType}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                        {stock.geography ? (
+                          <Badge color="warning">
+                            {stock.geography === 'GreaterChina' ? 'Greater China'
+                              : stock.geography === 'MiddleEast' ? 'Middle East'
+                              : stock.geography === 'LatinAmerica' ? 'Latin America'
+                              : stock.geography}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                         <select

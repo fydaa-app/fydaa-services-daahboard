@@ -162,6 +162,27 @@ class PortfolioManagementService extends APIClient {
     }
   }
 
+  async getPortfolioById(id: string): Promise<APIResponse<any>> {
+    try {
+      const endpoint = this.getEndpointWithId(id);
+      const data = await this.get<any>(endpoint);
+      return {
+        status: 200,
+        data,
+        error: null
+      };
+    } catch (error) {
+      console.error("Error fetching portfolio:", error);
+      return {
+        status: 500,
+        data: null,
+        error: {
+          message: error instanceof Error ? error.message : "An unknown error occurred"
+        }
+      };
+    }
+  }
+
   async deletePortfolio(id: string): Promise<APIResponse<void>> {
     try {
       const endpoint = this.getEndpointWithId(id);

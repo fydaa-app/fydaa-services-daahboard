@@ -19,7 +19,8 @@ interface Stock {
     StockType: string;
     recommendationStock: number;
     CapType: string;
-    sector: number;    
+    sector: number;
+    geography?: string;
     createdAt: string;
     updatedAt: string;
     deletedAt: string | null;

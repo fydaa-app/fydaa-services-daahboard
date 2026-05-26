@@ -33,6 +33,7 @@ interface StockData {
   StockType: string;
   CapType: string;
   sector: number;
+  geography?: string;
   mainStockType?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -48,6 +49,7 @@ const DEFAULT_STOCK_DATA: StockData = {
   StockType: '',
   CapType: '',
   sector: 0,
+  geography: '',
 };
 
 export default function StockModal({ 
@@ -84,7 +86,7 @@ export default function StockModal({
       return false;
     }
     if (!stockData.StockType) {
-      toast.error('Stock type is required');
+      toast.error('Asset Classes is required');
       return false;
     }
     if (!stockData.CapType) {
@@ -318,12 +320,12 @@ export default function StockModal({
             </div>
 
             <div>
-              <Label htmlFor="StockType">Stock Type *</Label>
+              <Label htmlFor="StockType">Asset Classes *</Label>
               <Select
                 value={stockData.StockType}
                 onChange={handleSelectChange('StockType')}
                 options={[
-                  { value: "", label: "Select Stock Type"},
+                  { value: "", label: "Select Asset Classes"},
                   { value: "IndianStock", label: "Indian Stock" },
                   { value: "GlobalStock", label: "Global Stock" },
                   { value: "FixedIncomeBonds", label: "Fixed Income Bonds" },
@@ -350,7 +352,7 @@ export default function StockModal({
               />
             </div>
 
-            <div className="md:col-span-2">
+            <div>
               <Label htmlFor="sector">Sector *</Label>
               <Select
                 value={stockData.sector.toString()}
@@ -367,6 +369,25 @@ export default function StockModal({
                   { value: "8", label: "Healthcare" },
                   { value: "9", label: "Utilities" },
                   { value: "10", label: "Others" },
+                ]}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="geography">Geography</Label>
+              <Select
+                value={stockData.geography || ''}
+                onChange={handleSelectChange('geography')}
+                options={[
+                  { value: "", label: "Select Geography" },
+                  { value: "India", label: "India" },
+                  { value: "USA", label: "USA" },
+                  { value: "Europe", label: "Europe" },
+                  { value: "Japan", label: "Japan" },
+                  { value: "GreaterChina", label: "Greater China" },
+                  { value: "MiddleEast", label: "Middle East" },
+                  { value: "Australia", label: "Australia" },
+                  { value: "LatinAmerica", label: "Latin America" },
                 ]}
               />
             </div>
