@@ -31,7 +31,12 @@ export default function CurrencyTable({ currencies, error, onRefresh }: Currency
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [editingCurrency, setEditingCurrency] = useState<Currency | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
+  // Ensure client‑only rendering for locale‑dependent values (e.g., dates).
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const handleDeleteCurrency = async (id: number) => {
     if (!confirm('Are you sure you want to delete this currency? This action cannot be undone.')) {
       return;
@@ -119,7 +124,7 @@ export default function CurrencyTable({ currencies, error, onRefresh }: Currency
                     </TableCell>
                     <TableCell className="px-6 py-4">
                       <span suppressHydrationWarning className="text-gray-500 text-sm dark:text-gray-400">
-                        {currency.updatedAt ? new Date(currency.updatedAt).toLocaleString() : 'N/A'}
+                        {isMounted ? (currency.updatedAt ? new Date(currency.updatedAt).toLocaleString() : 'N/A') : <span suppressHydrationWarning>Loading…</span>}
                       </span>
                     </TableCell>
                     <TableCell className="px-6 py-4 text-end">

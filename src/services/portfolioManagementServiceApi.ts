@@ -162,9 +162,11 @@ class PortfolioManagementService extends APIClient {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async getPortfolioById(id: string): Promise<APIResponse<any>> {
     try {
       const endpoint = this.getEndpointWithId(id);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = await this.get<any>(endpoint);
       return {
         status: 200,

@@ -789,6 +789,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
   const calculateStockTypeWeights = (fields: FieldsState) => {   
     const allFields = Object.values(fields).flat();
     const stockTypeWeightMap: { [stockType: string]: number } = {};
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let totalWeight = 0;
     
     const isStockCategory = selectedMainCategories.includes('Stocks');

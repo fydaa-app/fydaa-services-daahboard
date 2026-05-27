@@ -69,9 +69,10 @@ const stock: Record<string | number, string> = {
 
 const maincategory: Record<string | number, string> = {
   'MutualFunds': 'Mutual Funds',
-  'Stocks': 'Stocks',
+  'Stocks': 'Direct',
   'UsStocks': 'US Stocks',
   'WorldStocks': 'World Stock',
+  'ETF': 'ETF',
 }
 
 interface Stock {
@@ -81,6 +82,7 @@ interface Stock {
   CapType: string;
   StockType: string;
   currentPrice: string;
+  geography?: string;
 }
 
 interface MutualFund {
@@ -91,6 +93,7 @@ interface MutualFund {
   CapType: string;
   sector: number;
   switchMultiples: number;
+  geography?: string;
 }
 
 type FieldsState = Record<string | number, Field[]>; 
@@ -119,6 +122,18 @@ interface PortfolioData {
   planType: string;
 }
 
+const geographyOptions = [
+  { value: "", label: "Select Geography" },
+  { value: "India", label: "India" },
+  { value: "USA", label: "USA" },
+  { value: "Europe", label: "Europe" },
+  { value: "Japan", label: "Japan" },
+  { value: "GreaterChina", label: "Greater China" },
+  { value: "MiddleEast", label: "Middle East" },
+  { value: "Australia", label: "Australia" },
+  { value: "LatinAmerica", label: "Latin America" },
+];
+
 interface StockOption {
   value: string;
   label: string;
@@ -126,6 +141,7 @@ interface StockOption {
   capType: string;
   stockType: string;
   currentPrice: string;
+  geography?: string;
 }
 
 interface MutualFundOption {
@@ -136,6 +152,7 @@ interface MutualFundOption {
   stockType: string;
   currentPrice: string;
   switchMultiples: number;
+  geography?: string;
 }
 
 interface Field {
@@ -146,6 +163,7 @@ interface Field {
   MinAmountquantity: number;
   MinAmountorderValue: number;
   options?: StockOption[];
+  geography?: string;
 }
 
 interface Goal {
@@ -228,6 +246,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
           capType: stock.CapType,
           stockType: stock.StockType,
           currentPrice: stock.currentPrice,
+          geography: stock.geography || '',
         }));      
         setInitialOptions(options);
 
@@ -239,6 +258,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
           capType: stock.CapType,
           stockType: stock.StockType,
           currentPrice: stock.currentPrice,
+          geography: stock.geography || 'USA',
         }));      
         setInitialUOptions(uoptions);
 
@@ -250,6 +270,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
           capType: stock.CapType,
           stockType: stock.StockType,
           currentPrice: stock.currentPrice,
+          geography: stock.geography || '',
         }));      
         
         setInitialWOptions(woptions);
@@ -265,6 +286,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
           stockType: mutualFund.StockType,
           currentPrice: mutualFund.currentPrice,
           switchMultiples: mutualFund.switchMultiples,
+          geography: mutualFund.geography || '',
         }));      
         setInitialMOptions(moptions);
 
@@ -278,7 +300,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
             currentPrice: '',
             MinAmountquantity: 0,
             MinAmountorderValue: 0,
-            options,
+            options: optionsForType,
           }));
           setFields(newFields);
                   
@@ -289,6 +311,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
             PortfolioData.portfolioType === 'MUTUALFUND' ? moptions :
             PortfolioData.portfolioType === 'USSTOCK' ? uoptions :
             PortfolioData.portfolioType === 'WORLDSTOCK' ? woptions :
+            PortfolioData.portfolioType === 'ETF' ? options.filter((opt: StockOption) => opt.capType === 'ETF') :
             options;
 
           for (const category in newFields1) {
@@ -299,7 +322,8 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
                 );
                 item.options = optionsForType;
                 if (found) {
-                  item.currentPrice = found.currentPrice;                          
+                  item.currentPrice = found.currentPrice;
+                  item.geography = found.geography || '';
                 } else {
                   console.warn(`No option found for selectValue: ${item.selectValue}`);
                 }
@@ -323,6 +347,8 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
             setSelectedMainCategories(['Stocks']);
           } else if (PortfolioData.portfolioType === 'WORLDSTOCK') {
             setSelectedMainCategories(['WorldStocks']);
+          } else if (PortfolioData.portfolioType === 'ETF') {
+            setSelectedMainCategories(['ETF']);
           }
           console.log(fields);
           console.log(sectorWeights);
@@ -433,6 +459,8 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
           portfolioType = 'USSTOCK';
         }else if (selectedMainCategories.includes('WorldStocks') ) {
           portfolioType = 'WORLDSTOCK';
+        }else if (selectedMainCategories.includes('ETF') ) {
+          portfolioType = 'ETF';
         }
 
       const params = {
@@ -505,26 +533,33 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
     const isUsStockCategory = selectedMainCategories.includes('UsStocks');
     const isWorldStockCategory = selectedMainCategories.includes('WorldStocks');
     
+    const isEtfCategory = selectedMainCategories.includes('ETF');
+    
     // Determine which options to use based on main category selection
     let optionsToUse: (StockOption | MutualFundOption)[] = [];
     let placeholderText = "Select option";
     
-    if (isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory) {
+    if (isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory && !isEtfCategory) {
       optionsToUse = initialOptions.filter(opt => opt.stockType === category);
       placeholderText = `Select ${stock[category] || 'stock/ETF'}`;
-    } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory && !isWorldStockCategory) {
+    } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory && !isWorldStockCategory && !isEtfCategory) {
       optionsToUse = initialMOptions.filter(opt => opt.stockType === category);
       placeholderText = `Select ${stock[category] || 'mutual fund'}`;
-    } else if (isUsStockCategory && !isStockCategory && !isMutualFundCategory && !isWorldStockCategory) {
+    } else if (isUsStockCategory && !isStockCategory && !isMutualFundCategory && !isWorldStockCategory && !isEtfCategory) {
       optionsToUse = initialUOptions;
       placeholderText = `Select ${stock[category] || 'US stock'}`;
-    } else if (isWorldStockCategory && !isStockCategory && !isMutualFundCategory && !isUsStockCategory) {
+    } else if (isWorldStockCategory && !isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isEtfCategory) {
       optionsToUse = initialWOptions;
       placeholderText = `Select ${stock[category] || 'World stock'}`;
-    } else {
-      // Both or neither selected - show appropriate message
-      placeholderText = "Please select main category first";
+    } else if (isEtfCategory && !isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory) {
+      optionsToUse = initialOptions.filter(opt => opt.stockType === category && opt.capType === 'ETF');
+      placeholderText = `Select ${stock[category] || 'ETF'}`;
     }
+
+    if (field.geography && !isMutualFundCategory) {
+      optionsToUse = optionsToUse.filter(opt => opt.geography === field.geography);
+    }
+
     return (
       <select
         className="form-select text-sm shadow-theme-xs text-gray-800 border-gray-300 h-11 w-full border rounded px-2 py-2.5"
@@ -617,6 +652,8 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
           optionsToFilter = initialOptions;
         }else if(portfolioDetails.portfolioType === 'WORLDSTOCK') {
           optionsToFilter = initialWOptions;
+        }else if(portfolioDetails.portfolioType === 'ETF') {
+          optionsToFilter = initialOptions.filter(opt => opt.capType === 'ETF');
         }       
         
         // Filter options based on idsArr
@@ -764,16 +801,19 @@ const updateTotalWeight = (category: string, weight: number) => {
         const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
         const isUsStockCategory = selectedMainCategories.includes('UsStocks');
         const isWorldStockCategory = selectedMainCategories.includes('WorldStocks');
+        const isEtfCategory = selectedMainCategories.includes('ETF');
         let optionsToUse: (StockOption | MutualFundOption)[] = [];
         
-        if (isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory) {
+        if (isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory && !isEtfCategory) {
           optionsToUse = initialOptions;
-        } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory && !isWorldStockCategory) {
+        } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory && !isWorldStockCategory && !isEtfCategory) {
           optionsToUse = initialMOptions;
-        }else if (isUsStockCategory && !isStockCategory && !isMutualFundCategory && !isWorldStockCategory) {
+        }else if (isUsStockCategory && !isStockCategory && !isMutualFundCategory && !isWorldStockCategory && !isEtfCategory) {
           optionsToUse = initialUOptions;
-        }else if (isWorldStockCategory && !isStockCategory && !isMutualFundCategory && !isUsStockCategory) {
+        }else if (isWorldStockCategory && !isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isEtfCategory) {
           optionsToUse = initialWOptions;
+        }else if (isEtfCategory && !isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory) {
+          optionsToUse = initialOptions.filter(opt => opt.capType === 'ETF');
         }
 
         setFieldstock((prevFields) => {
@@ -786,7 +826,8 @@ const updateTotalWeight = (category: string, weight: number) => {
                   currentPrice: '', 
                   options: optionsToUse, 
                   MinAmountquantity: 0, 
-                  MinAmountorderValue: 0 
+                  MinAmountorderValue: 0,
+                  geography: ''
                 }],
             };
             calculateOrderValue(newFields, totalWeights, portfolioDetails);
@@ -837,16 +878,19 @@ const updateTotalWeight = (category: string, weight: number) => {
         const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
         const isUsStockCategory = selectedMainCategories.includes('UsStocks');
         const isWorldStockCategory = selectedMainCategories.includes('WorldStocks');
+        const isEtfCategory = selectedMainCategories.includes('ETF');
         let optionsToUse: (StockOption | MutualFundOption)[] = [];
         
-        if (isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory) {
+        if (isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory && !isEtfCategory) {
           optionsToUse = initialOptions;
-        } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory && !isWorldStockCategory) {
+        } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory && !isWorldStockCategory && !isEtfCategory) {
           optionsToUse = initialMOptions;
-        }else if (isUsStockCategory && !isStockCategory && !isMutualFundCategory && !isWorldStockCategory) {
+        }else if (isUsStockCategory && !isStockCategory && !isMutualFundCategory && !isWorldStockCategory && !isEtfCategory) {
           optionsToUse = initialUOptions;
-        }else if (isWorldStockCategory && !isStockCategory && !isMutualFundCategory && !isUsStockCategory) {
+        }else if (isWorldStockCategory && !isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isEtfCategory) {
           optionsToUse = initialWOptions;
+        }else if (isEtfCategory && !isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory) {
+          optionsToUse = initialOptions.filter(opt => opt.capType === 'ETF');
         }
 
         const newField: Field = { 
@@ -856,7 +900,8 @@ const updateTotalWeight = (category: string, weight: number) => {
           currentPrice: '', 
           options: optionsToUse, 
           MinAmountquantity: 0, 
-          MinAmountorderValue: 0 
+          MinAmountorderValue: 0,
+          geography: ''
         };
         
         const updatedFields = {
@@ -1242,6 +1287,25 @@ const updateTotalWeight = (category: string, weight: number) => {
               />
               {fieldstock[category]?.map((field) => (
                 <div key={field.id} className="flex gap-2 items-center mb-1">
+                  <select
+                    className="form-select text-sm shadow-theme-xs text-gray-800 border-gray-300 h-11 w-full border rounded px-2 py-2.5"
+                    value={field.geography || ''}
+                    onChange={(e) => {
+                      const geoVal = e.target.value;
+                      setFieldstock(prev => {
+                        const newFields = { ...prev };
+                        if (!newFields[category]) return prev;
+                        newFields[category] = newFields[category].map(f => 
+                          f.id === field.id ? { ...f, geography: geoVal, selectValue: '', currentPrice: '' } : f
+                        );
+                        return newFields;
+                      });
+                    }}
+                  >
+                    {geographyOptions.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
                   {renderStockDropdown(category, field)}                 
                   <Input
                     value={field.currentPrice}

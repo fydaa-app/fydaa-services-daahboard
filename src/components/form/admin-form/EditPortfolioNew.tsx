@@ -209,9 +209,11 @@ const DEFAULT_PORTFOLIO_DATA: PortfolioData = {
 
 export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type = 'update', onRefresh, isPage = false, portfolioId }: EditStockProps) {
   const [portfolioDetails, setPortfolioDetails] = useState<PortfolioData>(DEFAULT_PORTFOLIO_DATA);  
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [fields, setFields] = useState<Field[]>([
     { id: 1, selectValue: '', weight: '',currentPrice:'', options: [],MinAmountquantity:0,MinAmountorderValue:0 }
   ]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [sectorWeights, setSectorWeights] = useState<{ [sector: string]: number }>({});
   const [goalListData, setGoalListData] = useState<Goal[]>([]);
   const [packageListData, setPackageListData] = useState<Package[]>([]);
@@ -336,7 +338,7 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
                       if (stock) {
                           item.currentPrice = stock.currentPrice;                          
                           if ('recommendationStock' in stock) {
-                            item.recommendationStock = (stock as any).recommendationStock;
+                            item.recommendationStock = (stock as StockOption & { recommendationStock?: number }).recommendationStock;
                           }
                           item.geography = stock.geography || '';
                       } else {
@@ -932,6 +934,7 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
   const calculateStockTypeWeights = (fields: FieldsState) => {   
     const allFields = Object.values(fields).flat();
     const stockTypeWeightMap: { [stockType: string]: number } = {};
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let totalWeight = 0;
     
     const isStockCategory = selectedMainCategories.includes('Stocks');
