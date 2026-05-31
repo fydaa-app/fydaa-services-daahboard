@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import Input from '@/components/form/input/InputField';
@@ -18,9 +18,7 @@ const capTypeMapping: Record<string, string> = {
   "Smallcap": "Small Cap",
   "ETF": "ETF",
 };
-interface FieldW {
-  weight: string; 
-}
+
 const investmentTypeOptions = [
   { value: "", label: "Select Investment Type" },
   { value: "1", label: "Buy" },
@@ -228,13 +226,18 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
   const [captypeWeights, setCaptypeWeights] = useState<{ [capType: string]: number }>({});
   const [summary, setSummary] = useState({ totalStocks: 0, top3Weight: 0, top5Weight: 0, top10Weight: 0 });
   const [isLoading, setIsLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
   const router = useRouter();
+  const hasFetchedRef = useRef(false);
 
   // Fetch goals and packages on component mount
   useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
    
     const fetchData = async () => {
       try {
+        setPageLoading(true);
         const [goalsResponse, packagesResponse] = await Promise.all([
           goalManagementServiceApi.getGoalList(),
           packagesManagementServiceApi.getPackageList()
@@ -308,6 +311,10 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
           }
         }
 
+        if (Array.isArray(activePortfolioData)) {
+          activePortfolioData = activePortfolioData[0];
+        }
+
         if ((type === "update") && activePortfolioData) {
           
           const stockIdsArray = activePortfolioData?.stockIds?.replace(/'/g, "").split(",") || [];
@@ -328,7 +335,25 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
           }));
           setFields(newFields);
                    
-          const newFields1 = activePortfolioData?.assetClassStock;
+          let newFields1 = activePortfolioData?.assetClassStock;
+          if (typeof newFields1 === 'string') {
+            try {
+              newFields1 = JSON.parse(newFields1);
+            } catch (e) {
+              console.error('Error parsing assetClassStock JSON string:', e);
+              newFields1 = {};
+            }
+          }
+
+          let assetClassObj = activePortfolioData?.assetClass;
+          if (typeof assetClassObj === 'string') {
+            try {
+              assetClassObj = JSON.parse(assetClassObj);
+            } catch (e) {
+              console.error('Error parsing assetClass JSON string:', e);
+              assetClassObj = {};
+            }
+          }
 
           for (const category in newFields1) {
               if (newFields1.hasOwnProperty(category)) {
@@ -348,9 +373,11 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
               }
           }
           
+          const categoriesToSelect = Object.keys(assetClassObj || {});
+          setSelectedCategories(categoriesToSelect);
           setFieldstock(newFields1);
-          setSelectedCategories(Object.keys(activePortfolioData?.assetClass));
-          setTotalWeights(activePortfolioData?.assetClass);
+          setTotalWeights(assetClassObj || {});
+
           calculateSectorWeights(newFields1);   
           calculateCapTypeWeights(newFields1);
           calculateStockTypeWeights(newFields1);
@@ -367,18 +394,18 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
           const portfolioDetails: PortfolioData = {
               id: activePortfolioData?.id || 0,
               portfolioName: activePortfolioData?.portfolioName || '',
-              planId: activePortfolioData?.planId || '',
-              termId: activePortfolioData?.termId || '',
-              goalId: activePortfolioData?.goalId || '',
-              packageId: activePortfolioData?.packageId || '',
+              planId: activePortfolioData?.planId !== undefined && activePortfolioData?.planId !== null ? activePortfolioData.planId.toString() : '',
+              termId: activePortfolioData?.termId !== undefined && activePortfolioData?.termId !== null ? activePortfolioData.termId.toString() : '',
+              goalId: activePortfolioData?.goalId !== undefined && activePortfolioData?.goalId !== null ? activePortfolioData.goalId.toString() : '',
+              packageId: activePortfolioData?.packageId !== undefined && activePortfolioData?.packageId !== null ? activePortfolioData.packageId.toString() : '',
               stockIds: stockIdsArray.join(','),
               weights: weightsArray.join(','),
-              riskScore: activePortfolioData?.riskScore || '',
-              minimumInvestment: activePortfolioData?.minimumInvestment || '',
-              orderAmount: activePortfolioData?.orderAmount || '',
-              assetClass: activePortfolioData?.assetClass || {},
-              assetClassStock: activePortfolioData?.assetClassStock || {},
-              investMentType: activePortfolioData?.investMentType || '',
+              riskScore: activePortfolioData?.riskScore !== undefined && activePortfolioData?.riskScore !== null ? activePortfolioData.riskScore.toString() : '',
+              minimumInvestment: activePortfolioData?.minimumInvestment !== undefined && activePortfolioData?.minimumInvestment !== null ? activePortfolioData.minimumInvestment.toString() : '',
+              orderAmount: activePortfolioData?.orderAmount !== undefined && activePortfolioData?.orderAmount !== null ? activePortfolioData.orderAmount.toString() : '',
+              assetClass: assetClassObj || {},
+              assetClassStock: newFields1 || {},
+              investMentType: activePortfolioData?.investMentType !== undefined && activePortfolioData?.investMentType !== null ? activePortfolioData.investMentType.toString() : '',
               fundType: activePortfolioData?.fundType || 0,
               goalName: activePortfolioData?.goalName || null,
               packageName: activePortfolioData?.packageName || null,
@@ -397,6 +424,8 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
       } catch (error) {
         toast.error('Failed to fetch data');
         console.error('Error fetching data:', error);
+      } finally {
+        setPageLoading(false);
       }
     };
 
@@ -437,16 +466,6 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
       const isAllFieldsFilled = allFields.every(field => field.selectValue && field.weight);
       if (!isAllFieldsFilled) {
           toast.error('Please fill in all required fields.');
-          return;
-      }
-      const totalSum = Object.values(totalWeights).reduce((sum, value) => sum + value, 0);
-      if(totalSum!==100){
-          toast.error('Sum of all asset class Total weight must be 100.');
-          return;
-      }
-      const allValid = Object.keys(fieldstock).every(categoryName => validateWeights(categoryName));
-      if (!allValid) {
-          toast.error('The sum of individual weights asset class stock must be 100');
           return;
       }
       const stockIds          = allFields.map(field => `'${field.selectValue}'`).join(',');
@@ -498,6 +517,7 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
   };
 
   const calculateSectorWeights = (fields: FieldsState) => {
+    if (!fields) return;
     const sectorWeightMap: { [sector: string]: number } = {};
     let totalWeight = 0;
     Object.values(fields).forEach((categoryFields) => {
@@ -623,24 +643,12 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
       </select>
     );
   };
-  
-  const validateWeights = (category: string) => {
-    const fieldsWeight = calculateCategoryWeight(fieldstock[category] || []);
-    return fieldsWeight === 100;
-  };
-  
-  const calculateCategoryWeight = (fields: FieldW[]) => {
-    return fields.reduce((total, field) => total + (parseFloat(field.weight) || 0), 0);
-  };
 
   const calculateOrderValue = (fields: FieldsState,Weights:WeightsState,portfolioDetails:PortfolioData) => {
-   
-    const totalSum = Object.values(Weights).reduce((sum, value) => sum + value, 0);
-    if (totalSum === 100) {
-        const dataInvst = fields;        
-        const newWeights = Weights;
-        const idsArr: number[] = [];
-        const weightsArr: number[] = [];
+         const dataInvst = fields;        
+         const newWeights = Weights;
+         const idsArr: number[] = [];
+         const weightsArr: number[] = [];
 
         for (const key in newWeights) {
             if (newWeights.hasOwnProperty(key)) {
@@ -766,8 +774,8 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
                 });
             }
         } 
-    }
   };
+
 
   const handleCategoryWeightChange = (category: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = event.target;
@@ -791,9 +799,15 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
         const newFields = { ...fieldstock };
         delete newFields[category];
         setFieldstock(newFields);
-        calculateOrderValue(newFields, totalWeights, portfolioDetails);
+        setTotalWeights((prevWeights) => {
+          const newWeights = { ...prevWeights };
+          delete newWeights[category];
+          calculateOrderValue(newFields, newWeights, portfolioDetails);
+          return newWeights;
+        });
         return newSelectedCategories;
       } else {
+        const newSelectedCategories = [...prev, category];
         const isStockCategory = selectedMainCategories.includes('Stocks');
         const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
         const isEtfCategory = selectedMainCategories.includes('ETF');
@@ -824,7 +838,7 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
             calculateOrderValue(newFields, totalWeights, portfolioDetails);
             return newFields;
         });
-        return [...prev, category];
+        return newSelectedCategories;
       }
     });
   }; 
@@ -907,6 +921,7 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
   };
 
   const calculateSummary = (fields: FieldsState) => {
+    if (!fields) return;
     const allFields = Object.values(fields).flat();
     const sortedFields = allFields
         .filter(field => field.selectValue)
@@ -932,6 +947,7 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
   };
 
   const calculateStockTypeWeights = (fields: FieldsState) => {   
+    if (!fields) return;
     const allFields = Object.values(fields).flat();
     const stockTypeWeightMap: { [stockType: string]: number } = {};
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -974,6 +990,7 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
   };
 
   const calculateCapTypeWeights = (fields: FieldsState) => {
+    if (!fields) return;
     const capTypeWeightMap: { [capType: string]: number } = {};
     let totalWeight = 0;
 
@@ -1353,8 +1370,6 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
       {selectedCategories.map((category) => {
         const fieldsForCategory = fieldstock[category] || [];
         const currentSum = fieldsForCategory.reduce((sum, f) => sum + (Number(f.weight) || 0), 0);
-        const targetWeight = totalWeights[category] || 0;
-        const isSumValid = currentSum === targetWeight;
 
         return (
           <div key={category} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 shadow-theme-xs space-y-5">
@@ -1385,12 +1400,8 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
 
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Sum of Weights:</span>
-                  <span className={`text-sm font-bold px-2 py-0.5 rounded ${
-                    isSumValid 
-                      ? 'bg-success-50 text-success-700 dark:bg-success-950/20 dark:text-success-400' 
-                      : 'bg-orange-50 text-orange-700 dark:bg-orange-950/20 dark:text-orange-400'
-                  }`}>
-                    {currentSum}% / {targetWeight}%
+                  <span className="text-sm font-bold text-gray-800 dark:text-white">
+                    {currentSum}%
                   </span>
                 </div>
               </div>
@@ -1487,7 +1498,7 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
             )}
 
             {/* Asset card footer */}
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-2">
+            <div className="flex justify-between items-center pt-2">
               <button
                 type="button"
                 onClick={() => addField1(category)}
@@ -1499,12 +1510,16 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
                 Add Asset
               </button>
 
-              {!isSumValid && (
-                <p className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1.5 font-medium">
+              {currentSum === 100 ? (
+                <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1.5 font-semibold">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  Individual weights sum ({currentSum}%) must match Category Target ({targetWeight}%)
+                  Individual weights sum is 100%
+                </p>
+              ) : (
+                <p className="text-xs text-orange-500 dark:text-orange-400 font-medium">
+                  Individual weights sum: {currentSum}%
                 </p>
               )}
             </div>
@@ -1596,28 +1611,36 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
       )}
 
       {/* Action Buttons */}
-      <div className="flex justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-800">
-        <button
-          type="button"
-          onClick={() => {
-            resetForm();
-            if (isPage) {
-              router.push('/portfolio-new');
-            } else {
-              onClose?.();
-            }
-          }}
-          className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 rounded-xl transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="px-5 py-2.5 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 dark:bg-brand-600 dark:hover:bg-brand-500 rounded-xl shadow-theme-xs disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {isLoading ? 'Saving Portfolio...' : 'Save Portfolio'}
-        </button>
+      <div className="flex flex-col sm:flex-row justify-end items-center gap-4 pt-6 border-t border-gray-100 dark:border-gray-800">
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              resetForm();
+              if (isPage) {
+                router.push('/portfolio-new');
+              } else {
+                onClose?.();
+              }
+            }}
+            className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 rounded-xl transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="px-5 py-2.5 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 dark:bg-brand-600 dark:hover:bg-brand-500 rounded-xl shadow-theme-xs disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
+          >
+            {isLoading && (
+              <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            )}
+            {isLoading ? 'Saving Portfolio...' : 'Save Portfolio'}
+          </button>
+        </div>
       </div>
     </form>
   );
@@ -1626,7 +1649,17 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
     return (
       <div className="max-w-7xl mx-auto py-2 animate-fade-in">
         <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-0.5">
-          {formContent}
+          {pageLoading ? (
+            <div className="flex items-center justify-center min-h-[400px] w-full">
+              <div className="flex flex-col items-center gap-3">
+                <svg className="animate-spin h-10 w-10 text-brand-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Loading portfolio data...</p>
+              </div>
+            </div>
+          ) : formContent}
         </div>
       </div>
     );
@@ -1653,7 +1686,17 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
           </button>
         </div>
         <div className="max-h-[85vh] overflow-y-auto p-6 bg-gray-50 dark:bg-gray-900/40">
-          {formContent}
+          {pageLoading ? (
+            <div className="flex items-center justify-center min-h-[300px] w-full">
+              <div className="flex flex-col items-center gap-3">
+                <svg className="animate-spin h-8 w-8 text-brand-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Loading portfolio data...</p>
+              </div>
+            </div>
+          ) : formContent}
         </div>
       </div>
     </div>
