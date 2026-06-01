@@ -313,16 +313,6 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
           toast.error('Please fill in all required fields.');
           return;
       }
-      const totalSum = Object.values(totalWeights).reduce((sum, value) => sum + value, 0);
-      if (totalSum !== 100) {
-          toast.error('Sum of all asset class Total weight must be 100.');
-          return;
-      }
-      const allValid = Object.keys(fieldstock).every(categoryName => validateWeights(categoryName));
-      if (!allValid) {
-          toast.error('The sum of individual weights asset class stock must be 100');
-          return;
-      }
       const stockIds = allFields.map(field => `'${field.selectValue}'`).join(',');
       const weights = allFields.map(field => `'${field.weight}'`).join(',');
       const assetClass = totalWeights;
@@ -473,14 +463,6 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
     );
   };
 
-  const validateWeights = (category: string) => {
-    const fieldsWeight = calculateCategoryWeight(fieldstock[category] || []);
-    return fieldsWeight === 100;
-  };
-  
-  const calculateCategoryWeight = (fields: FieldW[]) => {
-    return fields.reduce((total, field) => total + (parseFloat(field.weight) || 0), 0);
-  };
 
   const calculateOrderValue = (fields: FieldsState, Weights: WeightsState, portfolioDetails: PortfolioData) => {
     const totalSum = Object.values(Weights).reduce((sum, value) => sum + value, 0);
@@ -1206,8 +1188,6 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
       {selectedCategories.map((category) => {
         const fieldsForCategory = fieldstock[category] || [];
         const currentSum = fieldsForCategory.reduce((sum, f) => sum + (Number(f.weight) || 0), 0);
-        const targetWeight = totalWeights[category] || 0;
-        const isSumValid = currentSum === targetWeight;
 
         return (
           <div key={category} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 shadow-theme-xs space-y-5">
@@ -1238,12 +1218,8 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
 
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Sum of Weights:</span>
-                  <span className={`text-sm font-bold px-2 py-0.5 rounded ${
-                    isSumValid 
-                      ? 'bg-success-50 text-success-700 dark:bg-success-950/20 dark:text-success-400' 
-                      : 'bg-orange-50 text-orange-700 dark:bg-orange-950/20 dark:text-orange-400'
-                  }`}>
-                    {currentSum}% / {targetWeight}%
+                  <span className="text-sm font-bold text-gray-800 dark:text-white">
+                    {currentSum}%
                   </span>
                 </div>
               </div>
@@ -1340,7 +1316,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
             )}
 
             {/* Asset card footer */}
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-2">
+            <div className="flex justify-between items-center pt-2">
               <button
                 type="button"
                 onClick={() => addField1(category)}
@@ -1352,12 +1328,16 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
                 Add Asset
               </button>
 
-              {!isSumValid && (
-                <p className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1.5 font-medium">
+              {currentSum === 100 ? (
+                <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1.5 font-semibold">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  Individual weights sum ({currentSum}%) must match Category Target ({targetWeight}%)
+                  Individual weights sum is 100%
+                </p>
+              ) : (
+                <p className="text-xs text-orange-500 dark:text-orange-400 font-medium">
+                  Individual weights sum: {currentSum}%
                 </p>
               )}
             </div>
@@ -1449,28 +1429,36 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
       )}
 
       {/* Action Buttons */}
-      <div className="flex justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-800">
-        <button
-          type="button"
-          onClick={() => {
-            resetForm();
-            if (isPage) {
-              router.push('/portfolio-new');
-            } else {
-              onClose?.();
-            }
-          }}
-          className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 rounded-xl transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="px-5 py-2.5 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 dark:bg-brand-600 dark:hover:bg-brand-500 rounded-xl shadow-theme-xs disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {isLoading ? 'Saving Portfolio...' : 'Save Portfolio'}
-        </button>
+      <div className="flex flex-col sm:flex-row justify-end items-center gap-4 pt-6 border-t border-gray-100 dark:border-gray-800">
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              resetForm();
+              if (isPage) {
+                router.push('/portfolio-new');
+              } else {
+                onClose?.();
+              }
+            }}
+            className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 rounded-xl transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="px-5 py-2.5 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 dark:bg-brand-600 dark:hover:bg-brand-500 rounded-xl shadow-theme-xs disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
+          >
+            {isLoading && (
+              <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            )}
+            {isLoading ? 'Saving Portfolio...' : 'Save Portfolio'}
+          </button>
+        </div>
       </div>
     </form>
   );
