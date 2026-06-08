@@ -137,6 +137,7 @@ interface StockOption {
   capType: string;
   stockType: string;
   currentPrice: string;
+  recommendationStock?: number;
   geography?: string;
 }
 
@@ -282,6 +283,7 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
           capType: stock.CapType,
           stockType: stock.StockType,
           currentPrice: stock.currentPrice,
+          recommendationStock: Number(stock.recommendationStock),
           geography: stock.geography || 'USA',
         }));      
         
@@ -295,6 +297,7 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
           capType: stock.CapType,
           stockType: stock.StockType,
           currentPrice: stock.currentPrice,
+          recommendationStock: Number(stock.recommendationStock),
           geography: stock.geography || '',
         }));      
         
@@ -610,6 +613,7 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
           const value = e.target.value;          
           const matchingOption = optionsToUse.find(opt => opt.value == value);
           const currentPrice = matchingOption?.currentPrice || '';
+          const recStock = matchingOption && 'recommendationStock' in matchingOption ? matchingOption.recommendationStock : undefined;
           
           setFieldstock(prev => {
             const newFields = {...prev};
@@ -619,7 +623,8 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
               f.id === field.id ? {
                 ...f,
                 selectValue: value,
-                currentPrice: currentPrice
+                currentPrice: currentPrice,
+                recommendationStock: recStock
               } : f
             );
             
@@ -635,11 +640,15 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
         }}
       >
         <option value="">{placeholderText}</option>
-        {optionsToUse.map(option => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
+        {optionsToUse.map(option => {
+          const recStock = 'recommendationStock' in option ? option.recommendationStock : undefined;
+          const recLabel = recStock === 1 ? " (Buy)" : recStock === 2 ? " (Hold)" : recStock === 3 ? " (Sell)" : "";
+          return (
+            <option key={option.value} value={option.value}>
+              {option.label}{recLabel}
+            </option>
+          );
+        })}
       </select>
     );
   };
@@ -1369,7 +1378,12 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
       {/* CARD 3: Weight and Stock Allocation per Category */}
       {selectedCategories.map((category) => {
         const fieldsForCategory = fieldstock[category] || [];
-        const currentSum = fieldsForCategory.reduce((sum, f) => sum + (Number(f.weight) || 0), 0);
+        const currentSum = fieldsForCategory.reduce((sum, f) => {
+          if (f.recommendationStock === 2 || f.recommendationStock === 3) {
+            return sum;
+          }
+          return sum + (Number(f.weight) || 0);
+        }, 0);
 
         return (
           <div key={category} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 shadow-theme-xs space-y-5">
@@ -1413,12 +1427,13 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
                 <table className="w-full border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 dark:border-gray-800 text-gray-400 dark:text-gray-500 font-medium">
-                      <th className="py-2.5 pr-4 font-semibold w-3/12">Geography</th>
-                      <th className="py-2.5 pr-4 font-semibold w-4/12">Select Asset / Stock Name</th>
-                      <th className="py-2.5 px-3 font-semibold text-right w-2/12">LTP (Price)</th>
+                      <th className="py-2.5 pr-4 font-semibold w-2/12">Geography</th>
+                      <th className="py-2.5 pr-4 font-semibold w-3/12">Select Asset / Stock Name</th>
+                      <th className="py-2.5 px-3 font-semibold text-center w-2/12">Recommendation</th>
+                      <th className="py-2.5 px-3 font-semibold text-right w-1.5/12">LTP (Price)</th>
                       <th className="py-2.5 px-3 font-semibold text-center w-1.5/12">Weight (%)</th>
-                      <th className="py-2.5 px-3 font-semibold text-right w-1.5/12">Quantity</th>
-                      <th className="py-2.5 px-3 font-semibold text-right w-2/12">Order Value</th>
+                      <th className="py-2.5 px-3 font-semibold text-right w-1/12">Quantity</th>
+                      <th className="py-2.5 px-3 font-semibold text-right w-1.5/12">Order Value</th>
                       <th className="py-2.5 pl-4 font-semibold text-center w-12">Action</th>
                     </tr>
                   </thead>
@@ -1448,6 +1463,23 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
                         </td>
                         <td className="py-3 pr-4">
                           {renderStockDropdown(category, field)}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          {field.recommendationStock === 1 ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-success-50 text-success-600 dark:bg-success-500/15 dark:text-success-500">
+                              Buy
+                            </span>
+                          ) : field.recommendationStock === 2 ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-warning-50 text-warning-600 dark:bg-warning-500/15 dark:text-orange-400">
+                              Hold
+                            </span>
+                          ) : field.recommendationStock === 3 ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-500">
+                              Sell
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400 dark:text-gray-600">—</span>
+                          )}
                         </td>
 
                         <td className="py-3 px-3 text-right font-medium text-gray-950 dark:text-white">

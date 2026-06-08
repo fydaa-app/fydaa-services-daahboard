@@ -76,6 +76,7 @@ interface Stock {
   CapType: string;
   StockType: string;
   currentPrice: string;
+  recommendationStock?: number;
   geography?: string;
 }
 
@@ -135,6 +136,7 @@ interface StockOption {
   capType: string;
   stockType: string;
   currentPrice: string;
+  recommendationStock?: number;
   geography?: string;
 }
 
@@ -157,6 +159,7 @@ interface Field {
   MinAmountquantity: number;
   MinAmountorderValue: number;
   options?: StockOption[];
+  recommendationStock?: number;
   geography?: string;
 }
 
@@ -250,6 +253,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
           capType: stock.CapType,
           stockType: stock.StockType,
           currentPrice: stock.currentPrice,
+          recommendationStock: Number(stock.recommendationStock),
           geography: stock.geography || '',
         }));      
         setInitialOptions(options);
@@ -262,6 +266,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
           capType: stock.CapType,
           stockType: stock.StockType,
           currentPrice: stock.currentPrice,
+          recommendationStock: Number(stock.recommendationStock),
           geography: stock.geography || 'USA',
         }));      
         setInitialUOptions(uoptions);
@@ -274,6 +279,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
           capType: stock.CapType,
           stockType: stock.StockType,
           currentPrice: stock.currentPrice,
+          recommendationStock: Number(stock.recommendationStock),
           geography: stock.geography || '',
         }));      
         
@@ -356,6 +362,9 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
                 item.options = optionsForType;
                 if (found) {
                   item.currentPrice = found.currentPrice;
+                  if ('recommendationStock' in found) {
+                    item.recommendationStock = (found as StockOption & { recommendationStock?: number }).recommendationStock;
+                  }
                   item.geography = found.geography || '';
                 } else {
                   console.warn(`No option found for selectValue: ${item.selectValue}`);
@@ -605,6 +614,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
           const value = e.target.value;          
           const matchingOption = optionsToUse.find(opt => opt.value == value);
           const currentPrice = matchingOption?.currentPrice || '';
+          const recStock = matchingOption && 'recommendationStock' in matchingOption ? matchingOption.recommendationStock : undefined;
           
           setFieldstock(prev => {
             const newFields = {...prev};
@@ -614,7 +624,8 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
               f.id === field.id ? {
                 ...f,
                 selectValue: value,
-                currentPrice: currentPrice
+                currentPrice: currentPrice,
+                recommendationStock: recStock
               } : f
             );
             
@@ -630,11 +641,15 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
         }}
       >
         <option value="">{placeholderText}</option>
-        {optionsToUse.map(option => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
+        {optionsToUse.map(option => {
+          const recStock = 'recommendationStock' in option ? option.recommendationStock : undefined;
+          const recLabel = recStock === 1 ? " (Buy)" : recStock === 2 ? " (Hold)" : recStock === 3 ? " (Sell)" : "";
+          return (
+            <option key={option.value} value={option.value}>
+              {option.label}{recLabel}
+            </option>
+          );
+        })}
       </select>
     );
   };
@@ -1247,7 +1262,12 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
   
           {selectedCategories.map((category) => {
             const fieldsForCategory = fieldstock[category] || [];
-            const currentSum = fieldsForCategory.reduce((sum, f) => sum + (parseFloat(f.weight) || 0), 0);
+            const currentSum = fieldsForCategory.reduce((sum, f) => {
+              if (f.recommendationStock === 2 || f.recommendationStock === 3) {
+                return sum;
+              }
+              return sum + (parseFloat(f.weight) || 0);
+            }, 0);
             return (
               <div key={category} className="mb-6 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 space-y-4">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-2 border-b border-gray-100 dark:border-gray-800">
@@ -1294,6 +1314,20 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
                       ))}
                     </select>
                     {renderStockDropdown(category, field)}                 
+                    <Input
+                      value={
+                        field.recommendationStock === 1
+                          ? "Buy"
+                          : field.recommendationStock === 2
+                          ? "Hold"
+                          : field.recommendationStock === 3
+                          ? "Sell"
+                          : ""
+                      }
+                      readOnly
+                      placeholder="Recommendation"
+                      className="w-28 font-semibold text-center"
+                    />
                     <Input
                       value={field.currentPrice}
                       readOnly

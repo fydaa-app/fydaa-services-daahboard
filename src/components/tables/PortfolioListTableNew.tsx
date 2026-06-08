@@ -57,6 +57,49 @@ const formatCurrency = (value: string | number): string => {
   }).format(numValue);
 };
 
+const hasInvalidWeightsSum = (portfolio: Portfolio): boolean => {
+  let assetClass: any = portfolio.assetClass;
+  if (typeof assetClass === 'string') {
+    try {
+      assetClass = JSON.parse(assetClass);
+    } catch (e) {
+      assetClass = {};
+    }
+  }
+  
+  let assetClassStock: any = portfolio.assetClassStock;
+  if (typeof assetClassStock === 'string') {
+    try {
+      assetClassStock = JSON.parse(assetClassStock);
+    } catch (e) {
+      assetClassStock = {};
+    }
+  }
+
+  if (!assetClass || !assetClassStock) return false;
+
+  const activeCategories = Object.keys(assetClass);
+  if (activeCategories.length === 0) return false;
+
+  for (const category of activeCategories) {
+    const fields = assetClassStock[category] || [];
+    if (!Array.isArray(fields)) continue;
+
+    const currentSum = fields.reduce((sum: number, f: any) => {
+      if (f.recommendationStock === 2 || f.recommendationStock === 3) {
+        return sum;
+      }
+      return sum + (parseFloat(f.weight) || 0);
+    }, 0);
+
+    if (Math.abs(currentSum - 100) > 0.001) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
 export default function PortfolioListTableNew({ portfolios, error, getPlanName, getPlanTermName, onRefresh }: PortfolioTableProps) {
   const router = useRouter();
 
@@ -151,7 +194,19 @@ export default function PortfolioListTableNew({ portfolios, error, getPlanName, 
                   return (
                     <TableRow key={portfolio.id || index}>
                       <TableCell className="px-5 py-4 sm:px-6 text-start">
-                        {portfolio.portfolioName || 'N/A'}
+                        <div className="flex flex-col gap-1">
+                          <span className="font-semibold text-gray-900 dark:text-white">
+                            {portfolio.portfolioName || 'N/A'}
+                          </span>
+                          {hasInvalidWeightsSum(portfolio) && (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-500 dark:text-red-400">
+                              <svg className="w-3.5 h-3.5 text-red-500 dark:text-red-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                              </svg>
+                              Individual weights sum is not 100%
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="px-5 py-4 sm:px-6 text-start">
                         {portfolio.goalName || 'N/A'}
