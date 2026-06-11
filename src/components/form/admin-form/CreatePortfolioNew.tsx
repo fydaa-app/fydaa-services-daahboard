@@ -19,10 +19,6 @@ const capTypeMapping: Record<string, string> = {
   "ETF": "ETF",
 };
 
-interface FieldW {
-  weight: string; 
-}
-
 const investmentTypeOptions = [
   { value: "", label: "Select Investment Type" },
   { value: "1", label: "Buy" },
