@@ -14,8 +14,13 @@ interface AssetClass {
   [key: string]: number; 
 }
 
+interface PortfolioStockField {
+  weight: string;
+  recommendationStock?: number;
+}
+
 interface AssetClassStock {   
-  [key: string]: [];
+  [key: string]: PortfolioStockField[];
 }
 export interface Portfolio {
   id: number;
@@ -33,8 +38,8 @@ export interface Portfolio {
   packageName: string | null;  
   stockIds: string;
   weights: string; 
-  assetClass: AssetClass;
-  assetClassStock: AssetClassStock;  
+  assetClass: AssetClass | string;
+  assetClassStock: AssetClassStock | string;  
   portfolioType: string; 
   planType: string;
 } 
@@ -58,22 +63,26 @@ const formatCurrency = (value: string | number): string => {
 };
 
 const hasInvalidWeightsSum = (portfolio: Portfolio): boolean => {
-  let assetClass: any = portfolio.assetClass;
-  if (typeof assetClass === 'string') {
+  let assetClass: AssetClass = {};
+  if (typeof portfolio.assetClass === 'string') {
     try {
-      assetClass = JSON.parse(assetClass);
-    } catch (e) {
+      assetClass = JSON.parse(portfolio.assetClass);
+    } catch {
       assetClass = {};
     }
+  } else if (portfolio.assetClass && typeof portfolio.assetClass === 'object') {
+    assetClass = portfolio.assetClass;
   }
   
-  let assetClassStock: any = portfolio.assetClassStock;
-  if (typeof assetClassStock === 'string') {
+  let assetClassStock: AssetClassStock = {};
+  if (typeof portfolio.assetClassStock === 'string') {
     try {
-      assetClassStock = JSON.parse(assetClassStock);
-    } catch (e) {
+      assetClassStock = JSON.parse(portfolio.assetClassStock);
+    } catch {
       assetClassStock = {};
     }
+  } else if (portfolio.assetClassStock && typeof portfolio.assetClassStock === 'object') {
+    assetClassStock = portfolio.assetClassStock;
   }
 
   if (!assetClass || !assetClassStock) return false;
@@ -85,7 +94,7 @@ const hasInvalidWeightsSum = (portfolio: Portfolio): boolean => {
     const fields = assetClassStock[category] || [];
     if (!Array.isArray(fields)) continue;
 
-    const currentSum = fields.reduce((sum: number, f: any) => {
+    const currentSum = fields.reduce((sum: number, f: PortfolioStockField) => {
       if (f.recommendationStock === 2 || f.recommendationStock === 3) {
         return sum;
       }
