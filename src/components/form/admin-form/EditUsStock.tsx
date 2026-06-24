@@ -166,13 +166,6 @@ export default function StockModal({
     }));
   };
 
-  // Helper function to handle regular select changes
-  const handleSelectChange = (field: keyof StockData) => (e: { value: string }) => {
-    setStockData(prev => ({
-      ...prev,
-      [field]: e.value
-    }));
-  };
 
   if (!isOpen) return null;
 
