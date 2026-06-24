@@ -1,0 +1,18 @@
+import type { NextConfig } from "next";
+const nextConfig: NextConfig = {
+  /* config options here */
+  webpack(config) {
+    config.module.rules.push({
+      test: /\.svg$/,
+      use: ["@svgr/webpack"],
+    });
+    return config;
+  },
+  reactStrictMode: true,
+  output: "standalone",
+  images: {
+    domains: ['fydaa.s3.ap-south-1.amazonaws.com'],
+  },
+};
+
+export default nextConfig;
