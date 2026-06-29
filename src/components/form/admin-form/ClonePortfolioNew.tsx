@@ -6,11 +6,11 @@ import Input from '@/components/form/input/InputField';
 import Label from "@/components/form/Label";
 import Select from "@/components/form/Select";
 import MultiSelect from '@/components/form/MultiSelect';
-import { stockManagementServiceApi } from '@/services/stockManagementServiceApi'; 
+import { stockManagementServiceApi } from '@/services/stockManagementServiceApi';
 import { goalManagementServiceApi } from '@/services/goalManagementServiceApi';
 import { packagesManagementServiceApi } from '@/services/packagesManagementServiceApi';
-import { portfolioManagementServiceApi } from '@/services/portfolioManagementServiceApi'; 
-import { amcService } from '@/services/mutualFundServiceApi'; 
+import { portfolioManagementServiceApi } from '@/services/portfolioManagementServiceApi';
+import { amcService } from '@/services/mutualFundServiceApi';
 
 const capTypeMapping: Record<string, string> = {
   "Largecap": "Large Cap",
@@ -91,7 +91,7 @@ interface MutualFund {
   geography?: string;
 }
 
-type FieldsState = Record<string | number, Field[]>; 
+type FieldsState = Record<string | number, Field[]>;
 type WeightsState = {
   [categoryName: string]: number;
 };
@@ -109,12 +109,12 @@ interface PortfolioData {
   fundType: number;
   orderAmount: string;
   goalName: string | null;
-  packageName: string | null;  
+  packageName: string | null;
   stockIds: string;
-  weights: string; 
+  weights: string;
   assetClass: WeightsState;
   assetClassStock: FieldsState;
-  portfolioType: string; 
+  portfolioType: string;
   planType: string;
 }
 
@@ -205,11 +205,11 @@ const DEFAULT_PORTFOLIO_DATA: PortfolioData = {
   planType: 'DIRECT',
 };
 
-export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type = 'clone', onRefresh, isPage = false, portfolioId }: EditStockProps) {
-  const [portfolioDetails, setPortfolioDetails] = useState<PortfolioData>(DEFAULT_PORTFOLIO_DATA);  
+export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData, type = 'clone', onRefresh, isPage = false, portfolioId }: EditStockProps) {
+  const [portfolioDetails, setPortfolioDetails] = useState<PortfolioData>(DEFAULT_PORTFOLIO_DATA);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [fields, setFields] = useState<Field[]>([
-    { id: 1, selectValue: '', weight: '',currentPrice:'', options: [],MinAmountquantity:0,MinAmountorderValue:0 }
+    { id: 1, selectValue: '', weight: '', currentPrice: '', options: [], MinAmountquantity: 0, MinAmountorderValue: 0 }
   ]);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [sectorWeights, setSectorWeights] = useState<{ [sector: string]: number }>({});
@@ -219,10 +219,10 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
   const [selectedMainCategories, setSelectedMainCategories] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [totalWeights, setTotalWeights] = useState<WeightsState>({});
-  const [initialOptions, setInitialOptions] = useState<StockOption[]>([]); 
-  const [initialMOptions, setInitialMOptions] = useState<MutualFundOption[]>([]); 
-  const [initialUOptions, setInitialUOptions] = useState<StockOption[]>([]); 
-  const [initialWOptions, setInitialWOptions] = useState<StockOption[]>([]); 
+  const [initialOptions, setInitialOptions] = useState<StockOption[]>([]);
+  const [initialMOptions, setInitialMOptions] = useState<MutualFundOption[]>([]);
+  const [initialUOptions, setInitialUOptions] = useState<StockOption[]>([]);
+  const [initialWOptions, setInitialWOptions] = useState<StockOption[]>([]);
   const [captypeWeights, setCaptypeWeights] = useState<{ [capType: string]: number }>({});
   const [summary, setSummary] = useState({ totalStocks: 0, top3Weight: 0, top5Weight: 0, top10Weight: 0 });
   const [isLoading, setIsLoading] = useState(false);
@@ -235,33 +235,33 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
   useEffect(() => {
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
-   
+
     const fetchData = async () => {
       try {
         setPageLoading(true);
         const [goalsResponse, packagesResponse] = await Promise.all([
           goalManagementServiceApi.getGoalList(),
           packagesManagementServiceApi.getPackageList()
-        ]);   
-        
+        ]);
+
         if (goalsResponse.goals) setGoalListData(goalsResponse.goals);
         if (packagesResponse.packages) setPackageListData(packagesResponse.packages);
 
-        const stockListData = await stockManagementServiceApi.getStockList();    
+        const stockListData = await stockManagementServiceApi.getStockList();
         const options = stockListData.data.map((stock: Stock) => ({
           value: stock.id,
           label: stock.stockName,
-          sector: stock.sector.toString(), 
+          sector: stock.sector.toString(),
           capType: stock.CapType,
           stockType: stock.StockType,
           currentPrice: stock.currentPrice,
           recommendationStock: Number(stock.recommendationStock),
           geography: stock.geography || '',
-        }));      
-       
+        }));
+
         setInitialOptions(options);
 
-        const mutualFundListData = await amcService.getMutualFundList();    
+        const mutualFundListData = await amcService.getMutualFundList();
         const moptions = mutualFundListData.data.map((mutualFund: MutualFund) => ({
           value: mutualFund.id,
           label: mutualFund.stockName,
@@ -271,11 +271,11 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
           currentPrice: mutualFund.currentPrice,
           switchMultiples: mutualFund.switchMultiples,
           geography: mutualFund.geography || '',
-        }));      
-        
+        }));
+
         setInitialMOptions(moptions);
 
-        const usstockListData = await stockManagementServiceApi.getUsStockList();    
+        const usstockListData = await stockManagementServiceApi.getUsStockList();
         const uoptions = usstockListData.data.map((stock: Stock) => ({
           value: stock.id,
           label: stock.stockName,
@@ -285,11 +285,11 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
           currentPrice: stock.currentPrice,
           recommendationStock: Number(stock.recommendationStock),
           geography: stock.geography || 'USA',
-        }));      
-        
+        }));
+
         setInitialUOptions(uoptions);
 
-        const worldstockListData = await stockManagementServiceApi.getWorldStockList();    
+        const worldstockListData = await stockManagementServiceApi.getWorldStockList();
         const woptions = worldstockListData.data.map((stock: Stock) => ({
           value: stock.id,
           label: stock.stockName,
@@ -299,10 +299,10 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
           currentPrice: stock.currentPrice,
           recommendationStock: Number(stock.recommendationStock),
           geography: stock.geography || '',
-        }));      
-        
+        }));
+
         setInitialWOptions(woptions);
-       
+
         let activePortfolioData = PortfolioData;
         if (isPage && portfolioId) {
           const res = await portfolioManagementServiceApi.getPortfolioById(portfolioId);
@@ -319,25 +319,25 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
         }
 
         if ((type === "clone") && activePortfolioData) {
-          
+
           const stockIdsArray = activePortfolioData?.stockIds?.replace(/'/g, "").split(",") || [];
           const weightsArray = activePortfolioData?.weights?.replace(/'/g, "").split(",") || [];
-          const optionsForType = 
+          const optionsForType =
             activePortfolioData.portfolioType === 'MUTUALFUND' ? moptions :
-            activePortfolioData.portfolioType === 'ETF' ? [...options, ...uoptions, ...woptions].filter(opt => opt.capType === 'ETF') :
-            [...options, ...uoptions, ...woptions];
+              activePortfolioData.portfolioType === 'ETF' ? [...options, ...uoptions, ...woptions].filter(opt => opt.capType === 'ETF') :
+                [...options, ...uoptions, ...woptions];
 
           const newFields = stockIdsArray.map((id: string, index: number) => ({
-              id: index + 1,
-              selectValue: id,
-              weight: weightsArray[index] || '',
-              currentPrice: '',
-              MinAmountquantity: 0,
-              MinAmountorderValue: 0,
-              options: optionsForType,
+            id: index + 1,
+            selectValue: id,
+            weight: weightsArray[index] || '',
+            currentPrice: '',
+            MinAmountquantity: 0,
+            MinAmountorderValue: 0,
+            options: optionsForType,
           }));
           setFields(newFields);
-                   
+
           let newFields1 = activePortfolioData?.assetClassStock;
           if (typeof newFields1 === 'string') {
             try {
@@ -359,23 +359,23 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
           }
 
           for (const category in newFields1) {
-              if (newFields1.hasOwnProperty(category)) {
-                  newFields1[category].forEach((item: Field) => {
-                      const stock = optionsForType.find((option: { value: string; }) => parseInt(option.value) === parseInt(item.selectValue));
-                      item.options = optionsForType;  
-                      if (stock) {
-                          item.currentPrice = stock.currentPrice;                          
-                          if ('recommendationStock' in stock) {
-                            item.recommendationStock = (stock as StockOption & { recommendationStock?: number }).recommendationStock;
-                          }
-                          item.geography = stock.geography || '';
-                      } else {
-                          console.warn(`No stock found for selectValue: ${item.selectValue}`);
-                      }
-                  });
-              }
+            if (newFields1.hasOwnProperty(category)) {
+              newFields1[category].forEach((item: Field) => {
+                const stock = optionsForType.find((option: { value: string; }) => parseInt(option.value) === parseInt(item.selectValue));
+                item.options = optionsForType;
+                if (stock) {
+                  item.currentPrice = stock.currentPrice;
+                  if ('recommendationStock' in stock) {
+                    item.recommendationStock = (stock as StockOption & { recommendationStock?: number }).recommendationStock;
+                  }
+                  item.geography = stock.geography || '';
+                } else {
+                  console.warn(`No stock found for selectValue: ${item.selectValue}`);
+                }
+              });
+            }
           }
-          
+
           const categoriesToSelect = Object.keys(assetClassObj || {});
           setSelectedCategories(categoriesToSelect);
           setFieldstock(newFields1);
@@ -395,48 +395,48 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
             setSelectedGeography(firstGeo);
           }
 
-          calculateSectorWeights(newFields1);   
+          calculateSectorWeights(newFields1);
           calculateCapTypeWeights(newFields1);
           calculateStockTypeWeights(newFields1);
           calculateSummary(newFields1);
 
           if (activePortfolioData.portfolioType === 'MUTUALFUND') {
-              setSelectedMainCategories(['MutualFunds']);              
+            setSelectedMainCategories(['MutualFunds']);
           } else if (activePortfolioData.portfolioType === 'ETF') {
-              setSelectedMainCategories(['ETF']);
+            setSelectedMainCategories(['ETF']);
           } else {
-              setSelectedMainCategories(['Stocks']);
+            setSelectedMainCategories(['Stocks']);
           }
-          
+
           const portfolioDetails: PortfolioData = {
-              id: activePortfolioData?.id || undefined,
-              portfolioName: activePortfolioData?.portfolioName || '',
-              planId: activePortfolioData?.planId !== undefined && activePortfolioData?.planId !== null ? activePortfolioData.planId.toString() : '',
-              termId: activePortfolioData?.termId !== undefined && activePortfolioData?.termId !== null ? activePortfolioData.termId.toString() : '',
-              goalId: activePortfolioData?.goalId !== undefined && activePortfolioData?.goalId !== null ? activePortfolioData.goalId.toString() : '',
-              packageId: activePortfolioData?.packageId !== undefined && activePortfolioData?.packageId !== null ? activePortfolioData.packageId.toString() : '',
-              stockIds: stockIdsArray.join(','),
-              weights: weightsArray.join(','),
-              riskScore: activePortfolioData?.riskScore !== undefined && activePortfolioData?.riskScore !== null ? activePortfolioData.riskScore.toString() : '',
-              minimumInvestment: activePortfolioData?.minimumInvestment !== undefined && activePortfolioData?.minimumInvestment !== null ? activePortfolioData.minimumInvestment.toString() : '',
-              orderAmount: activePortfolioData?.orderAmount !== undefined && activePortfolioData?.orderAmount !== null ? activePortfolioData.orderAmount.toString() : '',
-              assetClass: assetClassObj || {},
-              assetClassStock: newFields1 || {},
-              investMentType: activePortfolioData?.investMentType !== undefined && activePortfolioData?.investMentType !== null ? activePortfolioData.investMentType.toString() : '',
-              fundType: activePortfolioData?.fundType || 0,
-              goalName: activePortfolioData?.goalName || null,
-              packageName: activePortfolioData?.packageName || null,
-              portfolioType: activePortfolioData.portfolioType || 'STOCK',
-              planType: activePortfolioData?.planType || 'DIRECT',
+            id: activePortfolioData?.id || undefined,
+            portfolioName: activePortfolioData?.portfolioName || '',
+            planId: activePortfolioData?.planId !== undefined && activePortfolioData?.planId !== null ? activePortfolioData.planId.toString() : '',
+            termId: activePortfolioData?.termId !== undefined && activePortfolioData?.termId !== null ? activePortfolioData.termId.toString() : '',
+            goalId: activePortfolioData?.goalId !== undefined && activePortfolioData?.goalId !== null ? activePortfolioData.goalId.toString() : '',
+            packageId: activePortfolioData?.packageId !== undefined && activePortfolioData?.packageId !== null ? activePortfolioData.packageId.toString() : '',
+            stockIds: stockIdsArray.join(','),
+            weights: weightsArray.join(','),
+            riskScore: activePortfolioData?.riskScore !== undefined && activePortfolioData?.riskScore !== null ? activePortfolioData.riskScore.toString() : '',
+            minimumInvestment: activePortfolioData?.minimumInvestment !== undefined && activePortfolioData?.minimumInvestment !== null ? activePortfolioData.minimumInvestment.toString() : '',
+            orderAmount: activePortfolioData?.orderAmount !== undefined && activePortfolioData?.orderAmount !== null ? activePortfolioData.orderAmount.toString() : '',
+            assetClass: assetClassObj || {},
+            assetClassStock: newFields1 || {},
+            investMentType: activePortfolioData?.investMentType !== undefined && activePortfolioData?.investMentType !== null ? activePortfolioData.investMentType.toString() : '',
+            fundType: activePortfolioData?.fundType || 0,
+            goalName: activePortfolioData?.goalName || null,
+            packageName: activePortfolioData?.packageName || null,
+            portfolioType: activePortfolioData.portfolioType || 'STOCK',
+            planType: activePortfolioData?.planType || 'DIRECT',
           };
-                             
+
           setPortfolioDetails(portfolioDetails);
-          calculateOrderValue(newFields1,activePortfolioData?.assetClass,portfolioDetails);
+          calculateOrderValue(newFields1, activePortfolioData?.assetClass, portfolioDetails);
           setTimeout(() => {
-              calculateOrderValue(newFields1,activePortfolioData?.assetClass,portfolioDetails);
-          }, 1000);          
+            calculateOrderValue(newFields1, activePortfolioData?.assetClass, portfolioDetails);
+          }, 1000);
         } else {
-            setFields([{ id: 1, selectValue: '', weight: '',currentPrice:'', options , MinAmountquantity:0,MinAmountorderValue:0}]);
+          setFields([{ id: 1, selectValue: '', weight: '', currentPrice: '', options, MinAmountquantity: 0, MinAmountorderValue: 0 }]);
         }
       } catch (error) {
         toast.error('Failed to fetch data');
@@ -477,52 +477,52 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
       if (!portfolioDetails.portfolioName.trim()) {
         toast.error('Portfolio name is required');
         setIsLoading(false);
-        return;        
+        return;
       }
       const allFields = Object.values(fieldstock).flat();
       const isAllFieldsFilled = allFields.every(field => field.selectValue && field.weight);
       if (!isAllFieldsFilled) {
-          toast.error('Please fill in all required fields.');
-          return;
+        toast.error('Please fill in all required fields.');
+        return;
       }
-      const stockIds          = allFields.map(field => `'${field.selectValue}'`).join(',');
-      const weights           = allFields.map(field => `'${field.weight}'`).join(',');
-      const assetClass        = totalWeights;
+      const stockIds = allFields.map(field => `'${field.selectValue}'`).join(',');
+      const weights = allFields.map(field => `'${field.weight}'`).join(',');
+      const assetClass = totalWeights;
       for (const category in fieldstock) {
-          if (fieldstock.hasOwnProperty(category)) {
-              fieldstock[category].forEach((item) => {
-                  item.options = [];  
-              });
-          }
+        if (fieldstock.hasOwnProperty(category)) {
+          fieldstock[category].forEach((item) => {
+            item.options = [];
+          });
+        }
       }
-      const assetClassStock    = fieldstock;
+      const assetClassStock = fieldstock;
 
       let portfolioType = 'STOCK';
-      if (selectedMainCategories.includes('Stocks') ) {
+      if (selectedMainCategories.includes('Stocks')) {
         portfolioType = 'STOCK';
-      }else if (selectedMainCategories.includes('MutualFunds') ) {
+      } else if (selectedMainCategories.includes('MutualFunds')) {
         portfolioType = 'MUTUALFUND';
-      }else if (selectedMainCategories.includes('ETF') ) {
+      } else if (selectedMainCategories.includes('ETF')) {
         portfolioType = 'ETF';
       }
 
       // Exclude id from the clone payload
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { id, ...params } = {
-            ...portfolioDetails,
-            stockIds,
-            weights,
-            assetClass,
-            assetClassStock,
-            portfolioType,
+        ...portfolioDetails,
+        stockIds,
+        weights,
+        assetClass,
+        assetClassStock,
+        portfolioType,
       };
 
       const response = await portfolioManagementServiceApi.createPortfolio(params);
       if (response.status !== 201) {
-          toast.error('Failed to clone portfolio');
-          setIsLoading(false);
-          return;
-      }      
+        toast.error('Failed to clone portfolio');
+        setIsLoading(false);
+        return;
+      }
       toast.success('Portfolio cloned successfully');
       resetForm();
       if (isPage) {
@@ -531,8 +531,8 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
         onClose?.();
         onRefresh?.();
       }
-      router.refresh();          
-    } catch (error) {          
+      router.refresh();
+    } catch (error) {
       toast.error('Failed to clone portfolio');
       console.error('Error cloning portfolio:', error);
     } finally {
@@ -551,19 +551,18 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
         );
         if (selectedOption) {
           const sector = selectedOption.sector;
-            if(selectedOption.stockType==='IndianStock')
-            {
-                const weight = parseFloat(field.weight) || 0;
-                if (!sectorWeightMap[sector]) {
-                    sectorWeightMap[sector] = 0;
-                }
-                sectorWeightMap[sector] += weight;
-                totalWeight += weight;
+          if (selectedOption.stockType === 'IndianStock') {
+            const weight = parseFloat(field.weight) || 0;
+            if (!sectorWeightMap[sector]) {
+              sectorWeightMap[sector] = 0;
             }
+            sectorWeightMap[sector] += weight;
+            totalWeight += weight;
+          }
         }
       });
     });
-  
+
     const sectorWeights: { [sector: string]: number } = {};
     for (const sector in sectorWeightMap) {
       sectorWeights[sector] = (sectorWeightMap[sector] / totalWeight) * 100;
@@ -571,14 +570,14 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
     setSectorWeights(sectorWeights);
   };
 
-  const renderStockDropdown = (category: string, field: Field) => { 
+  const renderStockDropdown = (category: string, field: Field) => {
     const isStockCategory = selectedMainCategories.includes('Stocks');
     const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
     const isEtfCategory = selectedMainCategories.includes('ETF');
-    
+
     let optionsToUse: (StockOption | MutualFundOption)[] = [];
     let placeholderText = "Select option";
-    
+
     if (isStockCategory && !isMutualFundCategory && !isEtfCategory) {
       const combinedStocks = [...initialOptions, ...initialUOptions, ...initialWOptions];
       if (category === 'IndianStock') {
@@ -631,16 +630,16 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
         className="form-select text-sm shadow-theme-xs text-gray-800 border-gray-300 h-11 w-full border rounded px-2 py-2.5"
         value={field.selectValue}
         onChange={(e) => {
-          const value = e.target.value;          
+          const value = e.target.value;
           const matchingOption = optionsToUse.find(opt => opt.value == value);
           const currentPrice = matchingOption?.currentPrice || '';
           const recStock = matchingOption && 'recommendationStock' in matchingOption ? matchingOption.recommendationStock : undefined;
-          
+
           setFieldstock(prev => {
-            const newFields = {...prev};
+            const newFields = { ...prev };
             if (!newFields[category]) return prev;
-            
-            newFields[category] = newFields[category].map(f => 
+
+            newFields[category] = newFields[category].map(f =>
               f.id === field.id ? {
                 ...f,
                 selectValue: value,
@@ -648,14 +647,14 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
                 recommendationStock: recStock
               } : f
             );
-            
+
             setTimeout(() => {
               calculateCapTypeWeights(newFields);
               calculateStockTypeWeights(newFields);
               calculateSummary(newFields);
               calculateOrderValue(newFields, totalWeights, portfolioDetails);
             }, 0);
-           
+
             return newFields;
           });
         }}
@@ -674,149 +673,149 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
     );
   };
 
-  const calculateOrderValue = (fields: FieldsState,Weights:WeightsState,portfolioDetails:PortfolioData) => {
-         const dataInvst = fields;        
-         const newWeights = Weights;
-         const idsArr: number[] = [];
-         const weightsArr: number[] = [];
+  const calculateOrderValue = (fields: FieldsState, Weights: WeightsState, portfolioDetails: PortfolioData) => {
+    const dataInvst = fields;
+    const newWeights = Weights;
+    const idsArr: number[] = [];
+    const weightsArr: number[] = [];
 
-        for (const key in newWeights) {
-            if (newWeights.hasOwnProperty(key)) {
-                const weightPercentage = newWeights[key]; 
-                if (Array.isArray(dataInvst[key])) { 
-                    dataInvst[key].forEach(item => {
-                        const itemWeight = parseFloat(item.weight); 
-                        if (!isNaN(itemWeight)) {
-                            idsArr.push(parseInt(item.selectValue.toString(), 10));
-                            weightsArr.push(parseFloat(((itemWeight * weightPercentage) / 100).toString())); 
-                        }
-                    });
-                }
+    for (const key in newWeights) {
+      if (newWeights.hasOwnProperty(key)) {
+        const weightPercentage = newWeights[key];
+        if (Array.isArray(dataInvst[key])) {
+          dataInvst[key].forEach(item => {
+            const itemWeight = parseFloat(item.weight);
+            if (!isNaN(itemWeight)) {
+              idsArr.push(parseInt(item.selectValue.toString(), 10));
+              weightsArr.push(parseFloat(((itemWeight * weightPercentage) / 100).toString()));
             }
-        } 
-        
-        const stockWeights = idsArr.reduce((acc, id, index) => {
-            acc[id] = weightsArr[index];
-            return acc;
-        }, {} as { [key: number]: number });
+          });
+        }
+      }
+    }
 
-        const idsSet = new Set(idsArr);
-        
-        const isStockCategory = selectedMainCategories.includes('Stocks');
-        const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
-        const isEtfCategory = selectedMainCategories.includes('ETF');
-        let optionsToFilter: (StockOption | MutualFundOption)[] = [];
-        
-        if (isStockCategory && !isMutualFundCategory && !isEtfCategory) {
-          optionsToFilter = [...initialOptions, ...initialUOptions, ...initialWOptions];
-        } else if (isMutualFundCategory && !isStockCategory && !isEtfCategory) {
-          optionsToFilter = initialMOptions;
-        } else if (isEtfCategory && !isStockCategory && !isMutualFundCategory) {
-          optionsToFilter = [...initialOptions, ...initialUOptions, ...initialWOptions].filter(opt => opt.capType === 'ETF');
+    const stockWeights = idsArr.reduce((acc, id, index) => {
+      acc[id] = weightsArr[index];
+      return acc;
+    }, {} as { [key: number]: number });
+
+    const idsSet = new Set(idsArr);
+
+    const isStockCategory = selectedMainCategories.includes('Stocks');
+    const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
+    const isEtfCategory = selectedMainCategories.includes('ETF');
+    let optionsToFilter: (StockOption | MutualFundOption)[] = [];
+
+    if (isStockCategory && !isMutualFundCategory && !isEtfCategory) {
+      optionsToFilter = [...initialOptions, ...initialUOptions, ...initialWOptions];
+    } else if (isMutualFundCategory && !isStockCategory && !isEtfCategory) {
+      optionsToFilter = initialMOptions;
+    } else if (isEtfCategory && !isStockCategory && !isMutualFundCategory) {
+      optionsToFilter = [...initialOptions, ...initialUOptions, ...initialWOptions].filter(opt => opt.capType === 'ETF');
+    } else {
+      optionsToFilter = [...initialOptions, ...initialMOptions, ...initialUOptions, ...initialWOptions];
+    }
+
+    const filteredOptions = optionsToFilter.filter(option => idsSet.has(parseInt(option.value, 10)));
+
+    const enrichedOptions = filteredOptions.map(option => {
+      const id = parseInt(option.value, 10);
+      return {
+        ...option,
+        minimumamount: 0,
+        quantity: 0,
+        MinAmountminimumamount: 0,
+        MinAmountquantity: 0,
+        MinAmountorderValue: 0,
+        stock: 0,
+        orderValue: 0,
+        ltp: option.currentPrice,
+        weightNew: stockWeights[id] !== undefined ? stockWeights[id] / 100 : 0
+      };
+    });
+
+    let highestLTP = -Infinity;
+    let highestLTPItem = null;
+    for (const item of enrichedOptions) {
+      const price = Number(item.currentPrice);
+      if (!isNaN(price) && price > highestLTP) {
+        highestLTP = price;
+        highestLTPItem = item;
+      }
+    }
+
+    if (highestLTPItem) {
+      for (const item of enrichedOptions) {
+        let amount = 0;
+
+        const price = Number(item.currentPrice);
+        item.minimumamount = parseFloat(highestLTPItem.ltp) * item.weightNew / highestLTPItem.weightNew;
+        amount = item.minimumamount;
+
+        const divisionResult = amount / price;
+
+        const isMutualFund = 'switchMultiples' in item && item.switchMultiples !== undefined;
+
+        const roundedResult = Math.round(divisionResult);
+        item.quantity = Math.max(roundedResult, 1);
+        item.orderValue = item.quantity * price;
+        item.stock = divisionResult;
+
+        let minamount = 0;
+        item.MinAmountminimumamount = item.weightNew * parseFloat(portfolioDetails.minimumInvestment);
+        minamount = item.MinAmountminimumamount;
+
+        const MindivisionResult = minamount / price;
+
+        if (isMutualFund) {
+          item.MinAmountquantity = Number((MindivisionResult).toFixed(2));
+          item.MinAmountorderValue = minamount;
         } else {
-          optionsToFilter = [...initialOptions, ...initialMOptions, ...initialUOptions, ...initialWOptions];
+          const MinroundedResult = Math.round(MindivisionResult);
+          item.MinAmountquantity = Math.max(MinroundedResult, 1);
+          item.MinAmountorderValue = item.MinAmountquantity * price;
         }
-        
-        const filteredOptions = optionsToFilter.filter(option => idsSet.has(parseInt(option.value, 10)));
-        
-        const enrichedOptions = filteredOptions.map(option => {
-            const id = parseInt(option.value, 10);
+      }
+    }
+
+    const totalOrderAmount = enrichedOptions.reduce((sum, stock) => {
+      return sum + (stock.orderValue ?? 0);
+    }, 0);
+
+    setPortfolioDetails(prevDetails => ({
+      ...prevDetails,
+      orderAmount: parseFloat(totalOrderAmount.toString()).toFixed(2),
+    }));
+
+    const secondArrayMap = new Map(enrichedOptions.map(item => [item.value.toString(), item]));
+
+    for (const key in dataInvst) {
+      if (dataInvst.hasOwnProperty(key)) {
+        dataInvst[key] = dataInvst[key].map(item => {
+          const match = secondArrayMap.get(item.selectValue);
+          if (match) {
             return {
-                ...option,
-                minimumamount:0,
-                quantity:0,
-                MinAmountminimumamount:0,
-                MinAmountquantity:0,
-                MinAmountorderValue:0,
-                stock:0,
-                orderValue:0,
-                ltp:option.currentPrice,
-                weightNew: stockWeights[id] !== undefined ? stockWeights[id] / 100 : 0
+              ...item,
+              ...match,
             };
-        });                
-         
-        let highestLTP = -Infinity;
-        let highestLTPItem = null;
-        for (const item of enrichedOptions) {
-            const price = Number(item.currentPrice);
-            if (!isNaN(price) && price > highestLTP) {
-                highestLTP = price; 
-                highestLTPItem = item;
-            }
-        }
-        
-        if (highestLTPItem) {
-            for (const item of enrichedOptions) {
-                let amount = 0;
-                
-                const price = Number(item.currentPrice);
-                item.minimumamount = parseFloat(highestLTPItem.ltp) * item.weightNew / highestLTPItem.weightNew;
-                amount = item.minimumamount;
-
-                const divisionResult = amount / price;
-                
-                const isMutualFund = 'switchMultiples' in item && item.switchMultiples !== undefined;
-                
-                const roundedResult = Math.round(divisionResult);
-                item.quantity = Math.max(roundedResult, 1);
-                item.orderValue = item.quantity * price;
-                item.stock = divisionResult;
-                
-                let minamount = 0;
-                item.MinAmountminimumamount = item.weightNew * parseFloat(portfolioDetails.minimumInvestment);
-                minamount = item.MinAmountminimumamount;
-
-                const MindivisionResult = minamount / price;
-                
-                if (isMutualFund) {
-                    item.MinAmountquantity = Number((MindivisionResult).toFixed(2));
-                    item.MinAmountorderValue = minamount;
-                } else {
-                    const MinroundedResult = Math.round(MindivisionResult);
-                    item.MinAmountquantity = Math.max(MinroundedResult, 1);
-                    item.MinAmountorderValue = item.MinAmountquantity * price;
-                }
-            }
-        }
-        
-        const totalOrderAmount = enrichedOptions.reduce((sum, stock) => {           
-            return sum + (stock.orderValue ?? 0);
-        }, 0);
-
-        setPortfolioDetails(prevDetails => ({
-            ...prevDetails,
-            orderAmount: parseFloat(totalOrderAmount.toString()).toFixed(2),
-        }));        
-
-        const secondArrayMap = new Map(enrichedOptions.map(item => [item.value.toString(), item]));
-
-        for (const key in dataInvst) {
-            if (dataInvst.hasOwnProperty(key)) {
-                dataInvst[key] = dataInvst[key].map(item => {
-                    const match = secondArrayMap.get(item.selectValue);
-                    if (match) {
-                        return {
-                            ...item,
-                            ...match, 
-                        };
-                    }
-                    return item;
-                });
-            }
-        } 
+          }
+          return item;
+        });
+      }
+    }
   };
 
   const handleCategoryWeightChange = (category: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = event.target;
-    const weight = parseFloat(value) || 0; 
+    const weight = parseFloat(value) || 0;
     updateTotalWeight(category, weight);
   };
 
   const updateTotalWeight = (category: string, weight: number) => {
     setTotalWeights(prevTotalWeights => {
-        const updatedTotalWeights = { ...prevTotalWeights, [category]: weight };
-        calculateOrderValue(fieldstock, updatedTotalWeights, portfolioDetails);
-        return updatedTotalWeights;
+      const updatedTotalWeights = { ...prevTotalWeights, [category]: weight };
+      calculateOrderValue(fieldstock, updatedTotalWeights, portfolioDetails);
+      return updatedTotalWeights;
     });
   };
 
@@ -841,7 +840,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
         const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
         const isEtfCategory = selectedMainCategories.includes('ETF');
         let optionsToUse: (StockOption | MutualFundOption)[] = [];
-        
+
         if (isStockCategory && !isMutualFundCategory && !isEtfCategory) {
           optionsToUse = [...initialOptions, ...initialUOptions, ...initialWOptions];
         } else if (isMutualFundCategory && !isStockCategory && !isEtfCategory) {
@@ -851,26 +850,26 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
         }
 
         setFieldstock((prevFields) => {
-            const newFields = {
-                ...prevFields,
-                [category]: [{ 
-                  id: 1, 
-                  selectValue: '', 
-                  weight: '', 
-                  currentPrice: '', 
-                  options: optionsToUse, 
-                  MinAmountquantity: 0, 
-                  MinAmountorderValue: 0,
-                  geography: selectedGeography
-                }],
-            };
-            calculateOrderValue(newFields, totalWeights, portfolioDetails);
-            return newFields;
+          const newFields = {
+            ...prevFields,
+            [category]: [{
+              id: 1,
+              selectValue: '',
+              weight: '',
+              currentPrice: '',
+              options: optionsToUse,
+              MinAmountquantity: 0,
+              MinAmountorderValue: 0,
+              geography: selectedGeography
+            }],
+          };
+          calculateOrderValue(newFields, totalWeights, portfolioDetails);
+          return newFields;
         });
         return newSelectedCategories;
       }
     });
-  }; 
+  };
 
   const handleCheckboxChangeMainCategory = (mcategory: string) => {
     setSelectedMainCategories((prev) => {
@@ -921,48 +920,48 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
       return newFields;
     });
   };
- 
+
   const addField1 = (category: string) => {
     setFieldstock((prevFields) => {
-        const categoryFields = prevFields[category] || [];
-        const newId = categoryFields.length > 0 
-                        ? Math.max(...categoryFields.map(field => field.id)) + 1 
-                        : 1;
-        
-        const isStockCategory = selectedMainCategories.includes('Stocks');
-        const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
-        const isEtfCategory = selectedMainCategories.includes('ETF');
-        let optionsToUse: (StockOption | MutualFundOption)[] = [];
-        
-        if (isStockCategory && !isMutualFundCategory && !isEtfCategory) {
-          optionsToUse = [...initialOptions, ...initialUOptions, ...initialWOptions];
-        } else if (isMutualFundCategory && !isStockCategory && !isEtfCategory) {
-          optionsToUse = initialMOptions;
-        } else if (isEtfCategory && !isStockCategory && !isMutualFundCategory) {
-          optionsToUse = [...initialOptions, ...initialUOptions, ...initialWOptions].filter(opt => opt.capType === 'ETF');
-        }
+      const categoryFields = prevFields[category] || [];
+      const newId = categoryFields.length > 0
+        ? Math.max(...categoryFields.map(field => field.id)) + 1
+        : 1;
 
-        const newField: Field = { 
-          id: newId, 
-          selectValue: '', 
-          weight: '', 
-          currentPrice: '', 
-          options: optionsToUse, 
-          MinAmountquantity: 0, 
-          MinAmountorderValue: 0,
-          geography: selectedGeography
-        };
-        
-        const updatedFields = {
-          ...prevFields,
-          [category]: [...categoryFields, newField],
-        };
-        
-        calculateOrderValue(updatedFields, totalWeights, portfolioDetails);
-        return updatedFields;
+      const isStockCategory = selectedMainCategories.includes('Stocks');
+      const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
+      const isEtfCategory = selectedMainCategories.includes('ETF');
+      let optionsToUse: (StockOption | MutualFundOption)[] = [];
+
+      if (isStockCategory && !isMutualFundCategory && !isEtfCategory) {
+        optionsToUse = [...initialOptions, ...initialUOptions, ...initialWOptions];
+      } else if (isMutualFundCategory && !isStockCategory && !isEtfCategory) {
+        optionsToUse = initialMOptions;
+      } else if (isEtfCategory && !isStockCategory && !isMutualFundCategory) {
+        optionsToUse = [...initialOptions, ...initialUOptions, ...initialWOptions].filter(opt => opt.capType === 'ETF');
+      }
+
+      const newField: Field = {
+        id: newId,
+        selectValue: '',
+        weight: '',
+        currentPrice: '',
+        options: optionsToUse,
+        MinAmountquantity: 0,
+        MinAmountorderValue: 0,
+        geography: selectedGeography
+      };
+
+      const updatedFields = {
+        ...prevFields,
+        [category]: [...categoryFields, newField],
+      };
+
+      calculateOrderValue(updatedFields, totalWeights, portfolioDetails);
+      return updatedFields;
     });
   };
-  
+
   const removeField1 = (category: string, id: number) => {
     setFieldstock((prevFields) => {
       const updatedCategoryFields = prevFields[category].filter((field) => field.id !== id);
@@ -970,7 +969,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
         ...prevFields,
         [category]: updatedCategoryFields,
       };
-      
+
       calculateOrderValue(updatedFields, totalWeights, portfolioDetails);
       return updatedFields;
     });
@@ -980,8 +979,8 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
     if (!fields) return;
     const allFields = Object.values(fields).flat();
     const sortedFields = allFields
-        .filter(field => field.selectValue)
-        .sort((a, b) => parseFloat(b.weight) - parseFloat(a.weight));
+      .filter(field => field.selectValue)
+      .sort((a, b) => parseFloat(b.weight) - parseFloat(a.weight));
     const totalStocks = sortedFields.length;
     const top3Weight = calculateTopNWeight(sortedFields, 3);
     const top5Weight = calculateTopNWeight(sortedFields, 5);
@@ -995,26 +994,26 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
     const totalWeight = fields.reduce((acc, field) => acc + parseFloat(field.weight || '0'), 0);
 
     if (totalWeight === 0) {
-        return 0;
+      return 0;
     }
 
     const topNWeight = topNFields.reduce((acc, field) => acc + parseFloat(field.weight || '0'), 0);
     return (topNWeight / totalWeight) * 100;
   };
 
-  const calculateStockTypeWeights = (fields: FieldsState) => {   
+  const calculateStockTypeWeights = (fields: FieldsState) => {
     if (!fields) return;
     const allFields = Object.values(fields).flat();
     const stockTypeWeightMap: { [stockType: string]: number } = {};
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let totalWeight = 0;
-    
+
     const isStockCategory = selectedMainCategories.includes('Stocks');
     const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
     const isUsStockCategory = selectedMainCategories.includes('UsStocks');
     const isWorldStockCategory = selectedMainCategories.includes('WorldStocks');
     let optionsToUse: (StockOption | MutualFundOption)[] = [];
-    
+
     if (isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory) {
       optionsToUse = initialOptions;
     } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory && !isWorldStockCategory) {
@@ -1026,22 +1025,21 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
     } else {
       optionsToUse = [...initialOptions, ...initialMOptions, ...initialUOptions, ...initialWOptions];
     }
-    
+
     allFields.forEach(field => {
-        const selectedOption = optionsToUse.find(option => option.value.toString() === field.selectValue.toString());
-      
-        if (selectedOption) { 
-            const stockType = selectedOption.stockType;
-            if(selectedOption.stockType === 'IndianStock')
-            {
-                const weight = parseFloat(field.weight) || 0;
-                if (!stockTypeWeightMap[stockType]) {
-                    stockTypeWeightMap[stockType] = 0;
-                }
-                stockTypeWeightMap[stockType] += weight; 
-                totalWeight += weight;
-            }    
+      const selectedOption = optionsToUse.find(option => option.value.toString() === field.selectValue.toString());
+
+      if (selectedOption) {
+        const stockType = selectedOption.stockType;
+        if (selectedOption.stockType === 'IndianStock') {
+          const weight = parseFloat(field.weight) || 0;
+          if (!stockTypeWeightMap[stockType]) {
+            stockTypeWeightMap[stockType] = 0;
+          }
+          stockTypeWeightMap[stockType] += weight;
+          totalWeight += weight;
         }
+      }
     });
   };
 
@@ -1055,7 +1053,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
     const isUsStockCategory = selectedMainCategories.includes('UsStocks');
     const isWorldStockCategory = selectedMainCategories.includes('WorldStocks');
     let optionsToUse: (StockOption | MutualFundOption)[] = [];
-    
+
     if (isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory) {
       optionsToUse = initialOptions;
     } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory && !isWorldStockCategory) {
@@ -1071,19 +1069,18 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
     Object.values(fields).forEach((categoryFields) => {
       categoryFields.forEach((field) => {
         const selectedOption = optionsToUse.find(
-            (option) => option.value.toString() === field.selectValue.toString()
+          (option) => option.value.toString() === field.selectValue.toString()
         );
         if (selectedOption) {
-            const capType = selectedOption.capType;
-            if(selectedOption.stockType === 'IndianStock')
-            {
-                const weight = parseFloat(field.weight) || 0;
-                if (!capTypeWeightMap[capType]) {
-                  capTypeWeightMap[capType] = 0;
-                }
-                capTypeWeightMap[capType] += weight;
-                totalWeight += weight;
-            }    
+          const capType = selectedOption.capType;
+          if (selectedOption.stockType === 'IndianStock') {
+            const weight = parseFloat(field.weight) || 0;
+            if (!capTypeWeightMap[capType]) {
+              capTypeWeightMap[capType] = 0;
+            }
+            capTypeWeightMap[capType] += weight;
+            totalWeight += weight;
+          }
         }
       });
     });
@@ -1093,24 +1090,24 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
       for (const capType in capTypeWeightMap) {
         capTypeWeights[capType] = (capTypeWeightMap[capType] / totalWeight) * 100;
       }
-    }    
+    }
     setCaptypeWeights(capTypeWeights);
   };
 
   const handleInputChange1 = (category: string, id: number, event: React.ChangeEvent<HTMLInputElement>) => {
     setFieldstock((prevFields) => {
-        const newFields = {
-          ...prevFields,
-          [category]: prevFields[category].map((field) =>
-            field.id === id ? { ...field, weight: event.target.value } : field
-          ),
-        };
-        calculateCapTypeWeights(newFields);
-        calculateStockTypeWeights(newFields);
-        calculateSummary(newFields);
-        calculateOrderValue(newFields, totalWeights, portfolioDetails);
-        return newFields;
-      }); 
+      const newFields = {
+        ...prevFields,
+        [category]: prevFields[category].map((field) =>
+          field.id === id ? { ...field, weight: event.target.value } : field
+        ),
+      };
+      calculateCapTypeWeights(newFields);
+      calculateStockTypeWeights(newFields);
+      calculateSummary(newFields);
+      calculateOrderValue(newFields, totalWeights, portfolioDetails);
+      return newFields;
+    });
   };
 
   const formatCurrency = (value: string | number): string => {
@@ -1166,7 +1163,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
               options={investmentTypeOptions}
             />
           </div>
-  
+
           <div>
             <Label htmlFor="planId" className="mb-2">Plan *</Label>
             <Select
@@ -1178,7 +1175,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
               options={planOptions}
             />
           </div>
-  
+
           <div>
             <Label htmlFor="termId" className="mb-2">Time Period *</Label>
             <Select
@@ -1210,7 +1207,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
               />
             </div>
           )}
-  
+
           <div>
             <Label htmlFor="riskScore" className="mb-2">Risk Score</Label>
             <Select
@@ -1225,7 +1222,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
               ]}
             />
           </div>
-  
+
           <div>
             <Label htmlFor="minimumInvestment" className="mb-2">User Minimum Amount</Label>
             <Input
@@ -1238,7 +1235,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
               className="h-11 border-gray-200 dark:border-gray-800"
             />
           </div>
-  
+
           <div>
             <Label htmlFor="orderAmount" className="mb-2">System Minimum Amount</Label>
             <Input
@@ -1262,7 +1259,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
                 options={goalListData.map(goal => ({
                   value: goal.id.toString(),
                   text: goal.name,
-                  selected: portfolioDetails.goalId 
+                  selected: portfolioDetails.goalId
                     ? portfolioDetails.goalId.split(",").includes(goal.id.toString())
                     : false
                 }))}
@@ -1273,7 +1270,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
                 }}
               />
             </div>
-  
+
             <div>
               <Label htmlFor="packageId" className="mb-2">Packages</Label>
               <Select
@@ -1281,7 +1278,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
                 onChange={(selectedOption) => {
                   const selectedPackageId = selectedOption?.value;
                   if (!selectedPackageId) return;
-    
+
                   const currentPackages = portfolioDetails.packageId ? portfolioDetails.packageId.split(",") : [];
                   if (!currentPackages.includes(selectedPackageId)) {
                     const newPackageIds = portfolioDetails.packageId
@@ -1352,17 +1349,15 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
                     key={mcategory}
                     type="button"
                     onClick={() => handleCheckboxChangeMainCategory(mcategory)}
-                    className={`flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 text-left ${
-                      isSelected
+                    className={`flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 text-left ${isSelected
                         ? 'border-brand-500 bg-brand-50/50 dark:bg-brand-950/20 ring-2 ring-brand-500/20'
                         : 'border-gray-200 hover:border-gray-300 bg-white dark:border-gray-800 dark:bg-gray-900/50'
-                    }`}
+                      }`}
                   >
-                    <div className={`flex items-center justify-center w-5 h-5 rounded-full border ${
-                      isSelected
+                    <div className={`flex items-center justify-center w-5 h-5 rounded-full border ${isSelected
                         ? 'border-brand-500 bg-brand-500 text-white'
                         : 'border-gray-300 dark:border-gray-700'
-                    }`}>
+                      }`}>
                       {isSelected && (
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -1374,9 +1369,9 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
                         {maincategory[mcategory]}
                       </span>
                       <span className="block text-xs text-gray-400 dark:text-gray-500">
-                        {mcategory === 'MutualFunds' ? 'Mutual fund schemes investment portfolio' : 
-                         mcategory === 'ETF' ? 'Exchange Traded Funds investment portfolio' : 
-                         'Direct equities and stock exchange trades'}
+                        {mcategory === 'MutualFunds' ? 'Mutual fund schemes investment portfolio' :
+                          mcategory === 'ETF' ? 'Exchange Traded Funds investment portfolio' :
+                            'Direct equities and stock exchange trades'}
                       </span>
                     </div>
                   </button>
@@ -1397,18 +1392,16 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
                       key={category}
                       type="button"
                       onClick={() => handleCheckboxChange(category)}
-                      className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-200 text-left ${
-                        isSelected
+                      className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-200 text-left ${isSelected
                           ? 'border-brand-500 bg-brand-50/50 dark:bg-brand-950/20 text-brand-700 dark:text-brand-400 font-semibold'
                           : 'border-gray-200 hover:border-gray-300 bg-white dark:border-gray-800 dark:bg-gray-900 text-gray-700 dark:text-gray-300'
-                      }`}
+                        }`}
                     >
                       <span className="text-sm">{stock[category]}</span>
-                      <div className={`w-4.5 h-4.5 rounded border flex items-center justify-center ${
-                        isSelected
+                      <div className={`w-4.5 h-4.5 rounded border flex items-center justify-center ${isSelected
                           ? 'border-brand-500 bg-brand-500 text-white'
                           : 'border-gray-300 dark:border-gray-700'
-                      }`}>
+                        }`}>
                         {isSelected && (
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -1511,7 +1504,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
                               setFieldstock(prev => {
                                 const newFields = { ...prev };
                                 if (!newFields[category]) return prev;
-                                newFields[category] = newFields[category].map(f => 
+                                newFields[category] = newFields[category].map(f =>
                                   f.id === field.id ? { ...f, geography: geoVal, selectValue: '', currentPrice: '' } : f
                                 );
                                 return newFields;
