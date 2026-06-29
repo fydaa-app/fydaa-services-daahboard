@@ -228,6 +228,7 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
   const [summary, setSummary] = useState({ totalStocks: 0, top3Weight: 0, top5Weight: 0, top10Weight: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
+  const [selectedGeography, setSelectedGeography] = useState<string>('');
   const router = useRouter();
   const hasFetchedRef = useRef(false);
 
@@ -380,6 +381,20 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
           setSelectedCategories(categoriesToSelect);
           setFieldstock(newFields1);
           setTotalWeights(assetClassObj || {});
+
+          let firstGeo = '';
+          for (const category in newFields1) {
+            if (newFields1.hasOwnProperty(category) && Array.isArray(newFields1[category])) {
+              const firstField = newFields1[category].find(f => f.geography);
+              if (firstField) {
+                firstGeo = firstField.geography || '';
+                break;
+              }
+            }
+          }
+          if (firstGeo) {
+            setSelectedGeography(firstGeo);
+          }
 
           calculateSectorWeights(newFields1);   
           calculateCapTypeWeights(newFields1);
@@ -841,7 +856,7 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
                   options: optionsToUse, 
                   MinAmountquantity: 0, 
                   MinAmountorderValue: 0,
-                  geography: ''
+                  geography: selectedGeography
                 }],
             };
             calculateOrderValue(newFields, totalWeights, portfolioDetails);
@@ -873,6 +888,33 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
     setFieldstock({});
     setTotalWeights({});
     setSelectedMainCategories([]);
+    setSelectedGeography('');
+  };
+
+  const handleGlobalGeographyChange = (geoVal: string) => {
+    setSelectedGeography(geoVal);
+    setFieldstock(prev => {
+      const newFields = { ...prev };
+      for (const category in newFields) {
+        if (newFields.hasOwnProperty(category)) {
+          newFields[category] = newFields[category].map(field => ({
+            ...field,
+            geography: geoVal,
+            selectValue: '',
+            currentPrice: '',
+            MinAmountquantity: 0,
+            MinAmountorderValue: 0
+          }));
+        }
+      }
+      setTimeout(() => {
+        calculateCapTypeWeights(newFields);
+        calculateStockTypeWeights(newFields);
+        calculateSummary(newFields);
+        calculateOrderValue(newFields, totalWeights, portfolioDetails);
+      }, 0);
+      return newFields;
+    });
   };
  
   const addField1 = (category: string) => {
@@ -903,7 +945,7 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
           options: optionsToUse, 
           MinAmountquantity: 0, 
           MinAmountorderValue: 0,
-          geography: ''
+          geography: selectedGeography
         };
         
         const updatedFields = {
@@ -1205,6 +1247,8 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
             />
           </div>
 
+
+
           <div className="col-span-1 md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <MultiSelect
@@ -1372,6 +1416,18 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
               </div>
             </div>
           )}
+          {selectedCategories.length > 0 && (
+            <div className="pt-6 border-t border-gray-100 dark:border-gray-800">
+              <Label htmlFor="globalGeography" className="mb-2">Geography *</Label>
+              <div className="max-w-xs">
+                <Select
+                  value={selectedGeography}
+                  onChange={(selectedOption) => handleGlobalGeographyChange(selectedOption?.value || '')}
+                  options={geographyOptions}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1442,8 +1498,9 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
                       <tr key={field.id} className="hover:bg-gray-50/30 dark:hover:bg-gray-800/10">
                         <td className="py-3 pr-4">
                           <select
-                            className="form-select text-sm shadow-theme-xs text-gray-800 border-gray-300 h-11 w-full border rounded px-2 py-2.5"
+                            className="form-select text-sm shadow-theme-xs text-gray-800 border-gray-300 h-11 w-full border rounded px-2 py-2.5 disabled:opacity-75 disabled:bg-gray-50 dark:disabled:bg-gray-800"
                             value={field.geography || ''}
+                            disabled={true}
                             onChange={(e) => {
                               const geoVal = e.target.value;
                               setFieldstock(prev => {

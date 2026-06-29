@@ -41,19 +41,19 @@ const termOptions = [
   { value: "4", label: "Emergency" }
 ];
 
-const riskScoreOptions =[
-    { value: "0", label: "0 to 10" },
-    { value: "10", label: "11 to 20" },
-    { value: "20", label: "21 to 30" },
-    { value: "30", label: "31 to 40" },
-    { value: "40", label: "41 to 50" },
-    { value: "50", label: "51 to 60" },
-    { value: "60", label: "61 to 70" },
-    { value: "70", label: "71 to 80" },
-    { value: "80", label: "81 to 90" },
-    { value: "90", label: "91 to 100" },
-    { value: "100", label: "0 to 100" },
-]
+const riskScoreOptions = [
+  { value: "0", label: "0 to 10" },
+  { value: "10", label: "11 to 20" },
+  { value: "20", label: "21 to 30" },
+  { value: "30", label: "31 to 40" },
+  { value: "40", label: "41 to 50" },
+  { value: "50", label: "51 to 60" },
+  { value: "60", label: "61 to 70" },
+  { value: "70", label: "71 to 80" },
+  { value: "80", label: "81 to 90" },
+  { value: "90", label: "91 to 100" },
+  { value: "100", label: "0 to 100" },
+];
 
 const stock: Record<string | number, string> = {
   'IndianStock': 'Equities',
@@ -76,7 +76,7 @@ interface Stock {
   CapType: string;
   StockType: string;
   currentPrice: string;
-  recommendationStock?: number;
+  recommendationStock: number;
   geography?: string;
 }
 
@@ -93,10 +93,11 @@ interface MutualFund {
 
 type FieldsState = Record<string | number, Field[]>; 
 type WeightsState = {
-    [categoryName: string]: number;
+  [categoryName: string]: number;
 };
 
 interface PortfolioData {
+  id?: number;
   portfolioName: string;
   planId: string;
   goalId: string;
@@ -201,7 +202,7 @@ const DEFAULT_PORTFOLIO_DATA: PortfolioData = {
   goalName: null,
   packageName: null,
   portfolioType: 'STOCK',
-  planType: '',
+  planType: 'DIRECT',
 };
 
 export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type = 'clone', onRefresh, isPage = false, portfolioId }: EditStockProps) {
@@ -226,6 +227,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
   const [summary, setSummary] = useState({ totalStocks: 0, top3Weight: 0, top5Weight: 0, top10Weight: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
+  const [selectedGeography, setSelectedGeography] = useState<string>('');
   const router = useRouter();
   const hasFetchedRef = useRef(false);
 
@@ -233,7 +235,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
   useEffect(() => {
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
-
+   
     const fetchData = async () => {
       try {
         setPageLoading(true);
@@ -249,14 +251,29 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
         const options = stockListData.data.map((stock: Stock) => ({
           value: stock.id,
           label: stock.stockName,
-          sector: stock.sector.toString(),
+          sector: stock.sector.toString(), 
           capType: stock.CapType,
           stockType: stock.StockType,
           currentPrice: stock.currentPrice,
           recommendationStock: Number(stock.recommendationStock),
           geography: stock.geography || '',
         }));      
+       
         setInitialOptions(options);
+
+        const mutualFundListData = await amcService.getMutualFundList();    
+        const moptions = mutualFundListData.data.map((mutualFund: MutualFund) => ({
+          value: mutualFund.id,
+          label: mutualFund.stockName,
+          sector: mutualFund.sector.toString(),
+          capType: mutualFund.CapType,
+          stockType: mutualFund.StockType,
+          currentPrice: mutualFund.currentPrice,
+          switchMultiples: mutualFund.switchMultiples,
+          geography: mutualFund.geography || '',
+        }));      
+        
+        setInitialMOptions(moptions);
 
         const usstockListData = await stockManagementServiceApi.getUsStockList();    
         const uoptions = usstockListData.data.map((stock: Stock) => ({
@@ -269,6 +286,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
           recommendationStock: Number(stock.recommendationStock),
           geography: stock.geography || 'USA',
         }));      
+        
         setInitialUOptions(uoptions);
 
         const worldstockListData = await stockManagementServiceApi.getWorldStockList();    
@@ -284,7 +302,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
         }));      
         
         setInitialWOptions(woptions);
-
+       
         let activePortfolioData = PortfolioData;
         if (isPage && portfolioId) {
           const res = await portfolioManagementServiceApi.getPortfolioById(portfolioId);
@@ -300,21 +318,8 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
           activePortfolioData = activePortfolioData[0];
         }
 
-        const planTypeToUse = activePortfolioData?.planType || 'DIRECT';
-        const mutualFundListData = await amcService.getMutualFundListByPlanType(planTypeToUse);
-        const moptions = mutualFundListData.data.map((mutualFund: MutualFund) => ({
-          value: mutualFund.id,
-          label: mutualFund.stockName,
-          sector: mutualFund.sector.toString(),
-          capType: mutualFund.CapType,
-          stockType: mutualFund.StockType,
-          currentPrice: mutualFund.currentPrice,
-          switchMultiples: mutualFund.switchMultiples,
-          geography: mutualFund.geography || '',
-        }));      
-        setInitialMOptions(moptions);
-
         if ((type === "clone") && activePortfolioData) {
+          
           const stockIdsArray = activePortfolioData?.stockIds?.replace(/'/g, "").split(",") || [];
           const weightsArray = activePortfolioData?.weights?.replace(/'/g, "").split(",") || [];
           const optionsForType = 
@@ -323,16 +328,16 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
             [...options, ...uoptions, ...woptions];
 
           const newFields = stockIdsArray.map((id: string, index: number) => ({
-            id: index + 1,
-            selectValue: id,
-            weight: weightsArray[index] || '',
-            currentPrice: '',
-            MinAmountquantity: 0,
-            MinAmountorderValue: 0,
-            options: optionsForType,
+              id: index + 1,
+              selectValue: id,
+              weight: weightsArray[index] || '',
+              currentPrice: '',
+              MinAmountquantity: 0,
+              MinAmountorderValue: 0,
+              options: optionsForType,
           }));
           setFields(newFields);
-                  
+                   
           let newFields1 = activePortfolioData?.assetClassStock;
           if (typeof newFields1 === 'string') {
             try {
@@ -354,23 +359,21 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
           }
 
           for (const category in newFields1) {
-            if (newFields1.hasOwnProperty(category)) {
-              newFields1[category].forEach((item: Field) => {
-                const found = optionsForType.find(
-                  (option) => parseInt(option.value) === parseInt(item.selectValue)
-                );
-                item.options = optionsForType;
-                if (found) {
-                  item.currentPrice = found.currentPrice;
-                  if ('recommendationStock' in found) {
-                    item.recommendationStock = (found as StockOption & { recommendationStock?: number }).recommendationStock;
-                  }
-                  item.geography = found.geography || '';
-                } else {
-                  console.warn(`No option found for selectValue: ${item.selectValue}`);
-                }
-              });
-            }
+              if (newFields1.hasOwnProperty(category)) {
+                  newFields1[category].forEach((item: Field) => {
+                      const stock = optionsForType.find((option: { value: string; }) => parseInt(option.value) === parseInt(item.selectValue));
+                      item.options = optionsForType;  
+                      if (stock) {
+                          item.currentPrice = stock.currentPrice;                          
+                          if ('recommendationStock' in stock) {
+                            item.recommendationStock = (stock as StockOption & { recommendationStock?: number }).recommendationStock;
+                          }
+                          item.geography = stock.geography || '';
+                      } else {
+                          console.warn(`No stock found for selectValue: ${item.selectValue}`);
+                      }
+                  });
+              }
           }
           
           const categoriesToSelect = Object.keys(assetClassObj || {});
@@ -378,46 +381,62 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
           setFieldstock(newFields1);
           setTotalWeights(assetClassObj || {});
 
+          let firstGeo = '';
+          for (const category in newFields1) {
+            if (newFields1.hasOwnProperty(category) && Array.isArray(newFields1[category])) {
+              const firstField = newFields1[category].find(f => f.geography);
+              if (firstField) {
+                firstGeo = firstField.geography || '';
+                break;
+              }
+            }
+          }
+          if (firstGeo) {
+            setSelectedGeography(firstGeo);
+          }
+
           calculateSectorWeights(newFields1);   
           calculateCapTypeWeights(newFields1);
           calculateStockTypeWeights(newFields1);
           calculateSummary(newFields1);
 
           if (activePortfolioData.portfolioType === 'MUTUALFUND') {
-            setSelectedMainCategories(['MutualFunds']);              
+              setSelectedMainCategories(['MutualFunds']);              
           } else if (activePortfolioData.portfolioType === 'ETF') {
-            setSelectedMainCategories(['ETF']);
+              setSelectedMainCategories(['ETF']);
           } else {
-            setSelectedMainCategories(['Stocks']);
+              setSelectedMainCategories(['Stocks']);
           }
           
-          const portfolioDetailsData: PortfolioData = {
-            portfolioName: activePortfolioData?.portfolioName || '',
-            planId: activePortfolioData?.planId !== undefined && activePortfolioData?.planId !== null ? activePortfolioData.planId.toString() : '',
-            termId: activePortfolioData?.termId !== undefined && activePortfolioData?.termId !== null ? activePortfolioData.termId.toString() : '',
-            goalId: activePortfolioData?.goalId !== undefined && activePortfolioData?.goalId !== null ? activePortfolioData.goalId.toString() : '',
-            packageId: activePortfolioData?.packageId !== undefined && activePortfolioData?.packageId !== null ? activePortfolioData.packageId.toString() : '',
-            stockIds: stockIdsArray.join(','),
-            weights: weightsArray.join(','),
-            riskScore: activePortfolioData?.riskScore !== undefined && activePortfolioData?.riskScore !== null ? activePortfolioData.riskScore.toString() : '',
-            minimumInvestment: activePortfolioData?.minimumInvestment !== undefined && activePortfolioData?.minimumInvestment !== null ? activePortfolioData.minimumInvestment.toString() : '',
-            orderAmount: activePortfolioData?.orderAmount !== undefined && activePortfolioData?.orderAmount !== null ? activePortfolioData.orderAmount.toString() : '',
-            assetClass: assetClassObj || {},
-            assetClassStock: newFields1 || {},
-            investMentType: activePortfolioData?.investMentType !== undefined && activePortfolioData?.investMentType !== null ? activePortfolioData.investMentType.toString() : '',
-            fundType: activePortfolioData?.fundType || 0,
-            goalName: activePortfolioData?.goalName || null,
-            packageName: activePortfolioData?.packageName || null,
-            portfolioType: activePortfolioData.portfolioType || 'STOCK',
-            planType: activePortfolioData.planType || 'DIRECT',
-          };                    
-          setPortfolioDetails(portfolioDetailsData);
-          calculateOrderValue(newFields1, assetClassObj, portfolioDetailsData);
+          const portfolioDetails: PortfolioData = {
+              id: activePortfolioData?.id || undefined,
+              portfolioName: activePortfolioData?.portfolioName || '',
+              planId: activePortfolioData?.planId !== undefined && activePortfolioData?.planId !== null ? activePortfolioData.planId.toString() : '',
+              termId: activePortfolioData?.termId !== undefined && activePortfolioData?.termId !== null ? activePortfolioData.termId.toString() : '',
+              goalId: activePortfolioData?.goalId !== undefined && activePortfolioData?.goalId !== null ? activePortfolioData.goalId.toString() : '',
+              packageId: activePortfolioData?.packageId !== undefined && activePortfolioData?.packageId !== null ? activePortfolioData.packageId.toString() : '',
+              stockIds: stockIdsArray.join(','),
+              weights: weightsArray.join(','),
+              riskScore: activePortfolioData?.riskScore !== undefined && activePortfolioData?.riskScore !== null ? activePortfolioData.riskScore.toString() : '',
+              minimumInvestment: activePortfolioData?.minimumInvestment !== undefined && activePortfolioData?.minimumInvestment !== null ? activePortfolioData.minimumInvestment.toString() : '',
+              orderAmount: activePortfolioData?.orderAmount !== undefined && activePortfolioData?.orderAmount !== null ? activePortfolioData.orderAmount.toString() : '',
+              assetClass: assetClassObj || {},
+              assetClassStock: newFields1 || {},
+              investMentType: activePortfolioData?.investMentType !== undefined && activePortfolioData?.investMentType !== null ? activePortfolioData.investMentType.toString() : '',
+              fundType: activePortfolioData?.fundType || 0,
+              goalName: activePortfolioData?.goalName || null,
+              packageName: activePortfolioData?.packageName || null,
+              portfolioType: activePortfolioData.portfolioType || 'STOCK',
+              planType: activePortfolioData?.planType || 'DIRECT',
+          };
+                             
+          setPortfolioDetails(portfolioDetails);
+          calculateOrderValue(newFields1,activePortfolioData?.assetClass,portfolioDetails);
           setTimeout(() => {
-            calculateOrderValue(newFields1, assetClassObj, portfolioDetailsData);
+              calculateOrderValue(newFields1,activePortfolioData?.assetClass,portfolioDetails);
           }, 1000);          
         } else {
-          setFields([{ id: 1, selectValue: '', weight: '', currentPrice: '', options, MinAmountquantity: 0, MinAmountorderValue: 0 }]);
+            setFields([{ id: 1, selectValue: '', weight: '',currentPrice:'', options , MinAmountquantity:0,MinAmountorderValue:0}]);
         }
       } catch (error) {
         toast.error('Failed to fetch data');
@@ -450,11 +469,10 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
       console.error('Error fetching mutual funds:', error);
     }
   };
-  
+
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
     try {
       if (!portfolioDetails.portfolioName.trim()) {
         toast.error('Portfolio name is required');
@@ -488,16 +506,18 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
         portfolioType = 'ETF';
       }
 
-      const params = {
+      // Exclude id from the clone payload
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { id, ...params } = {
             ...portfolioDetails,
             stockIds,
             weights,
             assetClass,
             assetClassStock,
             portfolioType,
-        };
+      };
 
-      const response = await portfolioManagementServiceApi.createPortfolio(params);  
+      const response = await portfolioManagementServiceApi.createPortfolio(params);
       if (response.status !== 201) {
           toast.error('Failed to clone portfolio');
           setIsLoading(false);
@@ -714,7 +734,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
                 weightNew: stockWeights[id] !== undefined ? stockWeights[id] / 100 : 0
             };
         });                
-        
+         
         let highestLTP = -Infinity;
         let highestLTPItem = null;
         for (const item of enrichedOptions) {
@@ -738,7 +758,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
                 const isMutualFund = 'switchMultiples' in item && item.switchMultiples !== undefined;
                 
                 const roundedResult = Math.round(divisionResult);
-                item.quantity = Math.max(roundedResult, 1); 
+                item.quantity = Math.max(roundedResult, 1);
                 item.orderValue = item.quantity * price;
                 item.stock = divisionResult;
                 
@@ -759,9 +779,10 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
             }
         }
         
-        const totalOrderAmount = enrichedOptions.reduce((sum, stock) => {
+        const totalOrderAmount = enrichedOptions.reduce((sum, stock) => {           
             return sum + (stock.orderValue ?? 0);
         }, 0);
+
         setPortfolioDetails(prevDetails => ({
             ...prevDetails,
             orderAmount: parseFloat(totalOrderAmount.toString()).toFixed(2),
@@ -784,7 +805,6 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
             }
         } 
   };
-
 
   const handleCategoryWeightChange = (category: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = event.target;
@@ -841,7 +861,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
                   options: optionsToUse, 
                   MinAmountquantity: 0, 
                   MinAmountorderValue: 0,
-                  geography: ''
+                  geography: selectedGeography
                 }],
             };
             calculateOrderValue(newFields, totalWeights, portfolioDetails);
@@ -862,10 +882,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
         setTotalWeights({});
         return newSelectedMainCategories;
       } else {
-          if (mcategory === 'MutualFunds' && portfolioDetails.planType) {
-            fetchMutualFundsByPlanType(portfolioDetails.planType);
-          }
-          return [...prev, mcategory];
+        return [...prev, mcategory];
       }
     });
   };
@@ -876,6 +893,33 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
     setFieldstock({});
     setTotalWeights({});
     setSelectedMainCategories([]);
+    setSelectedGeography('');
+  };
+
+  const handleGlobalGeographyChange = (geoVal: string) => {
+    setSelectedGeography(geoVal);
+    setFieldstock(prev => {
+      const newFields = { ...prev };
+      for (const category in newFields) {
+        if (newFields.hasOwnProperty(category)) {
+          newFields[category] = newFields[category].map(field => ({
+            ...field,
+            geography: geoVal,
+            selectValue: '',
+            currentPrice: '',
+            MinAmountquantity: 0,
+            MinAmountorderValue: 0
+          }));
+        }
+      }
+      setTimeout(() => {
+        calculateCapTypeWeights(newFields);
+        calculateStockTypeWeights(newFields);
+        calculateSummary(newFields);
+        calculateOrderValue(newFields, totalWeights, portfolioDetails);
+      }, 0);
+      return newFields;
+    });
   };
  
   const addField1 = (category: string) => {
@@ -906,7 +950,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
           options: optionsToUse, 
           MinAmountquantity: 0, 
           MinAmountorderValue: 0,
-          geography: ''
+          geography: selectedGeography
         };
         
         const updatedFields = {
@@ -969,21 +1013,17 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
     const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
     const isUsStockCategory = selectedMainCategories.includes('UsStocks');
     const isWorldStockCategory = selectedMainCategories.includes('WorldStocks');
-    const isEtfCategory = selectedMainCategories.includes('ETF');
     let optionsToUse: (StockOption | MutualFundOption)[] = [];
     
-    if (isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory && !isEtfCategory) {
+    if (isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory) {
       optionsToUse = initialOptions;
-    } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory && !isWorldStockCategory && !isEtfCategory) {
+    } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory && !isWorldStockCategory) {
       optionsToUse = initialMOptions;
-    } else if (isUsStockCategory && !isStockCategory && !isMutualFundCategory && !isWorldStockCategory && !isEtfCategory) {
+    } else if (isUsStockCategory && !isStockCategory && !isMutualFundCategory && !isWorldStockCategory) {
       optionsToUse = initialUOptions;
-    } else if (isWorldStockCategory && !isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isEtfCategory) {
+    } else if (isWorldStockCategory && !isStockCategory && !isMutualFundCategory && !isUsStockCategory) {
       optionsToUse = initialWOptions;
-    } else if (isEtfCategory && !isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory) {
-      optionsToUse = [...initialOptions, ...initialUOptions, ...initialWOptions].filter(opt => opt.capType === 'ETF');
-    }
-    else {
+    } else {
       optionsToUse = [...initialOptions, ...initialMOptions, ...initialUOptions, ...initialWOptions];
     }
     
@@ -1014,21 +1054,17 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
     const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
     const isUsStockCategory = selectedMainCategories.includes('UsStocks');
     const isWorldStockCategory = selectedMainCategories.includes('WorldStocks');
-    const isEtfCategory = selectedMainCategories.includes('ETF');
     let optionsToUse: (StockOption | MutualFundOption)[] = [];
     
-    if (isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory && !isEtfCategory) {
+    if (isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory) {
       optionsToUse = initialOptions;
-    } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory && !isWorldStockCategory && !isEtfCategory) {
+    } else if (isMutualFundCategory && !isStockCategory && !isUsStockCategory && !isWorldStockCategory) {
       optionsToUse = initialMOptions;
-    } else if (isUsStockCategory && !isStockCategory && !isMutualFundCategory && !isWorldStockCategory && !isEtfCategory) {
+    } else if (isUsStockCategory && !isStockCategory && !isMutualFundCategory && !isWorldStockCategory) {
       optionsToUse = initialUOptions;
-    } else if (isWorldStockCategory && !isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isEtfCategory) {
+    } else if (isWorldStockCategory && !isStockCategory && !isMutualFundCategory && !isUsStockCategory) {
       optionsToUse = initialWOptions;
-    } else if (isEtfCategory && !isStockCategory && !isMutualFundCategory && !isUsStockCategory && !isWorldStockCategory) {
-      optionsToUse = [...initialOptions, ...initialUOptions, ...initialWOptions].filter(opt => opt.capType === 'ETF');
-    }
-    else {
+    } else {
       optionsToUse = [...initialOptions, ...initialMOptions, ...initialUOptions, ...initialWOptions];
     }
 
@@ -1077,12 +1113,50 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
       }); 
   };
 
+  const formatCurrency = (value: string | number): string => {
+    const numValue = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(numValue)) return '₹0.00';
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(numValue);
+  };
+
   if (!isPage && !isOpen) return null;
 
   const formContent = (
-    <form onSubmit={handleFormSubmit} className={`space-y-4 ${!isPage ? 'max-h-[80vh] overflow-y-auto p-4' : ''}`}>
+    <form onSubmit={handleFormSubmit} className="space-y-8">
+      {/* CARD 1: Basic Information */}
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 shadow-theme-xs space-y-6">
+        <div className="border-b border-gray-100 dark:border-gray-800 pb-4 flex items-center gap-3">
+          <div className="p-2.5 bg-brand-50 dark:bg-brand-950/40 rounded-xl text-brand-500">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
           <div>
-            <Label htmlFor="investMentType">Investment Type *</Label>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">Basic Portfolio Information</h3>
+            <p className="text-xs text-gray-400 dark:text-gray-500">Define the core parameters and targets of the portfolio</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div>
+            <Label htmlFor="portfolioName" className="mb-2">Portfolio Name *</Label>
+            <Input
+              id="portfolioName"
+              placeholder="Enter Portfolio Name"
+              value={portfolioDetails.portfolioName}
+              onChange={(e) => setPortfolioDetails({ ...portfolioDetails, portfolioName: e.target.value })}
+              required
+              className="h-11 border-gray-200 dark:border-gray-800"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="investMentType" className="mb-2">Investment Type *</Label>
             <Select
               value={portfolioDetails.investMentType}
               onChange={(selectedOption) => setPortfolioDetails({
@@ -1094,18 +1168,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
           </div>
   
           <div>
-            <Label htmlFor="portfolioName">Portfolio Name *</Label>
-            <Input
-              id="portfolioName"
-              placeholder="Enter Portfolio Name"
-              value={portfolioDetails.portfolioName}
-              onChange={(e) => setPortfolioDetails({ ...portfolioDetails, portfolioName: e.target.value })}
-              required
-            />
-          </div>
-  
-          <div>
-            <Label htmlFor="planId">Plan *</Label>
+            <Label htmlFor="planId" className="mb-2">Plan *</Label>
             <Select
               value={portfolioDetails.planId}
               onChange={(selectedOption) => setPortfolioDetails({
@@ -1117,7 +1180,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
           </div>
   
           <div>
-            <Label htmlFor="termId">Time Period *</Label>
+            <Label htmlFor="termId" className="mb-2">Time Period *</Label>
             <Select
               value={portfolioDetails.termId}
               onChange={(selectedOption) => setPortfolioDetails({
@@ -1127,53 +1190,29 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
               options={termOptions}
             />
           </div>
-           <div>
-            <MultiSelect
-              label="Goals"
-              options={goalListData.map(goal => ({
-                value: goal.id.toString(),
-                text: goal.name,
-                selected: portfolioDetails.goalId 
-                  ? portfolioDetails.goalId.split(",").includes(goal.id.toString())
-                  : false
-              }))}
-              defaultSelected={portfolioDetails.goalId ? portfolioDetails.goalId.split(",") : []}
-              onChange={(selectedValues) => {
-                const newGoalIds = selectedValues.length > 0 ? selectedValues.join(",") : "";
-                setPortfolioDetails({ ...portfolioDetails, goalId: newGoalIds });
-              }}
-              disabled={false}
-            />
-          </div>
+
+          {selectedMainCategories.includes('MutualFunds') && (
+            <div>
+              <Label htmlFor="planType" className="mb-2">Plan Type *</Label>
+              <Select
+                value={portfolioDetails.planType}
+                onChange={(e) => {
+                  setPortfolioDetails({
+                    ...portfolioDetails,
+                    planType: e.value
+                  });
+                  fetchMutualFundsByPlanType(e.value);
+                }}
+                options={[
+                  { value: "DIRECT", label: "DIRECT" },
+                  { value: "REGULAR", label: "REGULAR" }
+                ]}
+              />
+            </div>
+          )}
   
           <div>
-            <Label htmlFor="packageId">Packages</Label>
-            <Select
-              value={portfolioDetails.packageId}
-              onChange={(selectedOption) => {
-                const selectedPackageId = selectedOption?.value;
-                if (!selectedPackageId) return;
-  
-                const currentPackages = portfolioDetails.packageId ? portfolioDetails.packageId.split(",") : [];
-                if (!currentPackages.includes(selectedPackageId)) {
-                  const newPackageIds = portfolioDetails.packageId
-                    ? `${portfolioDetails.packageId},${selectedPackageId}`
-                    : selectedPackageId;
-                  setPortfolioDetails({ ...portfolioDetails, packageId: newPackageIds });
-                }
-              }}
-              options={[
-                { value: "", label: "Select Package" },
-                ...packageListData.map(pkg => ({
-                  value: pkg.id.toString(),
-                  label: pkg.packagesName
-                }))
-              ]}
-            />
-          </div>
-  
-          <div>
-            <Label htmlFor="riskScore">Risk Score</Label>
+            <Label htmlFor="riskScore" className="mb-2">Risk Score</Label>
             <Select
               value={portfolioDetails.riskScore}
               onChange={(e) => setPortfolioDetails({
@@ -1186,30 +1225,9 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
               ]}
             />
           </div>
- 
-          <div>
-            <Label htmlFor="planType">Plan Type</Label>
-            <Select
-              value={portfolioDetails.planType}
-              onChange={(e) => {
-                  setPortfolioDetails({
-                    ...portfolioDetails,
-                    planType: e.value
-                  });
-                  if (selectedMainCategories.includes('MutualFunds')) {
-                    fetchMutualFundsByPlanType(e.value);
-                  }
-                }}
-              options={[
-                { value: "", label: "Select Plan Type" },
-                { value: "DIRECT", label: "DIRECT" },
-                { value: "REGULAR", label: "REGULAR" }
-              ]}
-            />
-          </div>
   
           <div>
-            <Label htmlFor="minimumInvestment">User Minimum Amount</Label>
+            <Label htmlFor="minimumInvestment" className="mb-2">User Minimum Amount</Label>
             <Input
               id="minimumInvestment"
               type="number"
@@ -1217,11 +1235,12 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
               placeholder="Enter Minimum Amount"
               value={portfolioDetails.minimumInvestment}
               onChange={(e) => setPortfolioDetails({ ...portfolioDetails, minimumInvestment: e.target.value })}
+              className="h-11 border-gray-200 dark:border-gray-800"
             />
           </div>
   
           <div>
-            <Label htmlFor="orderAmount">System Minimum Amount</Label>
+            <Label htmlFor="orderAmount" className="mb-2">System Minimum Amount</Label>
             <Input
               id="orderAmount"
               type="number"
@@ -1229,316 +1248,542 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData ,type
               placeholder="System Amount"
               value={portfolioDetails.orderAmount}
               onChange={(e) => setPortfolioDetails({ ...portfolioDetails, orderAmount: e.target.value })}
+              className="h-11 border-gray-200 dark:border-gray-800"
             />
           </div>
- 
-          <div className="flex gap-2 items-center">
-              {Object.keys(maincategory).map((mcategory) => (
-              <div key={mcategory} >
-                  <input
-                  type="checkbox"
-                  id={mcategory}
-                  checked={selectedMainCategories.includes(mcategory)}
-                  onChange={() => handleCheckboxChangeMainCategory(mcategory)}
-                  />
-                  <label htmlFor={mcategory}>{maincategory[mcategory]}</label>
-              </div>
-              ))}
-          </div>
+
+
+
+          <div className="col-span-1 md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <MultiSelect
+                key={`goals-clone-${portfolioDetails.id || Date.now()}`}
+                label="Goals"
+                options={goalListData.map(goal => ({
+                  value: goal.id.toString(),
+                  text: goal.name,
+                  selected: portfolioDetails.goalId 
+                    ? portfolioDetails.goalId.split(",").includes(goal.id.toString())
+                    : false
+                }))}
+                defaultSelected={portfolioDetails.goalId ? portfolioDetails.goalId.split(",") : []}
+                onChange={(selectedValues) => {
+                  const newGoalIds = selectedValues.length > 0 ? selectedValues.join(",") : "";
+                  setPortfolioDetails({ ...portfolioDetails, goalId: newGoalIds });
+                }}
+              />
+            </div>
   
-          <div className="flex gap-2 items-center">
-              {Object.keys(stock).map((category) => (
-              <div key={category} >
-                  <input
-                  type="checkbox"
-                  id={category}
-                  checked={selectedCategories.includes(category)}
-                  onChange={() => handleCheckboxChange(category)}
-                  />
-                  <label htmlFor={category}>{stock[category]}</label>
-              </div>
-              ))}
-          </div>
-  
-          {selectedCategories.map((category) => {
-            const fieldsForCategory = fieldstock[category] || [];
-            const currentSum = fieldsForCategory.reduce((sum, f) => {
-              if (f.recommendationStock === 2 || f.recommendationStock === 3) {
-                return sum;
-              }
-              return sum + (parseFloat(f.weight) || 0);
-            }, 0);
-            return (
-              <div key={category} className="mb-6 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 space-y-4">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-2 border-b border-gray-100 dark:border-gray-800">
-                  <h3 className="text-base font-bold text-gray-900 dark:text-white">{stock[category]}</h3> 
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-500">Target Category Weight:</span>
-                      <Input
-                        value={totalWeights[category] || ''}
-                        onChange={(e) => handleCategoryWeightChange(category, e)}
-                        placeholder="Total Weight"
-                        required
-                        type="number"
-                        className="w-28 mb-0"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-500">Sum of Weights:</span>
-                      <span className="text-sm font-bold text-gray-800 dark:text-white">
-                        {currentSum}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                {fieldsForCategory.map((field) => (
-                  <div key={field.id} className="flex gap-2 items-center mb-1">
-                    <select
-                      className="form-select text-sm shadow-theme-xs text-gray-800 border-gray-300 h-11 w-full border rounded px-2 py-2.5"
-                      value={field.geography || ''}
-                      onChange={(e) => {
-                        const geoVal = e.target.value;
-                        setFieldstock(prev => {
-                          const newFields = { ...prev };
-                          if (!newFields[category]) return prev;
-                          newFields[category] = newFields[category].map(f => 
-                            f.id === field.id ? { ...f, geography: geoVal, selectValue: '', currentPrice: '' } : f
-                          );
-                          return newFields;
-                        });
-                      }}
-                    >
-                      {geographyOptions.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                    {renderStockDropdown(category, field)}                 
-                    <Input
-                      value={
-                        field.recommendationStock === 1
-                          ? "Buy"
-                          : field.recommendationStock === 2
-                          ? "Hold"
-                          : field.recommendationStock === 3
-                          ? "Sell"
-                          : ""
-                      }
-                      readOnly
-                      placeholder="Recommendation"
-                      className="w-28 font-semibold text-center"
-                    />
-                    <Input
-                      value={field.currentPrice}
-                      readOnly
-                      placeholder="Current Price"
-                      required
-                      type="number"
-                    />
-                    
-                    <Input
-                      value={field.weight}
-                      onChange={(e) => handleInputChange1(category, field.id, e)}
-                      placeholder="Weight"
-                      required
-                      type="number"
-                    />
-                    
-                    <Input
-                      value={field.MinAmountquantity}
-                      readOnly
-                      placeholder="Quantity"
-                      required
-                      type="number"
-                    /> 
-                    
-                    <Input
-                      value={field.MinAmountorderValue}
-                      readOnly
-                      placeholder="OrderValue"
-                      required
-                      type="number"
-                    />
-                    <button 
-                      type="button" 
-                      onClick={() => removeField1(category, field.id)}
-                      className="px-2 py-1 text-white bg-red-500 rounded hover:bg-red-600"
-                    >
-                      <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        width="24" 
-                        height="24" 
-                        viewBox="0 0 24 24" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        strokeWidth="2" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round"
-                      >
-                        <path d="M3 6h18" />
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                        <line x1="10" y1="11" x2="10" y2="17" />
-                        <line x1="14" y1="11" x2="14" y2="17" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-                <div className="flex justify-between items-center mt-3">
-                  <button 
-                    type="button"
-                    onClick={() => addField1(category)}
-                    className="px-3 py-1 text-white bg-blue-500 rounded hover:bg-blue-600 text-sm font-semibold"
-                  >
-                    Add More
-                  </button>
-
-                  {currentSum === 100 ? (
-                    <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1.5 font-semibold">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Individual weights sum is 100%
-                    </p>
-                  ) : (
-                    <p className="text-xs text-orange-500 dark:text-orange-400 font-medium">
-                      Individual weights sum: {currentSum}%
-                    </p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-          {summary.totalStocks > 0 && (
-              <div className="portfolio-summary-container">
-                <div className="summary-section">
-                  <h2 className="summary-title">Asset Wise Allocation</h2>
-                  <div className="breakup-grid">
-                    {Object.entries(totalWeights).map(([category, weight]) => (
-                      <div className="breakup-item" key={category}>
-                        <div className="breakup-label">{category}</div>
-                        <div className="breakup-value">{weight.toFixed(2)}%</div>
-                        <div className="breakup-bar" style={{ width: `${weight}%` }}></div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="summary-section">
-                  <h2 className="summary-title">Market Cap Wise Allocation</h2>
-                  <div className="breakup-grid">
-                    {Object.entries(captypeWeights).map(([capType, weight]) => (
-                      <div className="breakup-item" key={capType}>
-                        <div className="breakup-label">{capTypeMapping[capType]}</div>
-                        <div className="breakup-value">{weight.toFixed(2)}%</div>
-                        <div className="breakup-bar" style={{ width: `${weight}%` }}></div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="summary-section">
-                  <h2 className="summary-title">Portfolio Summary</h2>
-                  <div className="stats-grid">
-                    <div className="stat-item">
-                      <div className="stat-label">Total Stocks</div>
-                      <div className="stat-value">{summary.totalStocks}</div>
-                    </div>
-                    <div className="stat-item">
-                      <div className="stat-label">Top 3 Weight</div>
-                      <div className="stat-value">{summary.top3Weight.toFixed(2)}%</div>
-                    </div>
-                    <div className="stat-item">
-                      <div className="stat-label">Top 5 Weight</div>
-                      <div className="stat-value">{summary.top5Weight.toFixed(2)}%</div>
-                    </div>
-                    <div className="stat-item">
-                      <div className="stat-label">Top 10 Weight</div>
-                      <div className="stat-value">{summary.top10Weight.toFixed(2)}%</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          <div className="flex flex-col sm:flex-row justify-end items-center gap-4 w-full pt-4">
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  resetForm();
-                  if (isPage) {
-                    router.push('/portfolio-new');
-                  } else {
-                    onClose?.();
+            <div>
+              <Label htmlFor="packageId" className="mb-2">Packages</Label>
+              <Select
+                value={portfolioDetails.packageId}
+                onChange={(selectedOption) => {
+                  const selectedPackageId = selectedOption?.value;
+                  if (!selectedPackageId) return;
+    
+                  const currentPackages = portfolioDetails.packageId ? portfolioDetails.packageId.split(",") : [];
+                  if (!currentPackages.includes(selectedPackageId)) {
+                    const newPackageIds = portfolioDetails.packageId
+                      ? `${portfolioDetails.packageId},${selectedPackageId}`
+                      : selectedPackageId;
+                    setPortfolioDetails({ ...portfolioDetails, packageId: newPackageIds });
                   }
                 }}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 dark:bg-gray-600 dark:text-white"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              >
-                {isLoading && (
-                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                )}
-                {isLoading ? 'Saving...' : 'Save Portfolio'}
-              </button>
+                options={[
+                  { value: "", label: "Select Package" },
+                  ...packageListData.map(pkg => ({
+                    value: pkg.id.toString(),
+                    label: pkg.packagesName
+                  }))
+                ]}
+              />
+
+              {portfolioDetails.packageId && (
+                <div className="flex flex-wrap gap-1.5 mt-2.5">
+                  {portfolioDetails.packageId.split(",").map(pkgId => {
+                    const pkgObj = packageListData.find(p => p.id.toString() === pkgId);
+                    return (
+                      <span key={pkgId} className="inline-flex items-center gap-1 bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-400 text-xs px-2.5 py-1 rounded-full font-semibold">
+                        {pkgObj ? pkgObj.packagesName : pkgId}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = portfolioDetails.packageId.split(",").filter(p => p !== pkgId).join(",");
+                            setPortfolioDetails({ ...portfolioDetails, packageId: updated });
+                          }}
+                          className="text-brand-500 hover:text-brand-700 font-bold focus:outline-none ml-0.5"
+                        >
+                          &times;
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
-        </form>
-      );
-
-  if (isPage) {
-    return (
-      <div className="bg-white rounded-lg border border-gray-200 dark:border-white/[0.05] dark:bg-white/[0.03] shadow-theme-xs p-6">
-        <div className="flex justify-between items-center pb-4 border-b border-gray-100 dark:border-gray-800 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Clone Portfolio
-          </h2>
         </div>
-        {pageLoading ? (
-          <div className="flex items-center justify-center min-h-[400px] w-full">
-            <div className="flex flex-col items-center gap-3">
-              <svg className="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      </div>
+
+      {/* CARD 2: Asset Type & Categories Selector */}
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 shadow-theme-xs space-y-6">
+        <div className="border-b border-gray-100 dark:border-gray-800 pb-4 flex items-center gap-3">
+          <div className="p-2.5 bg-brand-50 dark:bg-brand-950/40 rounded-xl text-brand-500">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">Asset Type & Asset Classes</h3>
+            <p className="text-xs text-gray-400 dark:text-gray-500">Choose the instrument type and select specific asset classes</p>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          {/* Main Category */}
+          <div>
+            <span className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Main Category *</span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {Object.keys(maincategory).map((mcategory) => {
+                const isSelected = selectedMainCategories.includes(mcategory);
+                return (
+                  <button
+                    key={mcategory}
+                    type="button"
+                    onClick={() => handleCheckboxChangeMainCategory(mcategory)}
+                    className={`flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 text-left ${
+                      isSelected
+                        ? 'border-brand-500 bg-brand-50/50 dark:bg-brand-950/20 ring-2 ring-brand-500/20'
+                        : 'border-gray-200 hover:border-gray-300 bg-white dark:border-gray-800 dark:bg-gray-900/50'
+                    }`}
+                  >
+                    <div className={`flex items-center justify-center w-5 h-5 rounded-full border ${
+                      isSelected
+                        ? 'border-brand-500 bg-brand-500 text-white'
+                        : 'border-gray-300 dark:border-gray-700'
+                    }`}>
+                      {isSelected && (
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    <div>
+                      <span className="block text-sm font-bold text-gray-900 dark:text-white">
+                        {maincategory[mcategory]}
+                      </span>
+                      <span className="block text-xs text-gray-400 dark:text-gray-500">
+                        {mcategory === 'MutualFunds' ? 'Mutual fund schemes investment portfolio' : 
+                         mcategory === 'ETF' ? 'Exchange Traded Funds investment portfolio' : 
+                         'Direct equities and stock exchange trades'}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Sub Categories */}
+          {selectedMainCategories.length > 0 && (
+            <div>
+              <span className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Asset Classes *</span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                {Object.keys(stock).map((category) => {
+                  const isSelected = selectedCategories.includes(category);
+                  return (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => handleCheckboxChange(category)}
+                      className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-200 text-left ${
+                        isSelected
+                          ? 'border-brand-500 bg-brand-50/50 dark:bg-brand-950/20 text-brand-700 dark:text-brand-400 font-semibold'
+                          : 'border-gray-200 hover:border-gray-300 bg-white dark:border-gray-800 dark:bg-gray-900 text-gray-700 dark:text-gray-300'
+                      }`}
+                    >
+                      <span className="text-sm">{stock[category]}</span>
+                      <div className={`w-4.5 h-4.5 rounded border flex items-center justify-center ${
+                        isSelected
+                          ? 'border-brand-500 bg-brand-500 text-white'
+                          : 'border-gray-300 dark:border-gray-700'
+                      }`}>
+                        {isSelected && (
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {selectedCategories.length > 0 && (
+            <div className="pt-6 border-t border-gray-100 dark:border-gray-800">
+              <Label htmlFor="globalGeography" className="mb-2">Geography *</Label>
+              <div className="max-w-xs">
+                <Select
+                  value={selectedGeography}
+                  onChange={(selectedOption) => handleGlobalGeographyChange(selectedOption?.value || '')}
+                  options={geographyOptions}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* CARD 3: Weight and Stock Allocation per Category */}
+      {selectedCategories.map((category) => {
+        const fieldsForCategory = fieldstock[category] || [];
+        const currentSum = fieldsForCategory.reduce((sum, f) => {
+          if (f.recommendationStock === 2 || f.recommendationStock === 3) {
+            return sum;
+          }
+          return sum + (Number(f.weight) || 0);
+        }, 0);
+
+        return (
+          <div key={category} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 shadow-theme-xs space-y-5">
+            {/* Asset card header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 dark:border-gray-800 pb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-brand-500" />
+                <h4 className="text-base font-bold text-gray-900 dark:text-white">
+                  {stock[category]} Allocation Settings
+                </h4>
+              </div>
+
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Target Category Weight:</span>
+                  <div className="relative w-28">
+                    <input
+                      type="number"
+                      value={totalWeights[category] || ''}
+                      onChange={(e) => handleCategoryWeightChange(category, e)}
+                      placeholder="Target %"
+                      required
+                      className="h-9 w-full rounded-lg border border-gray-200 bg-transparent px-3 py-1 pr-7 text-sm font-semibold text-gray-800 dark:border-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Sum of Weights:</span>
+                  <span className="text-sm font-bold text-gray-800 dark:text-white">
+                    {currentSum}%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Asset list table */}
+            {fieldsForCategory.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100 dark:border-gray-800 text-gray-400 dark:text-gray-500 font-medium">
+                      <th className="py-2.5 pr-4 font-semibold w-2/12">Geography</th>
+                      <th className="py-2.5 pr-4 font-semibold w-3/12">Select Asset / Stock Name</th>
+                      <th className="py-2.5 px-3 font-semibold text-center w-2/12">Recommendation</th>
+                      <th className="py-2.5 px-3 font-semibold text-right w-1.5/12">LTP (Price)</th>
+                      <th className="py-2.5 px-3 font-semibold text-center w-1.5/12">Weight (%)</th>
+                      <th className="py-2.5 px-3 font-semibold text-right w-1/12">Quantity</th>
+                      <th className="py-2.5 px-3 font-semibold text-right w-1.5/12">Order Value</th>
+                      <th className="py-2.5 pl-4 font-semibold text-center w-12">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
+                    {fieldsForCategory.map((field) => (
+                      <tr key={field.id} className="hover:bg-gray-50/30 dark:hover:bg-gray-800/10">
+                        <td className="py-3 pr-4">
+                          <select
+                            className="form-select text-sm shadow-theme-xs text-gray-800 border-gray-300 h-11 w-full border rounded px-2 py-2.5 disabled:opacity-75 disabled:bg-gray-50 dark:disabled:bg-gray-800"
+                            value={field.geography || ''}
+                            disabled={true}
+                            onChange={(e) => {
+                              const geoVal = e.target.value;
+                              setFieldstock(prev => {
+                                const newFields = { ...prev };
+                                if (!newFields[category]) return prev;
+                                newFields[category] = newFields[category].map(f => 
+                                  f.id === field.id ? { ...f, geography: geoVal, selectValue: '', currentPrice: '' } : f
+                                );
+                                return newFields;
+                              });
+                            }}
+                          >
+                            {geographyOptions.map(opt => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="py-3 pr-4">
+                          {renderStockDropdown(category, field)}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          {field.recommendationStock === 1 ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-success-50 text-success-600 dark:bg-success-500/15 dark:text-success-500">
+                              Buy
+                            </span>
+                          ) : field.recommendationStock === 2 ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-warning-50 text-warning-600 dark:bg-warning-500/15 dark:text-orange-400">
+                              Hold
+                            </span>
+                          ) : field.recommendationStock === 3 ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-500">
+                              Sell
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400 dark:text-gray-600">—</span>
+                          )}
+                        </td>
+
+                        <td className="py-3 px-3 text-right font-medium text-gray-950 dark:text-white">
+                          {field.currentPrice ? formatCurrency(field.currentPrice) : '₹0.00'}
+                        </td>
+
+                        <td className="py-3 px-3">
+                          <div className="relative mx-auto w-24">
+                            <input
+                              type="number"
+                              value={field.weight}
+                              onChange={(e) => handleInputChange1(category, field.id, e)}
+                              placeholder="%"
+                              required
+                              className="h-9 w-full rounded-lg border border-gray-200 dark:border-gray-800 bg-transparent px-2 py-1 text-center text-sm font-semibold text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
+                            />
+                            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
+                          </div>
+                        </td>
+
+                        <td className="py-3 px-3 text-right font-mono text-gray-600 dark:text-gray-400">
+                          {field.MinAmountquantity || 0}
+                        </td>
+
+                        <td className="py-3 px-3 text-right font-semibold text-gray-950 dark:text-white">
+                          {field.MinAmountorderValue ? formatCurrency(field.MinAmountorderValue) : '₹0.00'}
+                        </td>
+
+                        <td className="py-3 pl-4 text-center">
+                          <button
+                            type="button"
+                            onClick={() => removeField1(category, field.id)}
+                            className="p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                            title="Remove asset"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="py-8 text-center text-gray-400 dark:text-gray-500">No assets allocated yet. Click Add Asset to start.</div>
+            )}
+
+            {/* Asset card footer */}
+            <div className="flex justify-between items-center pt-2">
+              <button
+                type="button"
+                onClick={() => addField1(category)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-600 dark:bg-brand-950/20 dark:hover:bg-brand-950/40 dark:text-brand-400 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Asset
+              </button>
+
+              {currentSum === 100 ? (
+                <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1.5 font-semibold">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Individual weights sum is 100%
+                </p>
+              ) : (
+                <p className="text-xs text-orange-500 dark:text-orange-400 font-medium">
+                  Individual weights sum: {currentSum}%
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* CARD 4: Portfolio Summary Graphs & Statistics */}
+      {summary.totalStocks > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+          {/* Asset wise allocation */}
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 shadow-theme-xs space-y-4">
+            <h4 className="text-base font-bold text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-800 pb-3 flex items-center gap-2">
+              <svg className="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.003 9.003 0 1020.945 13H11V3.055z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+              </svg>
+              Asset Wise Allocation
+            </h4>
+            <div className="space-y-4">
+              {Object.entries(totalWeights).map(([category, weight]) => (
+                <div key={category} className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 dark:text-gray-400 font-semibold">{stock[category]}</span>
+                    <span className="font-bold text-gray-900 dark:text-white">{weight.toFixed(2)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-100 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
+                    <div className="bg-brand-500 h-full rounded-full transition-all duration-300" style={{ width: `${weight}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Market Cap Wise Allocation */}
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 shadow-theme-xs space-y-4">
+            <h4 className="text-base font-bold text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-800 pb-3 flex items-center gap-2">
+              <svg className="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Market Cap Wise Allocation
+            </h4>
+            <div className="space-y-4">
+              {Object.entries(captypeWeights).map(([capType, weight]) => (
+                <div key={capType} className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 dark:text-gray-400 font-semibold">{capTypeMapping[capType] || capType}</span>
+                    <span className="font-bold text-gray-900 dark:text-white">{weight.toFixed(2)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-100 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
+                    <div className="bg-brand-500 h-full rounded-full transition-all duration-300" style={{ width: `${weight}%` }} />
+                  </div>
+                </div>
+              ))}
+              {Object.keys(captypeWeights).length === 0 && (
+                <p className="text-sm text-gray-400 italic text-center py-6">No equities/stocks selected</p>
+              )}
+            </div>
+          </div>
+
+          {/* Portfolio Summary Stats */}
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 shadow-theme-xs space-y-4">
+            <h4 className="text-base font-bold text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-800 pb-3 flex items-center gap-2">
+              <svg className="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Portfolio Summary Stats
+            </h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-gray-50 dark:bg-gray-800/40 p-3.5 rounded-xl text-center border border-gray-100/50 dark:border-gray-800/50">
+                <span className="block text-xs text-gray-400 dark:text-gray-500 mb-1 font-medium">Total Assets</span>
+                <span className="text-xl font-extrabold text-gray-900 dark:text-white">{summary.totalStocks}</span>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-800/40 p-3.5 rounded-xl text-center border border-gray-100/50 dark:border-gray-800/50">
+                <span className="block text-xs text-gray-400 dark:text-gray-500 mb-1 font-medium">Top 3 Weight</span>
+                <span className="text-xl font-extrabold text-brand-500">{summary.top3Weight.toFixed(1)}%</span>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-800/40 p-3.5 rounded-xl text-center border border-gray-100/50 dark:border-gray-800/50">
+                <span className="block text-xs text-gray-400 dark:text-gray-500 mb-1 font-medium">Top 5 Weight</span>
+                <span className="text-xl font-extrabold text-brand-500">{summary.top5Weight.toFixed(1)}%</span>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-800/40 p-3.5 rounded-xl text-center border border-gray-100/50 dark:border-gray-800/50">
+                <span className="block text-xs text-gray-400 dark:text-gray-500 mb-1 font-medium">Top 10 Weight</span>
+                <span className="text-xl font-extrabold text-brand-500">{summary.top10Weight.toFixed(1)}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row justify-end items-center gap-4 pt-6 border-t border-gray-100 dark:border-gray-800">
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              resetForm();
+              if (isPage) {
+                router.push('/portfolio-new');
+              } else {
+                onClose?.();
+              }
+            }}
+            className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 rounded-xl transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="px-5 py-2.5 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 dark:bg-brand-600 dark:hover:bg-brand-500 rounded-xl shadow-theme-xs disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
+          >
+            {isLoading && (
+              <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Loading portfolio data...</p>
+            )}
+            {isLoading ? 'Saving Portfolio...' : 'Save Portfolio'}
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+
+  if (isPage) {
+    return (
+      <div className="max-w-7xl mx-auto py-2 animate-fade-in">
+        <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-0.5">
+          {pageLoading ? (
+            <div className="flex items-center justify-center min-h-[400px] w-full">
+              <div className="flex flex-col items-center gap-3">
+                <svg className="animate-spin h-10 w-10 text-brand-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Loading portfolio data...</p>
+              </div>
             </div>
-          </div>
-        ) : formContent}
+          ) : formContent}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-black-opacity flex items-center justify-center p-4 z-99999">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl dark:bg-gray-800">
-        <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
-          <h2 className="text-xl font-semibold dark:text-white">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-99999 animate-fade-in">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl dark:bg-gray-900 border border-gray-100 dark:border-gray-800 overflow-hidden transform scale-100 transition-transform">
+        <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-gray-800">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">
             Clone Portfolio New
-          </h2>
+          </h3>
           <button
             onClick={() => {
               resetForm();
               onClose?.();
             }}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-white rounded-lg p-1"
             aria-label="Close modal"
           >
-            ×
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
-        <div className="p-6">
+        <div className="max-h-[85vh] overflow-y-auto p-6 bg-gray-50 dark:bg-gray-900/40">
           {pageLoading ? (
             <div className="flex items-center justify-center min-h-[300px] w-full">
               <div className="flex flex-col items-center gap-3">
-                <svg className="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin h-8 w-8 text-brand-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
