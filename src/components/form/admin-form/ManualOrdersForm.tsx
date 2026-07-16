@@ -345,7 +345,7 @@ export default function ManualOrdersForm() {
     }
   };
 
-  const updateTransaction = (id: string, field: keyof Transaction, value: any) => {
+  const updateTransaction = (id: string, field: keyof Transaction, value: string | number) => {
     setTransactions(transactions.map((t) => (t.id === id ? { ...t, [field]: value } : t)));
     setShowPreview(false);
   };
