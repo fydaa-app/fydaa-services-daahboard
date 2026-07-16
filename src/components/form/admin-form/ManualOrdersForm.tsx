@@ -30,6 +30,7 @@ interface Transaction {
   qty: string;
   purchasePrice: string;
   remarks: string;
+  isRecommendation?: number;
 }
 
 interface StockApiItem {
@@ -51,6 +52,7 @@ interface PreviewItem {
   purchasePriceInr?: number;
   totalValue: number;
   currency?: string;
+  isRecommendation?: number;
 }
 
 interface PreviewData {
@@ -72,6 +74,7 @@ interface HistoryOrder {
   purchasePriceInr?: number;
   purchasePrice: number;
   totalValue: number;
+  isRecommendation?: number;
 }
 
 interface HistoryTransaction {
@@ -173,6 +176,7 @@ export default function ManualOrdersForm() {
       qty: "",
       purchasePrice: "",
       remarks: "",
+      isRecommendation: 0,
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
@@ -329,7 +333,7 @@ export default function ManualOrdersForm() {
   const addTransaction = () => {
     setTransactions([
       ...transactions,
-      { id: Date.now().toString(), stockId: "", orderType: "BUY", qty: "", purchasePrice: "", remarks: "" },
+      { id: Date.now().toString(), stockId: "", orderType: "BUY", qty: "", purchasePrice: "", remarks: "", isRecommendation: 0 },
     ]);
     setShowPreview(false);
   };
@@ -341,7 +345,7 @@ export default function ManualOrdersForm() {
     }
   };
 
-  const updateTransaction = (id: string, field: keyof Transaction, value: string) => {
+  const updateTransaction = (id: string, field: keyof Transaction, value: any) => {
     setTransactions(transactions.map((t) => (t.id === id ? { ...t, [field]: value } : t)));
     setShowPreview(false);
   };
@@ -374,6 +378,7 @@ export default function ManualOrdersForm() {
         qty: parseFloat(t.qty),
         purchasePrice: parseFloat(t.purchasePrice),
         remarks: t.remarks,
+        isRecommendation: t.isRecommendation ?? 0,
       })),
     };
     if (selectedPortfolioType === "US-STOCK") body.priceUsdToInr = parseFloat(priceUsdToInr);
@@ -413,7 +418,7 @@ export default function ManualOrdersForm() {
       alert(data.message || "Orders created successfully!");
       setSelectedUser(null); setSearchUser(""); setSelectedPortfolio(""); setSelectedPortfolioType("");
       setPortfolios([]); setPriceUsdToInr("");
-      setTransactions([{ id: Date.now().toString(), stockId: "", orderType: "BUY", qty: "", purchasePrice: "", remarks: "" }]);
+      setTransactions([{ id: Date.now().toString(), stockId: "", orderType: "BUY", qty: "", purchasePrice: "", remarks: "", isRecommendation: 0 }]);
       setShowPreview(false); setPreviewData(null);
     } catch (error) {
       console.error("Submit error:", error);
@@ -645,6 +650,41 @@ export default function ManualOrdersForm() {
                     className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
                   />
                 </div>
+                <div className="md:col-span-2 flex items-center justify-between border rounded-lg p-3 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      Recommendation Order?
+                    </label>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      Mark this transaction as a recommendation (value sent will be 1 if Yes, 0 if No)
+                    </span>
+                  </div>
+                  <div className="relative inline-block w-12 h-6 transition duration-200 ease-in-out flex-shrink-0">
+                    <input
+                      type="checkbox"
+                      id={`recommendationToggle-${txn.id}`}
+                      checked={txn.isRecommendation === 1}
+                      onChange={(e) => updateTransaction(txn.id, "isRecommendation", e.target.checked ? 1 : 0)}
+                      className="absolute opacity-0 w-0 h-0"
+                    />
+                    <label
+                      htmlFor={`recommendationToggle-${txn.id}`}
+                      className={`block w-12 h-6 rounded-full cursor-pointer transition-colors duration-300 ${
+                        txn.isRecommendation === 1 
+                          ? 'bg-green-500' 
+                          : 'bg-gray-300 dark:bg-gray-700'
+                      }`}
+                    >
+                      <span
+                        className={`block w-5 h-5 bg-white rounded-full shadow transform transition-transform duration-300 translate-y-0.5 ${
+                          txn.isRecommendation === 1 
+                            ? 'translate-x-6' 
+                            : 'translate-x-0.5'
+                        }`}
+                      />
+                    </label>
+                  </div>
+                </div>
                 {txn.stockId && txn.qty && txn.purchasePrice && (
                   <div className="md:col-span-2 p-3 bg-gray-50 dark:bg-gray-800 rounded">
                     {isUSStock && priceUsdToInr ? (
@@ -709,14 +749,14 @@ export default function ManualOrdersForm() {
 
         /*
          * Preview table columns:
-         *   INR portfolio  : Stock | Type | Qty | Price(INR) | Total(INR)          → 5 cols
-         *   US  portfolio  : Stock | Type | Qty | Price(USD) | Price(INR) | Total(USD) | Total(INR)  → 7 cols
+         *   INR portfolio  : Stock | Type | Rec? | Qty | Price(INR) | Total(INR)          → 6 cols
+         *   US  portfolio  : Stock | Type | Rec? | Qty | Price(USD) | Price(INR) | Total(USD) | Total(INR)  → 8 cols
          *
          * Footer label cell spans all cols except the value col(s):
-         *   INR: colSpan = 5 - 1 = 4
-         *   US : colSpan = 7 - 2 = 5  (last two cols = Total USD + Total INR)
+         *   INR: colSpan = 6 - 1 = 5
+         *   US : colSpan = 8 - 2 = 6  (last two cols = Total USD + Total INR)
          */
-        const footerLabelColspan = isUS ? 5 : 4;
+        const footerLabelColspan = isUS ? 6 : 5;
 
         return (
           <div className="mt-6 p-4 bg-green-50 dark:bg-green-900 rounded-lg border-2 border-green-400">
@@ -763,6 +803,7 @@ export default function ManualOrdersForm() {
                   <tr>
                     <th className="px-3 py-2 text-left">Stock</th>
                     <th className="px-3 py-2 text-left">Type</th>
+                    <th className="px-3 py-2 text-center">Rec?</th>
                     <th className="px-3 py-2 text-right">Qty</th>
                     {isUS && <th className="px-3 py-2 text-right">Price (USD)</th>}
                     <th className="px-3 py-2 text-right">Price (INR)</th>
@@ -777,6 +818,15 @@ export default function ManualOrdersForm() {
                       <td className="px-3 py-2">
                         <span className={`px-2 py-1 rounded text-xs font-semibold ${item.orderType === "BUY" ? "bg-green-200 dark:bg-green-700" : "bg-red-200 dark:bg-red-700"}`}>
                           {item.orderType}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                          (item.isRecommendation ?? transactions[i]?.isRecommendation) === 1
+                            ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+                            : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
+                        }`}>
+                          {(item.isRecommendation ?? transactions[i]?.isRecommendation) === 1 ? "Yes" : "No"}
                         </span>
                       </td>
                       <td className="px-3 py-2 text-right">{item.qty}</td>
@@ -965,7 +1015,14 @@ export default function ManualOrdersForm() {
                         <tbody>
                           {txn.orders.map((order, orderIdx) => (
                             <tr key={orderIdx} className="border-t dark:border-gray-700">
-                              <td className="px-2 py-1">{order.stockName}</td>
+                              <td className="px-2 py-1">
+                                {order.stockName}
+                                {order.isRecommendation === 1 && (
+                                  <span className="ml-1 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 px-1 py-0.5 rounded text-[10px] font-semibold">
+                                    Rec
+                                  </span>
+                                )}
+                              </td>
                               <td className="px-2 py-1">
                                 <span className={`px-1 py-0.5 rounded text-xs ${order.orderType === "BUY" ? "bg-green-200 dark:bg-green-700" : "bg-red-200 dark:bg-red-700"}`}>
                                   {order.orderType}
