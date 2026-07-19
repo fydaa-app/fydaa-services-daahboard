@@ -70,7 +70,7 @@ export interface PendingActionUser {
 
 async function fetchPendingActions(): Promise<PendingActionUser[]> {
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_STOCK_API_URL}orders/sellPending/all`,
+    `${process.env.NEXT_PUBLIC_STOCK_API_URL}orders/sellPending/all?planId=4`,
     {
       headers: {
         Authorization: `Bearer ${Cookies.get("authToken") || ""}`,
