@@ -349,7 +349,7 @@ export default function ManualOrdersForm() {
     setTransactions(
       transactions.map((t) => {
         if (t.id === id) {
-          const updated = { ...t, [field]: value };
+          const updated = { ...t, [field]: value } as Transaction;
           if (field === "orderType" && value !== "SELL") {
             updated.isRecommendation = 0;
           }
