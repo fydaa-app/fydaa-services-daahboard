@@ -346,7 +346,18 @@ export default function ManualOrdersForm() {
   };
 
   const updateTransaction = (id: string, field: keyof Transaction, value: string | number) => {
-    setTransactions(transactions.map((t) => (t.id === id ? { ...t, [field]: value } : t)));
+    setTransactions(
+      transactions.map((t) => {
+        if (t.id === id) {
+          const updated = { ...t, [field]: value };
+          if (field === "orderType" && value !== "SELL") {
+            updated.isRecommendation = 0;
+          }
+          return updated;
+        }
+        return t;
+      })
+    );
     setShowPreview(false);
   };
 
@@ -378,7 +389,7 @@ export default function ManualOrdersForm() {
         qty: parseFloat(t.qty),
         purchasePrice: parseFloat(t.purchasePrice),
         remarks: t.remarks,
-        isRecommendation: t.isRecommendation ?? 0,
+        isRecommendation: t.orderType === "SELL" ? (t.isRecommendation ?? 0) : 0,
       })),
     };
     if (selectedPortfolioType === "US-STOCK") body.priceUsdToInr = parseFloat(priceUsdToInr);
@@ -560,7 +571,7 @@ export default function ManualOrdersForm() {
             className="w-full px-4 py-2 border-2 border-amber-300 dark:border-amber-700 rounded-lg dark:bg-gray-800 focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
           />
           <p className="text-xs text-amber-700 dark:text-amber-300 mt-2 font-medium">
-            ⚠️ Required: All purchase prices will be entered in USD and automatically converted to INR using this rate
+            ⚠️ Required: All transaction prices will be entered in USD and automatically converted to INR using this rate
           </p>
         </div>
       )}
@@ -631,7 +642,7 @@ export default function ManualOrdersForm() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Purchase Price *{" "}
+                    {txn.orderType === "SELL" ? "Sell Price" : "Purchase Price"} *{" "}
                     {isUSStock && <span className="text-xs text-blue-600 dark:text-blue-400 font-semibold">(in USD)</span>}
                   </label>
                   <input
@@ -650,41 +661,43 @@ export default function ManualOrdersForm() {
                     className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
                   />
                 </div>
-                <div className="md:col-span-2 flex items-center justify-between border rounded-lg p-3 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      Recommendation Order?
-                    </label>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      Mark this transaction as a recommendation (value sent will be 1 if Yes, 0 if No)
-                    </span>
-                  </div>
-                  <div className="relative inline-block w-12 h-6 transition duration-200 ease-in-out flex-shrink-0">
-                    <input
-                      type="checkbox"
-                      id={`recommendationToggle-${txn.id}`}
-                      checked={txn.isRecommendation === 1}
-                      onChange={(e) => updateTransaction(txn.id, "isRecommendation", e.target.checked ? 1 : 0)}
-                      className="absolute opacity-0 w-0 h-0"
-                    />
-                    <label
-                      htmlFor={`recommendationToggle-${txn.id}`}
-                      className={`block w-12 h-6 rounded-full cursor-pointer transition-colors duration-300 ${
-                        txn.isRecommendation === 1 
-                          ? 'bg-green-500' 
-                          : 'bg-gray-300 dark:bg-gray-700'
-                      }`}
-                    >
-                      <span
-                        className={`block w-5 h-5 bg-white rounded-full shadow transform transition-transform duration-300 translate-y-0.5 ${
-                          txn.isRecommendation === 1 
-                            ? 'translate-x-6' 
-                            : 'translate-x-0.5'
-                        }`}
+                {txn.orderType === "SELL" && (
+                  <div className="md:col-span-2 flex items-center justify-between border rounded-lg p-3 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        Recommendation Order?
+                      </label>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        Mark this transaction as a recommendation (value sent will be 1 if Yes, 0 if No)
+                      </span>
+                    </div>
+                    <div className="relative inline-block w-12 h-6 transition duration-200 ease-in-out flex-shrink-0">
+                      <input
+                        type="checkbox"
+                        id={`recommendationToggle-${txn.id}`}
+                        checked={txn.isRecommendation === 1}
+                        onChange={(e) => updateTransaction(txn.id, "isRecommendation", e.target.checked ? 1 : 0)}
+                        className="absolute opacity-0 w-0 h-0"
                       />
-                    </label>
+                      <label
+                        htmlFor={`recommendationToggle-${txn.id}`}
+                        className={`block w-12 h-6 rounded-full cursor-pointer transition-colors duration-300 ${
+                          txn.isRecommendation === 1 
+                            ? 'bg-green-500' 
+                            : 'bg-gray-300 dark:bg-gray-700'
+                        }`}
+                      >
+                        <span
+                          className={`block w-5 h-5 bg-white rounded-full shadow transform transition-transform duration-300 translate-y-0.5 ${
+                            txn.isRecommendation === 1 
+                              ? 'translate-x-6' 
+                              : 'translate-x-0.5'
+                          }`}
+                        />
+                      </label>
+                    </div>
                   </div>
-                </div>
+                )}
                 {txn.stockId && txn.qty && txn.purchasePrice && (
                   <div className="md:col-span-2 p-3 bg-gray-50 dark:bg-gray-800 rounded">
                     {isUSStock && priceUsdToInr ? (
