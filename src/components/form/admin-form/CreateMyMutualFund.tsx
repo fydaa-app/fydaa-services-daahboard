@@ -89,8 +89,18 @@ const capTypeOptionsMap: Record<string, { value: string; label: string }[]> = {
     { value: "others", label: "Others" },
   ],
   GlobalStock: [
-    { value: "Structured", label: "Structured" },
-    { value: "Long-Short", label: "Long-Short" },
+    { value: "others", label: "Others" },
+  ],
+  Global: [
+    { value: "others", label: "Others" },
+  ],
+  InstaFD: [
+    { value: "others", label: "Others" },
+  ],
+  MultiAsset: [
+    { value: "others", label: "Others" },
+  ],
+  Hybrid: [
     { value: "others", label: "Others" },
   ],
 };
@@ -251,10 +261,14 @@ export default function CreateMutualFund({
                 options={[
                   { value: "", label: "Select Mutual Fund Type" },
                   { value: "IndianStock", label: "Equities" },
-                  { value: "GlobalStock", label: "Alternatives " },
+                  { value: "GlobalStock", label: "SIF" },
                   { value: "FixedIncomeBonds", label: "Bonds" },
                   { value: "RealEstate", label: "Real Estate" },
                   { value: "Gold", label: "Commodities" },
+                  { value: "InstaFD", label: "InstaFD" },
+                  { value: "MultiAsset", label: "Multi-Asset" },
+                  { value: "Hybrid", label: "Hybrid" },
+                  { value: "Global", label: "Global" },
                 ]}
               />
             </div>
