@@ -69,12 +69,24 @@ const stock: Record<string | number, string> = {
   'UsStock':'Us Stocks'
 };
 
+const mutualFundStock: Record<string | number, string> = {
+  'IndianStock': 'Equities',
+  'GlobalStock': 'SIF',
+  'FixedIncomeBonds': 'Bonds',
+  'RealEstate': 'Real Estate',
+  'Gold': 'Commodities',
+  'InstaFD': 'InstaFD',
+  'MultiAsset': 'Multi-Asset',
+  'Hybrid': 'Hybrid',
+  'Global': 'Global',
+};
+
 const maincategory: Record<string | number, string> = {
   'MutualFunds': 'Mutual Funds',
   'Stocks': 'Stocks',
   'UsStocks': 'US Stocks',
   'WorldStocks': 'World Stock',
-}
+};
 
 interface Stock {
   id: string;
@@ -199,7 +211,8 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
   const [captypeWeights, setCaptypeWeights] = useState<{ [capType: string]: number }>({});
   const [summary, setSummary] = useState({ totalStocks: 0, top3Weight: 0, top5Weight: 0, top10Weight: 0 });
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
+  const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
+  const currentStockCategories = isMutualFundCategory ? mutualFundStock : stock;
 
   // Fetch goals and packages on component mount
   useEffect(() => {
@@ -1097,7 +1110,7 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
           </div>
            
           <div className="flex gap-2 items-center">
-              {Object.keys(stock).map((category) => (
+              {Object.keys(currentStockCategories).map((category) => (
               <div key={category} >
                   <input
                   type="checkbox"
@@ -1105,14 +1118,14 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
                   checked={selectedCategories.includes(category)}
                   onChange={() => handleCheckboxChange(category)}
                   />
-                  <label htmlFor={category}>{stock[category]}</label>
+                  <label htmlFor={category}>{currentStockCategories[category]}</label>
               </div>
               ))}
           </div>
           
           {selectedCategories.map((category) => (
             <div key={category}>
-              <h3>{stock[category]}</h3> 
+              <h3>{currentStockCategories[category]}</h3> 
               <Input
                 value={totalWeights[category] || ''}
                 onChange={(e) => handleCategoryWeightChange(category, e)}

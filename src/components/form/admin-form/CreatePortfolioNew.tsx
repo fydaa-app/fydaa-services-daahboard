@@ -63,6 +63,18 @@ const stock: Record<string | number, string> = {
   'Alternatives': 'Alternatives'
 };
 
+const mutualFundStock: Record<string | number, string> = {
+  'IndianStock': 'Equities',
+  'GlobalStock': 'SIF',
+  'FixedIncomeBonds': 'Bonds',
+  'RealEstate': 'Real Estate',
+  'Gold': 'Commodities',
+  'InstaFD': 'InstaFD',
+  'MultiAsset': 'Multi-Asset',
+  'Hybrid': 'Hybrid',
+  'Global': 'Global',
+};
+
 const maincategory: Record<string | number, string> = {
   'MutualFunds': 'Mutual Funds',
   'Stocks': 'Direct',
@@ -216,7 +228,8 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
   const [summary, setSummary] = useState({ totalStocks: 0, top3Weight: 0, top5Weight: 0, top10Weight: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [selectedGeography, setSelectedGeography] = useState<string>('');
-  const router = useRouter();
+  const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
+  const currentStockCategories = isMutualFundCategory ? mutualFundStock : stock;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -390,20 +403,14 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
       } else if (category === 'Alternatives') {
         optionsToUse = combinedStocks.filter(opt => opt.stockType === 'Alternatives');
       }
-      placeholderText = `Select ${stock[category] || 'stock/ETF'}`;
+      placeholderText = `Select ${currentStockCategories[category] || 'stock/ETF'}`;
     } else if (isMutualFundCategory && !isStockCategory && !isEtfCategory) {
       if (category === 'IndianStock') {
-        optionsToUse = initialMOptions.filter(opt => opt.stockType === 'IndianStock' || opt.stockType === 'GlobalStock' || opt.stockType === 'WorldStock');
-      } else if (category === 'FixedIncomeBonds') {
-        optionsToUse = initialMOptions.filter(opt => opt.stockType === 'FixedIncomeBonds');
-      } else if (category === 'RealEstate') {
-        optionsToUse = initialMOptions.filter(opt => opt.stockType === 'RealEstate');
-      } else if (category === 'Gold') {
-        optionsToUse = initialMOptions.filter(opt => opt.stockType === 'Gold');
-      } else if (category === 'Alternatives') {
-        optionsToUse = initialMOptions.filter(opt => opt.stockType === 'Alternatives');
+        optionsToUse = initialMOptions.filter(opt => opt.stockType === 'IndianStock' || opt.stockType === 'WorldStock');
+      } else {
+        optionsToUse = initialMOptions.filter(opt => opt.stockType === category);
       }
-      placeholderText = `Select ${stock[category] || 'mutual fund'}`;
+      placeholderText = `Select ${currentStockCategories[category] || 'mutual fund'}`;
     } else if (isEtfCategory && !isStockCategory && !isMutualFundCategory) {
       const combinedStocks = [...initialOptions, ...initialUOptions, ...initialWOptions];
       if (category === 'IndianStock') {
@@ -417,7 +424,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
       } else if (category === 'Alternatives') {
         optionsToUse = combinedStocks.filter(opt => opt.stockType === 'Alternatives' && opt.capType === 'ETF');
       }
-      placeholderText = `Select ${stock[category] || 'ETF'}`;
+      placeholderText = `Select ${currentStockCategories[category] || 'ETF'}`;
     }
 
     if (field.geography && !isMutualFundCategory) {
@@ -1191,7 +1198,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
             <div>
               <span className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Asset Classes *</span>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                {Object.keys(stock).map((category) => {
+                {Object.keys(currentStockCategories).map((category) => {
                   const isSelected = selectedCategories.includes(category);
                   return (
                     <button
@@ -1204,7 +1211,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
                           : 'border-gray-200 hover:border-gray-300 bg-white dark:border-gray-800 dark:bg-gray-900 text-gray-700 dark:text-gray-300'
                       }`}
                     >
-                      <span className="text-sm">{stock[category]}</span>
+                      <span className="text-sm">{currentStockCategories[category]}</span>
                       <div className={`w-4.5 h-4.5 rounded border flex items-center justify-center ${
                         isSelected
                           ? 'border-brand-500 bg-brand-500 text-white'
@@ -1254,7 +1261,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-brand-500" />
                 <h4 className="text-base font-bold text-gray-900 dark:text-white">
-                  {stock[category]} Allocation Settings
+                  {currentStockCategories[category]} Allocation Settings
                 </h4>
               </div>
 
