@@ -211,6 +211,7 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
   const [captypeWeights, setCaptypeWeights] = useState<{ [capType: string]: number }>({});
   const [summary, setSummary] = useState({ totalStocks: 0, top3Weight: 0, top5Weight: 0, top10Weight: 0 });
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
   const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
   const currentStockCategories = isMutualFundCategory ? mutualFundStock : stock;
 
@@ -282,7 +283,6 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
     };
 
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // planType change hone par mutual funds reload karo
