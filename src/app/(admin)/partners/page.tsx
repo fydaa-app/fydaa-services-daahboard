@@ -1,21 +1,28 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import PartnerTable from "@/components/tables/PartnerTable";
 import Pagination from "@/components/tables/Pagination";
+import { AcceptPartnerModal } from "@/components/ui/modal/AcceptPartnerModal";
+import { RejectPartnerModal } from "@/components/ui/modal/RejectPartnerModal";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getPartners, updatePartnerStatus, Partner } from "@/services/partnerServiceApi";
+import {
+  getPartners,
+  acceptPartner,
+  rejectPartner,
+  Partner,
+} from "@/services/partnerServiceApi";
 import { toast } from "react-hot-toast";
 
-interface PartnerListResponse {
-  data: Partner[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
+const STATUS_OPTIONS = [
+  { value: "", label: "All Statuses" },
+  { value: "PENDING_VERIFICATION", label: "Pending Verification" },
+  { value: "FINPRIM_FAILED", label: "Finprim Failed" },
+  { value: "ACCEPTED", label: "Accepted" },
+  { value: "REJECTED", label: "Rejected" },
+];
 
 export default function PartnersPage() {
   const [partners, setPartners] = useState<Partner[]>([]);
@@ -24,99 +31,146 @@ export default function PartnersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
+
+  const [acceptModalOpen, setAcceptModalOpen] = useState(false);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
 
   const router = useRouter();
   const searchParams = useSearchParams();
-
   const limit = 10;
 
-  // Initialize page and search query from URL parameters
-  useEffect(() => {
-    const query = searchParams.get("search") || "";
-    const pageParam = searchParams.get("page");
-    const pageNum = pageParam ? parseInt(pageParam, 10) : 1;
-
-    setSearchQuery(query);
-    setPage(pageNum);
-
-    // Fetch data immediately with URL parameters
-    const fetchWithUrlParams = async () => {
+  const fetchPartners = useCallback(
+    async (pageNum: number, search: string, status: string) => {
       try {
-        const result: PartnerListResponse = await getPartners(
-          pageNum,
-          limit,
-          query
-        );
+        setIsLoading(true);
+        const result = await getPartners(pageNum, limit, search, status || undefined);
         setPartners(result.data);
         setTotalPages(result.totalPages);
         setTotalItems(result.total);
         setError(null);
       } catch (err) {
         console.error("Error fetching partners:", err);
-        setError("Failed to load partners");
+        setPartners([]);
+        setTotalPages(0);
+        setTotalItems(0);
+        setError(
+          err instanceof Error ? err.message : "Failed to load partners"
+        );
+      } finally {
+        setIsLoading(false);
       }
-    };
+    },
+    []
+  );
 
-    fetchWithUrlParams();
-  }, [searchParams]);
+  useEffect(() => {
+    const query = searchParams.get("search") || "";
+    const status = searchParams.get("status") || "";
+    const pageParam = searchParams.get("page");
+    const pageNum = pageParam ? parseInt(pageParam, 10) : 1;
+
+    setSearchQuery(query);
+    setStatusFilter(status);
+    setPage(pageNum);
+    fetchPartners(pageNum, query, status);
+  }, [searchParams, fetchPartners]);
+
+  const updateUrl = (next: {
+    page?: number;
+    search?: string;
+    status?: string;
+  }) => {
+    const params = new URLSearchParams();
+    const search = next.search ?? searchQuery;
+    const status = next.status ?? statusFilter;
+    const nextPage = next.page ?? page;
+
+    if (search) params.set("search", search);
+    if (status) params.set("status", status);
+    params.set("page", String(nextPage));
+
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
-
-    const params = new URLSearchParams(searchParams.toString());
-
-    if (searchQuery) {
-      params.set("search", searchQuery);
-    } else {
-      params.delete("search");
-    }
-
-    params.set("page", newPage.toString());
-
-    router.push(`?${params.toString()}`, { scroll: false });
+    updateUrl({ page: newPage });
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Reset to first page when searching
     setPage(1);
-
-    const params = new URLSearchParams();
-    if (searchQuery) {
-      params.set("search", searchQuery);
-    }
-    params.set("page", "1");
-
-    router.push(`?${params.toString()}`, { scroll: false });
+    updateUrl({ page: 1, search: searchQuery });
   };
 
-  const handleApprove = async (id: number) => {
-    const result = await updatePartnerStatus(id, "approved");
-    if (result.success) {
-      // Update the partner status locally
-      setPartners((prev) =>
-        prev.map((p) =>
-          p.id === id ? { ...p, status: "approved" } : p
-        )
+  const handleStatusChange = (status: string) => {
+    setStatusFilter(status);
+    setPage(1);
+    updateUrl({ page: 1, status });
+  };
+
+  const handleOpenAccept = (partner: Partner) => {
+    setSelectedPartner(partner);
+    setAcceptModalOpen(true);
+  };
+
+  const handleOpenReject = (partner: Partner) => {
+    setSelectedPartner(partner);
+    setRejectModalOpen(true);
+  };
+
+  const handleAcceptConfirm = async (payload: {
+    karvyBrokerCode?: string;
+    camsBrokerCode?: string;
+  }) => {
+    if (!selectedPartner) return;
+
+    setActionLoadingId(selectedPartner.id);
+    try {
+      const result = await acceptPartner(selectedPartner.id, payload);
+      if (result.success) {
+        toast.success(result.message);
+        setAcceptModalOpen(false);
+        setSelectedPartner(null);
+        await fetchPartners(page, searchQuery, statusFilter);
+      } else {
+        toast.error(result.message);
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to accept partner"
       );
-      toast.success(result.message);
-    } else {
-      toast.error(result.message);
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
-  const handleReject = async (id: number) => {
-    const result = await updatePartnerStatus(id, "rejected");
-    if (result.success) {
-      setPartners((prev) =>
-        prev.map((p) =>
-          p.id === id ? { ...p, status: "rejected" } : p
-        )
+  const handleRejectConfirm = async (payload: {
+    rejectionReason?: string;
+  }) => {
+    if (!selectedPartner) return;
+
+    setActionLoadingId(selectedPartner.id);
+    try {
+      const result = await rejectPartner(selectedPartner.id, payload);
+      if (result.success) {
+        toast.success(result.message);
+        setRejectModalOpen(false);
+        setSelectedPartner(null);
+        await fetchPartners(page, searchQuery, statusFilter);
+      } else {
+        toast.error(result.message);
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to reject partner"
       );
-      toast.success(result.message);
-    } else {
-      toast.error(result.message);
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
@@ -124,9 +178,9 @@ export default function PartnersPage() {
     <div>
       <PageBreadcrumb pageTitle="Partners" />
       <div className="space-y-6">
-        <ComponentCard title="Partner List">
-          <div>
-            <form onSubmit={handleSearch}>
+        <ComponentCard title="ARN Partner Verifications">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <form onSubmit={handleSearch} className="flex-1">
               <div className="relative search-box">
                 <span className="absolute -translate-y-1/2 left-4 top-1/2 pointer-events-none">
                   <svg
@@ -149,18 +203,37 @@ export default function PartnersPage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search partners..."
-                  className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-12 pr-14 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:bg-white/[0.03] dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800 xl:w-full"
+                  placeholder="Search by name, email, mobile, ARN..."
+                  className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-12 pr-14 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:bg-white/[0.03] dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
                 />
               </div>
             </form>
+
+            <select
+              value={statusFilter}
+              onChange={(e) => handleStatusChange(e.target.value)}
+              className="h-11 rounded-lg border border-gray-200 bg-transparent px-4 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-white/[0.03] dark:text-white/90 md:min-w-[220px]"
+            >
+              {STATUS_OPTIONS.map((option) => (
+                <option key={option.value || "all"} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
+
+          {isLoading && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Loading partners...
+            </p>
+          )}
 
           <PartnerTable
             partners={partners}
             error={error}
-            onApprove={handleApprove}
-            onReject={handleReject}
+            actionLoadingId={actionLoadingId}
+            onAccept={handleOpenAccept}
+            onReject={handleOpenReject}
           />
 
           {totalItems > 0 && (
@@ -172,6 +245,30 @@ export default function PartnersPage() {
           )}
         </ComponentCard>
       </div>
+
+      <AcceptPartnerModal
+        isOpen={acceptModalOpen}
+        partner={selectedPartner}
+        isLoading={actionLoadingId === selectedPartner?.id}
+        onClose={() => {
+          if (actionLoadingId) return;
+          setAcceptModalOpen(false);
+          setSelectedPartner(null);
+        }}
+        onConfirm={handleAcceptConfirm}
+      />
+
+      <RejectPartnerModal
+        isOpen={rejectModalOpen}
+        partner={selectedPartner}
+        isLoading={actionLoadingId === selectedPartner?.id}
+        onClose={() => {
+          if (actionLoadingId) return;
+          setRejectModalOpen(false);
+          setSelectedPartner(null);
+        }}
+        onConfirm={handleRejectConfirm}
+      />
     </div>
   );
 }
