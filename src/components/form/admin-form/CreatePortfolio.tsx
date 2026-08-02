@@ -715,11 +715,14 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
 
         let initialFields: Field[] = [];
         if (template) {
-          let tStocks = template.stocks;
+          const tStocks = template.stocks;
+          let parsedStocks: LocalTemplateStock[] = [];
           if (typeof tStocks === 'string') {
-            try { tStocks = JSON.parse(tStocks); } catch { tStocks = []; }
+            try { parsedStocks = JSON.parse(tStocks); } catch { parsedStocks = []; }
+          } else if (Array.isArray(tStocks)) {
+            parsedStocks = tStocks;
           }
-          initialFields = tStocks.map((item: { selectValue: string | number; weight: string | number; geography?: string }, idx: number) => {
+          initialFields = parsedStocks.map((item: LocalTemplateStock, idx: number) => {
             const matchingOption = optionsToUse.find(opt => opt.value.toString() === item.selectValue.toString());
             return {
               id: idx + 1,
