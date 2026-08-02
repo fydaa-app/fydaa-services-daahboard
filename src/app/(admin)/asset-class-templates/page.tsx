@@ -57,8 +57,8 @@ interface TemplateStock {
 interface Template {
   id: number;
   category: string;
-  portfolioType: string | null;
-  planType: string | null;
+  targetWeight?: number;
+  geography?: string;
   stocks: TemplateStock[];
 }
 
@@ -167,6 +167,8 @@ export default function AssetClassTemplatesPage() {
   const handleOpenAddModal = () => {
     setEditingTemplate(null);
     setCategory("");
+    setTopGeography("India");
+    setTargetCategoryWeight("15");
     setStockFields([{ id: 1, selectValue: "", weight: "" }]);
     setIsModalOpen(true);
   };
@@ -174,6 +176,8 @@ export default function AssetClassTemplatesPage() {
   const handleOpenEditModal = (template: Template) => {
     setEditingTemplate(template);
     setCategory(template.category);
+    setTopGeography(template.geography || "India");
+    setTargetCategoryWeight(template.targetWeight?.toString() || "15");
     
     // Parse fields
     let mappedStocks = template.stocks;
@@ -246,12 +250,12 @@ export default function AssetClassTemplatesPage() {
     const payload = {
       id: editingTemplate?.id,
       category,
-      portfolioType: "GENERIC",
-      planType: "GENERIC",
+      targetWeight: parseFloat(targetCategoryWeight) || 0,
+      geography: topGeography,
       stocks: stockFields.map(f => ({
         selectValue: f.selectValue,
         weight: f.weight,
-        geography: f.geography
+        geography: f.geography || topGeography
       }))
     };
 
