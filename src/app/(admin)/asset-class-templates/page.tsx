@@ -199,6 +199,10 @@ export default function AssetClassTemplatesPage() {
   };
 
   const handleDelete = async (id: number) => {
+    if (!id || isNaN(id)) {
+      toast.error("Invalid template ID");
+      return;
+    }
     if (!window.confirm("Are you sure you want to delete this template?")) return;
     try {
       await portfolioManagementServiceApi.deleteAssetClassTemplate(id);
@@ -247,8 +251,7 @@ export default function AssetClassTemplatesPage() {
       return;
     }
 
-    const payload = {
-      id: editingTemplate?.id,
+    const payload: any = {
       category,
       targetWeight: parseFloat(targetCategoryWeight) || 0,
       geography: topGeography,
@@ -258,6 +261,14 @@ export default function AssetClassTemplatesPage() {
         geography: f.geography || topGeography
       }))
     };
+
+    if (editingTemplate) {
+      if (!editingTemplate.id || isNaN(editingTemplate.id)) {
+        toast.error("Invalid template ID");
+        return;
+      }
+      payload.id = editingTemplate.id;
+    }
 
     try {
       const res = await portfolioManagementServiceApi.saveAssetClassTemplate(payload);
