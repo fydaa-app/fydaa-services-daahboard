@@ -217,6 +217,28 @@ const DEFAULT_PORTFOLIO_DATA: PortfolioData = {
   planType: '',
 };
 
+interface LocalTemplateStock {
+  selectValue: string | number;
+  weight: string | number;
+  geography?: string;
+}
+
+interface LocalAssetClassTemplate {
+  id: number;
+  category: string;
+  portfolioType?: string | null;
+  planType?: string | null;
+  stocks: LocalTemplateStock[] | string;
+}
+
+interface EditStockProps {
+  isOpen: boolean;
+  onClose: () => void;
+  PortfolioData?: PortfolioData | null;
+  type?: 'add' | 'update' | 'clone';
+  onRefresh?: () => void;
+}
+
 export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = 'clone'}: EditStockProps) {
   const [portfolioDetails, setPortfolioDetails] = useState<PortfolioData>(DEFAULT_PORTFOLIO_DATA);  
   const [fields, setFields] = useState<Field[]>([
@@ -240,8 +262,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
   const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
   const currentStockCategories = isMutualFundCategory ? mutualFundStock : stock;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [templates, setTemplates] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<LocalAssetClassTemplate[]>([]);
   const [activeAllocationCategory, setActiveAllocationCategory] = useState<string | null>(null);
   const [backupFields, setBackupFields] = useState<Field[]>([]);
 
@@ -312,7 +333,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
         // Fetch templates
         const templatesRes = await portfolioManagementServiceApi.getAssetClassTemplates();
         if (templatesRes.data) {
-          setTemplates(templatesRes.data as any[]);
+          setTemplates(templatesRes.data as LocalAssetClassTemplate[]);
         }
 
         if ((type === "clone") && PortfolioData) {

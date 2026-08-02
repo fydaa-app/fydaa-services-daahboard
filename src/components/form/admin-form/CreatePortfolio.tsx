@@ -171,6 +171,20 @@ interface Package {
   packagesName: string;
 }
 
+interface LocalTemplateStock {
+  selectValue: string | number;
+  weight: string | number;
+  geography?: string;
+}
+
+interface LocalAssetClassTemplate {
+  id: number;
+  category: string;
+  portfolioType?: string | null;
+  planType?: string | null;
+  stocks: LocalTemplateStock[] | string;
+}
+
 interface AddStockProps {
   isOpen: boolean;
   onClose: () => void;
@@ -215,8 +229,7 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
   const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
   const currentStockCategories = isMutualFundCategory ? mutualFundStock : stock;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [templates, setTemplates] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<LocalAssetClassTemplate[]>([]);
   const [activeAllocationCategory, setActiveAllocationCategory] = useState<string | null>(null);
   const [backupFields, setBackupFields] = useState<Field[]>([]);
 
@@ -271,7 +284,7 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
         // Fetch asset class templates
         const templatesRes = await portfolioManagementServiceApi.getAssetClassTemplates();
         if (templatesRes.data) {
-          setTemplates(templatesRes.data as any[]);
+          setTemplates(templatesRes.data as LocalAssetClassTemplate[]);
         }
 
       } catch (error) {
