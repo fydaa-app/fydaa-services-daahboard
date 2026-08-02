@@ -262,7 +262,6 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
   const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
   const currentStockCategories = isMutualFundCategory ? mutualFundStock : stock;
 
-  const [templates, setTemplates] = useState<LocalAssetClassTemplate[]>([]);
   const [activeAllocationCategory, setActiveAllocationCategory] = useState<string | null>(null);
   const [backupFields, setBackupFields] = useState<Field[]>([]);
 
@@ -330,11 +329,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
         }));      
         setInitialMOptions(moptions);
 
-        // Fetch templates
-        const templatesRes = await portfolioManagementServiceApi.getAssetClassTemplates();
-        if (templatesRes.data) {
-          setTemplates(templatesRes.data as LocalAssetClassTemplate[]);
-        }
+        // Templates loading removed
 
         if ((type === "clone") && PortfolioData) {
           const stockIdsArray = PortfolioData?.stockIds?.replace(/'/g, "").split(",") || [];
@@ -885,43 +880,16 @@ const updateTotalWeight = (category: string, weight: number) => {
           optionsToUse = initialOptions.filter(opt => opt.capType === 'ETF');
         }
 
-        // Check if template exists for category
-        const template = templates.find(t => t.category === category);
-
-        let initialFields: Field[] = [];
-        if (template) {
-          const tStocks = template.stocks;
-          let parsedStocks: LocalTemplateStock[] = [];
-          if (typeof tStocks === 'string') {
-            try { parsedStocks = JSON.parse(tStocks); } catch { parsedStocks = []; }
-          } else if (Array.isArray(tStocks)) {
-            parsedStocks = tStocks;
-          }
-          initialFields = parsedStocks.map((item: LocalTemplateStock, idx: number) => {
-            const matchingOption = optionsToUse.find(opt => opt.value.toString() === item.selectValue.toString());
-            return {
-              id: idx + 1,
-              selectValue: item.selectValue.toString(),
-              weight: item.weight.toString(),
-              currentPrice: matchingOption?.currentPrice || '',
-              options: optionsToUse,
-              geography: item.geography || matchingOption?.geography || '',
-              MinAmountquantity: 0,
-              MinAmountorderValue: 0
-            };
-          });
-        } else {
-          initialFields = [{ 
-            id: 1, 
-            selectValue: '', 
-            weight: '', 
-            currentPrice: '', 
-            options: optionsToUse, 
-            MinAmountquantity: 0, 
-            MinAmountorderValue: 0,
-            geography: ''
-          }];
-        }
+        let initialFields: Field[] = [{ 
+          id: 1, 
+          selectValue: '', 
+          weight: '', 
+          currentPrice: '', 
+          options: optionsToUse, 
+          MinAmountquantity: 0, 
+          MinAmountorderValue: 0,
+          geography: ''
+        }];
 
         setFieldstock((prevFields) => {
             const newFields = {

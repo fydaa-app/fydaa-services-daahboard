@@ -73,6 +73,11 @@ export default function AssetClassTemplatesPage() {
   const [stockFields, setStockFields] = useState<TemplateStock[]>([
     { id: 1, selectValue: "", weight: "" }
   ]);
+  const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
+  const [backupStockFields, setBackupStockFields] = useState<TemplateStock[]>([]);
+  const [topGeography, setTopGeography] = useState("India");
+  const [targetCategoryWeight, setTargetCategoryWeight] = useState("15");
+  const [mockPortfolioValue, setMockPortfolioValue] = useState("250000");
 
   // Options states
   const [initialOptions, setInitialOptions] = useState<StockOption[]>([]);
@@ -293,103 +298,228 @@ export default function AssetClassTemplatesPage() {
         <div className="mt-6">
           <ComponentCard title="Template Configurations">
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Asset Class / Category</Label>
+              {/* Asset Classes Pill Selector */}
+              <div>
+                <Label className="mb-2">Asset Classes *</Label>
+                <div className="flex flex-wrap gap-3">
+                  {Object.entries(allCategories).map(([key, label]) => {
+                    const isSelected = category === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        disabled={!!editingTemplate}
+                        onClick={() => {
+                          setCategory(key);
+                          setStockFields([{ id: 1, selectValue: "", weight: "" }]);
+                        }}
+                        className={`flex items-center justify-between border rounded-xl px-5 py-3 min-w-[200px] transition cursor-pointer text-left ${
+                          isSelected
+                            ? "border-blue-600 bg-blue-50/50 text-blue-700 font-semibold"
+                            : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 dark:bg-gray-800 dark:border-gray-700"
+                        }`}
+                      >
+                        <span>{label.split(" / ")[0]}</span>
+                        {isSelected ? (
+                          <span className="flex items-center justify-center w-5 h-5 rounded bg-blue-600 text-white">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                            </svg>
+                          </span>
+                        ) : (
+                          <span className="w-5 h-5 border border-gray-300 rounded dark:border-gray-600"></span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Geography Select Selector */}
+              {category && (
+                <div className="pt-2">
+                  <Label htmlFor="topGeography">Geography *</Label>
                   <select
-                    disabled={!!editingTemplate}
-                    value={category}
-                    onChange={(e) => {
-                      setCategory(e.target.value);
-                      setStockFields([{ id: 1, selectValue: "", weight: "" }]);
-                    }}
-                    className="form-select w-full border rounded px-3 py-2 text-sm text-gray-800 border-gray-350 dark:bg-gray-770 dark:text-white dark:border-gray-600"
-                    required
+                    id="topGeography"
+                    value={topGeography}
+                    onChange={(e) => setTopGeography(e.target.value)}
+                    className="form-select border rounded-xl px-4 py-2.5 w-full md:w-80 border-gray-350 dark:bg-gray-800 dark:text-white dark:border-gray-750 mt-1"
                   >
-                    <option value="">Select Asset Class</option>
-                    {Object.entries(allCategories).map(([key, label]) => (
-                      <option key={key} value={key}>{label}</option>
-                    ))}
+                    <option value="India">India</option>
+                    <option value="USA">USA</option>
+                    <option value="Europe">Europe</option>
+                    <option value="Japan">Japan</option>
+                    <option value="GreaterChina">Greater China</option>
                   </select>
                 </div>
-              </div>
+              )}
 
-              <div className="pt-4 border-t dark:border-gray-700">
-                <div className="flex justify-between items-center mb-3">
-                  <h4 className="text-sm font-semibold dark:text-white">Allocate Stocks & Weights</h4>
-                  <button
-                    type="button"
-                    disabled={!category}
-                    onClick={handleAddStockField}
-                    className="text-xs bg-blue-50 text-blue-600 border border-blue-200 px-2.5 py-1 rounded hover:bg-blue-100 disabled:opacity-50 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800"
-                  >
-                    + Add Row
-                  </button>
-                </div>
+              {/* Inline Allocation Settings */}
+              {category && (
+                <div className="pt-6 border-t dark:border-gray-700">
+                  <div className="bg-white rounded-xl border border-gray-200 dark:bg-gray-800 dark:border-gray-700 overflow-hidden">
+                    
+                    {/* Inline Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 bg-gray-50/50 dark:bg-gray-850 border-b dark:border-gray-700 gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                        <h4 className="font-semibold text-gray-800 dark:text-white text-base">
+                          {allCategories[category] ? allCategories[category].split(" / ")[0] : "Asset"} Allocation Settings
+                        </h4>
+                      </div>
 
-                {!category ? (
-                  <div className="py-6 text-center text-xs text-gray-500 italic">Please select an Asset Class first to allocate stocks</div>
-                ) : (
-                  <div className="space-y-2">
-                    {stockFields.map((field) => {
-                      const filteredOptions = getFilteredOptions(category);
-                      return (
-                        <div key={field.id} className="flex gap-2 items-center">
-                          {(category === "UsStock" || category === "WorldStock" || category === "GlobalStock") && (
-                            <select
-                              value={field.geography || "USA"}
-                              onChange={(e) => handleFieldChange(field.id, "geography", e.target.value)}
-                              className="form-select text-sm border rounded px-2 py-1.5 w-32 border-gray-350 dark:bg-gray-750 dark:text-white dark:border-gray-650"
-                            >
-                              <option value="India">India</option>
-                              <option value="USA">USA</option>
-                              <option value="Europe">Europe</option>
-                              <option value="Japan">Japan</option>
-                              <option value="GreaterChina">Greater China</option>
-                            </select>
-                          )}
-
-                          <select
-                            value={field.selectValue}
-                            onChange={(e) => handleFieldChange(field.id, "selectValue", e.target.value)}
-                            className="form-select text-sm border rounded px-3 py-1.5 flex-1 border-gray-350 dark:bg-gray-750 dark:text-white dark:border-gray-650"
-                            required
-                          >
-                            <option value="">Select Asset/Fund</option>
-                            {filteredOptions.map(opt => (
-                              <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                          </select>
-
-                          <div className="w-24">
-                            <Input
-                              value={field.weight}
-                              onChange={(e) => handleFieldChange(field.id, "weight", e.target.value)}
-                              placeholder="Weight %"
-                              required
-                              type="number"
-                              min="1"
-                              max="100"
-                            />
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveStockField(field.id)}
-                            className="p-2 text-red-500 hover:text-red-700"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M3 6h18" />
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                            </svg>
-                          </button>
+                      <div className="flex items-center gap-6 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 dark:text-gray-400">Target Category Weight:</span>
+                          <input
+                            type="number"
+                            value={targetCategoryWeight}
+                            onChange={(e) => setTargetCategoryWeight(e.target.value)}
+                            className="border rounded px-2 py-1 w-16 text-center text-sm font-semibold border-gray-300 dark:bg-gray-700 dark:text-white dark:border-gray-650"
+                          />
+                          <span className="text-gray-500 dark:text-gray-400">%</span>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                        
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-400">Sum of Weights: </span>
+                          <span className="font-bold text-gray-800 dark:text-white">
+                            {stockFields.reduce((sum, f) => sum + (parseFloat(f.weight) || 0), 0)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
 
+                    {/* Inline Table */}
+                    <div className="p-4 overflow-x-auto">
+                      <table className="min-w-full">
+                        <thead>
+                          <tr className="border-b dark:border-gray-700 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                            <th className="pb-3 pr-4">Geography</th>
+                            <th className="pb-3 pr-4 min-w-[250px]">Select Asset / Stock Name</th>
+                            <th className="pb-3 pr-4 text-center">Recommendation</th>
+                            <th className="pb-3 pr-4 text-right">LTP (Price)</th>
+                            <th className="pb-3 pr-4 text-center">Weight (%)</th>
+                            <th className="pb-3 pr-4 text-right">Quantity</th>
+                            <th className="pb-3 pr-4 text-right">Order Value</th>
+                            <th className="pb-3 text-center">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                          {stockFields.map((field) => {
+                            const filteredOptions = getFilteredOptions(category);
+                            const matchedOption = filteredOptions.find(opt => opt.value === field.selectValue);
+                            
+                            // Dynamic Calculations
+                            const price = parseFloat(matchedOption?.currentPrice || "0");
+                            const wPercent = parseFloat(field.weight) || 0;
+                            const rowVal = (parseFloat(mockPortfolioValue) * (parseFloat(targetCategoryWeight) / 100)) * (wPercent / 100);
+                            const qty = price > 0 ? Math.round(rowVal / price) : 0;
+                            const orderVal = qty * price;
+
+                            return (
+                              <tr key={field.id} className="align-middle">
+                                <td className="py-3 pr-4">
+                                  <select
+                                    value={field.geography || topGeography}
+                                    onChange={(e) => handleFieldChange(field.id, "geography", e.target.value)}
+                                    className="form-select text-sm border rounded-lg px-2.5 py-1.5 w-32 border-gray-300 dark:bg-gray-700 dark:text-white dark:border-gray-650"
+                                  >
+                                    <option value="India">India</option>
+                                    <option value="USA">USA</option>
+                                    <option value="Europe">Europe</option>
+                                    <option value="Japan">Japan</option>
+                                    <option value="GreaterChina">Greater China</option>
+                                  </select>
+                                </td>
+                                <td className="py-3 pr-4">
+                                  <select
+                                    value={field.selectValue}
+                                    onChange={(e) => handleFieldChange(field.id, "selectValue", e.target.value)}
+                                    className="form-select text-sm border rounded-lg px-3 py-1.5 w-full border-gray-300 dark:bg-gray-700 dark:text-white dark:border-gray-650"
+                                    required
+                                  >
+                                    <option value="">Select Asset/Fund</option>
+                                    {filteredOptions.map(opt => (
+                                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
+                                  </select>
+                                </td>
+                                <td className="py-3 pr-4 text-center">
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400">
+                                    Buy
+                                  </span>
+                                </td>
+                                <td className="py-3 pr-4 text-right text-sm text-gray-700 dark:text-gray-300 font-medium">
+                                  ₹{price > 0 ? price.toFixed(2) : "---"}
+                                </td>
+                                <td className="py-3 pr-4">
+                                  <div className="flex items-center gap-1 mx-auto w-24">
+                                    <Input
+                                      value={field.weight}
+                                      onChange={(e) => handleFieldChange(field.id, "weight", e.target.value)}
+                                      placeholder="Weight"
+                                      required
+                                      type="number"
+                                      min="1"
+                                      max="100"
+                                      className="text-center h-9 px-2"
+                                    />
+                                    <span className="text-gray-500 dark:text-gray-400 text-sm">%</span>
+                                  </div>
+                                </td>
+                                <td className="py-3 pr-4 text-right text-sm text-gray-700 dark:text-gray-300">
+                                  {qty > 0 ? qty : "---"}
+                                </td>
+                                <td className="py-3 pr-4 text-right text-sm text-gray-700 dark:text-gray-300 font-medium">
+                                  {orderVal > 0 ? `₹${orderVal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : "---"}
+                                </td>
+                                <td className="py-3 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveStockField(field.id)}
+                                    className="text-gray-400 hover:text-red-500 p-1.5 transition"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M3 6h18" />
+                                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                    </svg>
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Inline Table Footer */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 bg-gray-55 dark:bg-gray-850 border-t dark:border-gray-700 gap-4">
+                      <button
+                        type="button"
+                        onClick={handleAddStockField}
+                        className="px-4 py-2 text-sm font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition dark:bg-blue-900/20 dark:text-blue-300"
+                      >
+                        + Add Asset
+                      </button>
+
+                      <div className="flex items-center gap-1.5 text-xs font-semibold">
+                        {stockFields.reduce((sum, f) => sum + (parseFloat(f.weight) || 0), 0) === 100 ? (
+                          <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
+                            ✓ Individual weights sum is 100%
+                          </span>
+                        ) : (
+                          <span className="text-red-500 flex items-center gap-1">
+                            ✗ Individual weights sum must be 100%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                  </div>
+                </div>
+              )}
+
+              {/* Form Bottom Save/Cancel Actions */}
               <div className="flex justify-between items-center pt-5 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-850 p-4 rounded-lg">
                 <div className="text-sm font-semibold dark:text-gray-200">
                   Sum of Weights:{" "}
