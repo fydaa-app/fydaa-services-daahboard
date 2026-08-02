@@ -155,6 +155,7 @@ interface StockOption {
   stockType: string;
   currentPrice: string;
   geography?: string;
+  recommendationStock?: number;
 }
 
 interface MutualFundOption {
@@ -166,6 +167,7 @@ interface MutualFundOption {
   currentPrice: string;
   switchMultiples: number;
   geography?: string;
+  recommendationStock?: number;
 }
 
 interface Field {
