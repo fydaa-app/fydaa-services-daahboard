@@ -171,20 +171,6 @@ interface Package {
   packagesName: string;
 }
 
-interface LocalTemplateStock {
-  selectValue: string | number;
-  weight: string | number;
-  geography?: string;
-}
-
-interface LocalAssetClassTemplate {
-  id: number;
-  category: string;
-  portfolioType?: string | null;
-  planType?: string | null;
-  stocks: LocalTemplateStock[] | string;
-}
-
 interface AddStockProps {
   isOpen: boolean;
   onClose: () => void;
@@ -704,7 +690,7 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
           optionsToUse = initialWOptions;
         }
 
-        let initialFields: Field[] = [{ 
+        const initialFields: Field[] = [{ 
           id: 1, 
           selectValue: '', 
           weight: '', 

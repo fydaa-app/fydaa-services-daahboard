@@ -217,20 +217,6 @@ const DEFAULT_PORTFOLIO_DATA: PortfolioData = {
   planType: '',
 };
 
-interface LocalTemplateStock {
-  selectValue: string | number;
-  weight: string | number;
-  geography?: string;
-}
-
-interface LocalAssetClassTemplate {
-  id: number;
-  category: string;
-  portfolioType?: string | null;
-  planType?: string | null;
-  stocks: LocalTemplateStock[] | string;
-}
-
 interface EditStockProps {
   isOpen: boolean;
   onClose: () => void;
@@ -880,7 +866,7 @@ const updateTotalWeight = (category: string, weight: number) => {
           optionsToUse = initialOptions.filter(opt => opt.capType === 'ETF');
         }
 
-        let initialFields: Field[] = [{ 
+        const initialFields: Field[] = [{ 
           id: 1, 
           selectValue: '', 
           weight: '', 

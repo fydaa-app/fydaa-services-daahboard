@@ -73,11 +73,9 @@ export default function AssetClassTemplatesPage() {
   const [stockFields, setStockFields] = useState<TemplateStock[]>([
     { id: 1, selectValue: "", weight: "" }
   ]);
-  const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
-  const [backupStockFields, setBackupStockFields] = useState<TemplateStock[]>([]);
   const [topGeography, setTopGeography] = useState("India");
   const [targetCategoryWeight, setTargetCategoryWeight] = useState("15");
-  const [mockPortfolioValue, setMockPortfolioValue] = useState("250000");
+  const mockPortfolioValue = 250000;
 
   // Options states
   const [initialOptions, setInitialOptions] = useState<StockOption[]>([]);
@@ -412,7 +410,7 @@ export default function AssetClassTemplatesPage() {
                             // Dynamic Calculations
                             const price = parseFloat(matchedOption?.currentPrice || "0");
                             const wPercent = parseFloat(field.weight) || 0;
-                            const rowVal = (parseFloat(mockPortfolioValue) * (parseFloat(targetCategoryWeight) / 100)) * (wPercent / 100);
+                            const rowVal = (mockPortfolioValue * (parseFloat(targetCategoryWeight) / 100)) * (wPercent / 100);
                             const qty = price > 0 ? Math.round(rowVal / price) : 0;
                             const orderVal = qty * price;
 
