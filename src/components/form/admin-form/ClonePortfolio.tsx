@@ -905,7 +905,6 @@ const updateTotalWeight = (category: string, weight: number) => {
               weight: item.weight.toString(),
               currentPrice: matchingOption?.currentPrice || '',
               options: optionsToUse,
-              recommendationStock: matchingOption?.recommendationStock || undefined,
               geography: item.geography || matchingOption?.geography || '',
               MinAmountquantity: 0,
               MinAmountorderValue: 0
