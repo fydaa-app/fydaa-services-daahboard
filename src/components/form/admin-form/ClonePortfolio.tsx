@@ -240,6 +240,11 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
   const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
   const currentStockCategories = isMutualFundCategory ? mutualFundStock : stock;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [activeAllocationCategory, setActiveAllocationCategory] = useState<string | null>(null);
+  const [backupFields, setBackupFields] = useState<Field[]>([]);
+
   // Fetch goals and packages on component mount
   useEffect(() => {
     const fetchData = async () => {
@@ -303,6 +308,12 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
           geography: mutualFund.geography || '',
         }));      
         setInitialMOptions(moptions);
+
+        // Fetch templates
+        const templatesRes = await portfolioManagementServiceApi.getAssetClassTemplates();
+        if (templatesRes.data) {
+          setTemplates(templatesRes.data as any[]);
+        }
 
         if ((type === "clone") && PortfolioData) {
           const stockIdsArray = PortfolioData?.stockIds?.replace(/'/g, "").split(",") || [];
@@ -800,6 +811,29 @@ const updateTotalWeight = (category: string, weight: number) => {
   });
 };
 
+  const handleCancelAllocation = (category: string) => {
+    setFieldstock(prev => {
+      const restored = { ...prev, [category]: backupFields };
+      setTimeout(() => {
+        calculateCapTypeWeights(restored);
+        calculateStockTypeWeights(restored);
+        calculateSummary(restored);
+        calculateOrderValue(restored, totalWeights, portfolioDetails);
+      }, 0);
+      return restored;
+    });
+    setActiveAllocationCategory(null);
+  };
+
+  const handleSaveAllocation = (category: string) => {
+    const fieldsWeight = (fieldstock[category] || []).reduce((sum, f) => sum + (parseFloat(f.weight) || 0), 0);
+    if (fieldsWeight !== 100) {
+      toast.error('The sum of individual stock weights must be exactly 100%');
+      return;
+    }
+    setActiveAllocationCategory(null);
+  };
+
   const handleCheckboxChange = (category: string) => {
     setSelectedCategories((prev) => {
       const isSelected = prev.includes(category);
@@ -830,23 +864,55 @@ const updateTotalWeight = (category: string, weight: number) => {
           optionsToUse = initialOptions.filter(opt => opt.capType === 'ETF');
         }
 
+        // Check if template exists for category
+        const template = templates.find(t => t.category === category);
+
+        let initialFields: Field[] = [];
+        if (template) {
+          let tStocks = template.stocks;
+          if (typeof tStocks === 'string') {
+            try { tStocks = JSON.parse(tStocks); } catch { tStocks = []; }
+          }
+          initialFields = tStocks.map((item: { selectValue: string | number; weight: string | number; geography?: string }, idx: number) => {
+            const matchingOption = optionsToUse.find(opt => opt.value.toString() === item.selectValue.toString());
+            return {
+              id: idx + 1,
+              selectValue: item.selectValue.toString(),
+              weight: item.weight.toString(),
+              currentPrice: matchingOption?.currentPrice || '',
+              options: optionsToUse,
+              recommendationStock: matchingOption?.recommendationStock || undefined,
+              geography: item.geography || matchingOption?.geography || '',
+              MinAmountquantity: 0,
+              MinAmountorderValue: 0
+            };
+          });
+        } else {
+          initialFields = [{ 
+            id: 1, 
+            selectValue: '', 
+            weight: '', 
+            currentPrice: '', 
+            options: optionsToUse, 
+            MinAmountquantity: 0, 
+            MinAmountorderValue: 0,
+            geography: ''
+          }];
+        }
+
         setFieldstock((prevFields) => {
             const newFields = {
                 ...prevFields,
-                [category]: [{ 
-                  id: 1, 
-                  selectValue: '', 
-                  weight: '', 
-                  currentPrice: '', 
-                  options: optionsToUse, 
-                  MinAmountquantity: 0, 
-                  MinAmountorderValue: 0,
-                  geography: ''
-                }],
+                [category]: initialFields,
             };
             calculateOrderValue(newFields, totalWeights, portfolioDetails);
             return newFields;
         });
+
+        // Set backup and active allocation category to open modal automatically
+        setBackupFields(JSON.parse(JSON.stringify(initialFields)));
+        setActiveAllocationCategory(category);
+
         return [...prev, category];
       }
     });
@@ -1286,106 +1352,212 @@ const updateTotalWeight = (category: string, weight: number) => {
                   <label htmlFor={category}>{currentStockCategories[category]}</label>
               </div>
               ))}
-          </div>
-  
-          {selectedCategories.map((category) => (
-            <div key={category}>
-              <h3>{currentStockCategories[category]}</h3>
-              <Input
-                value={totalWeights[category] || ''}
-                onChange={(e) => handleCategoryWeightChange(category, e)}
-                placeholder="Total Weight"
-                required
-                type="number"
-                className="mb-2"
-              />
-              {fieldstock[category]?.map((field) => (
-                <div key={field.id} className="flex gap-2 items-center mb-1">
-                  <select
-                    className="form-select text-sm shadow-theme-xs text-gray-800 border-gray-300 h-11 w-full border rounded px-2 py-2.5"
-                    value={field.geography || ''}
-                    onChange={(e) => {
-                      const geoVal = e.target.value;
-                      setFieldstock(prev => {
-                        const newFields = { ...prev };
-                        if (!newFields[category]) return prev;
-                        newFields[category] = newFields[category].map(f => 
-                          f.id === field.id ? { ...f, geography: geoVal, selectValue: '', currentPrice: '' } : f
-                        );
-                        return newFields;
-                      });
-                    }}
-                  >
-                    {geographyOptions.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                  {renderStockDropdown(category, field)}                 
-                  <Input
-                    value={field.currentPrice}
-                    readOnly
-                    placeholder="Current Price"
-                    required
-                    type="number"
-                  />
+          </div>          {selectedCategories.map((category) => {
+            const currentFields = fieldstock[category] || [];
+            const fieldsWeight = currentFields.reduce((sum, f) => sum + (parseFloat(f.weight) || 0), 0);
+            const isConfigured = currentFields.length > 0 && currentFields.every(f => f.selectValue) && fieldsWeight === 100;
+            
+            return (
+              <div key={category} className="p-4 border rounded-lg bg-gray-55 dark:bg-gray-800 dark:border-gray-700 mb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <h3 className="font-semibold text-base text-gray-800 dark:text-white">{currentStockCategories[category]}</h3>
+                    <div className="mt-1 text-xs">
+                      {isConfigured ? (
+                        <span className="text-green-600 dark:text-green-400 font-medium">
+                          ✓ Configured ({currentFields.length} asset{currentFields.length > 1 ? 's' : ''})
+                        </span>
+                      ) : (
+                        <span className="text-red-500 font-medium">
+                          ✗ Stock Allocation Incomplete (Sum: {fieldsWeight}%)
+                        </span>
+                      )}
+                    </div>
+                  </div>
                   
-                  <Input
-                    value={field.weight}
-                    onChange={(e) => handleInputChange1(category, field.id, e)}
-                    placeholder="Weight"
-                    required
-                    type="number"
+                  <div className="flex items-center gap-3">
+                    <div className="w-36">
+                      <Label htmlFor={`weight-${category}`} className="text-xs mb-1">Total Weight %</Label>
+                      <Input
+                        id={`weight-${category}`}
+                        value={totalWeights[category] || ''}
+                        onChange={(e) => handleCategoryWeightChange(category, e)}
+                        placeholder="Total Weight"
+                        required
+                        type="number"
+                        min="1"
+                        max="100"
+                        className="h-10"
+                      />
+                    </div>
+                    
+                    <div className="self-end pb-0.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBackupFields(JSON.parse(JSON.stringify(fieldstock[category] || [])));
+                          setActiveAllocationCategory(category);
+                        }}
+                        className="px-3.5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition"
+                      >
+                        {isConfigured ? 'Edit Allocation' : 'Configure Allocation'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
 
-                  />
-                  
-                  <Input
-                    value={field.MinAmountquantity}
-                    readOnly
-                    placeholder="Quantity"
-                    required
-                    type="number"
-                  /> 
-                  
-                  <Input
-                    value={field.MinAmountorderValue}
-                    readOnly
-                    placeholder="OrderValue"
-                    required
-                    type="number"
-                  />
-                  <button 
-                    type="button" 
-                    onClick={() => removeField1(category, field.id)}
-                    className="px-2 py-1 text-white bg-red-500 rounded hover:bg-red-600"
+                {currentFields.length > 0 && currentFields.some(f => f.selectValue) && (
+                  <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex flex-wrap gap-2">
+                    {currentFields.map((f, i) => {
+                      const optionsToUse = selectedMainCategories.includes('Stocks') ? initialOptions :
+                                           selectedMainCategories.includes('MutualFunds') ? initialMOptions :
+                                           selectedMainCategories.includes('UsStocks') ? initialUOptions :
+                                           initialWOptions;
+                      const matched = optionsToUse.find(opt => opt.value.toString() === f.selectValue.toString());
+                      if (!matched) return null;
+                      return (
+                        <span key={i} className="text-xs bg-white dark:bg-gray-750 px-2.5 py-1 border dark:border-gray-650 rounded text-gray-700 dark:text-gray-300">
+                          {matched.label} ({f.weight}%)
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {activeAllocationCategory && (
+            <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[99999]">
+              <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col dark:bg-gray-800">
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                  <h3 className="text-lg font-semibold dark:text-white">
+                    Allocate Stocks - {currentStockCategories[activeAllocationCategory]}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => handleCancelAllocation(activeAllocationCategory)}
+                    className="text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100 text-2xl"
                   >
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      width="24" 
-                      height="24" 
-                      viewBox="0 0 24 24" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      strokeWidth="2" 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round"
-                    >
-                      <path d="M3 6h18" />
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      <line x1="10" y1="11" x2="10" y2="17" />
-                      <line x1="14" y1="11" x2="14" y2="17" />
-                    </svg>
+                    ×
                   </button>
                 </div>
-              ))}
-              <button 
-                type="button"
-                onClick={() => addField1(category)}
-                className="mt-2 px-3 py-1 text-white bg-blue-500 rounded hover:bg-blue-600"
-              >
-                Add More
-              </button>
+
+                <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                  {fieldstock[activeAllocationCategory]?.map((field) => (
+                    <div key={field.id} className="flex gap-2 items-center mb-1">
+                      <select
+                        className="form-select text-sm shadow-theme-xs text-gray-800 border-gray-300 h-11 w-full border rounded px-2 py-2.5"
+                        value={field.geography || ''}
+                        onChange={(e) => {
+                          const geoVal = e.target.value;
+                          setFieldstock(prev => {
+                            const newFields = { ...prev };
+                            if (!newFields[activeAllocationCategory]) return prev;
+                            newFields[activeAllocationCategory] = newFields[activeAllocationCategory].map(f => 
+                              f.id === field.id ? { ...f, geography: geoVal, selectValue: '', currentPrice: '' } : f
+                            );
+                            return newFields;
+                          });
+                        }}
+                      >
+                        {geographyOptions.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                      {renderStockDropdown(activeAllocationCategory, field)}                 
+                      <Input
+                        value={field.currentPrice}
+                        readOnly
+                        placeholder="Current Price"
+                        required
+                        type="number"
+                      />
+                      
+                      <Input
+                        value={field.weight}
+                        onChange={(e) => handleInputChange1(activeAllocationCategory, field.id, e)}
+                        placeholder="Weight"
+                        required
+                        type="number"
+                      />
+                      
+                      <Input
+                        value={field.MinAmountquantity}
+                        readOnly
+                        placeholder="Quantity"
+                        required
+                        type="number"
+                      /> 
+                      
+                      <Input
+                        value={field.MinAmountorderValue}
+                        readOnly
+                        placeholder="OrderValue"
+                        required
+                        type="number"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => removeField1(activeAllocationCategory, field.id)}
+                        className="px-2 py-1 text-white bg-red-500 rounded hover:bg-red-600"
+                      >
+                        <svg 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          width="24" 
+                          height="24" 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          strokeWidth="2" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round"
+                        >
+                          <path d="M3 6h18" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          <line x1="10" y1="11" x2="10" y2="17" />
+                          <line x1="14" y1="11" x2="14" y2="17" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                  <button 
+                    type="button"
+                    onClick={() => addField1(activeAllocationCategory)}
+                    className="mt-2 px-3 py-1 text-white bg-blue-500 rounded hover:bg-blue-600"
+                  >
+                    Add More
+                  </button>
+                </div>
+
+                <div className="flex justify-between items-center p-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-855">
+                  <div className="text-sm font-semibold dark:text-gray-200">
+                    Stock Weight Sum:{" "}
+                    <span className={(fieldstock[activeAllocationCategory] || []).reduce((sum, f) => sum + (parseFloat(f.weight) || 0), 0) === 100 ? "text-green-600 dark:text-green-400" : "text-red-500"}>
+                      {(fieldstock[activeAllocationCategory] || []).reduce((sum, f) => sum + (parseFloat(f.weight) || 0), 0)}%
+                    </span>{" "}
+                    (Must be 100%)
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleCancelAllocation(activeAllocationCategory)}
+                      className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 dark:bg-gray-600 dark:text-white text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSaveAllocation(activeAllocationCategory)}
+                      className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 text-sm font-medium"
+                    >
+                      Save Allocation
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-          ))}
+          )}
           {summary.totalStocks > 0 && (
               <div className="portfolio-summary-container">
                 {/* Asset Wise Allocation */}

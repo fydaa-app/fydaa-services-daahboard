@@ -206,6 +206,66 @@ class PortfolioManagementService extends APIClient {
     }
   }
 
+  async getAssetClassTemplates(): Promise<APIResponse<unknown>> {
+    try {
+      const data = await this.get<unknown>(`${this.baseEndpoint}/asset-class-templates`);
+      return {
+        status: 200,
+        data,
+        error: null
+      };
+    } catch (error) {
+      console.error("Error fetching asset class templates:", error);
+      return {
+        status: 500,
+        data: null,
+        error: {
+          message: error instanceof Error ? error.message : "An unknown error occurred"
+        }
+      };
+    }
+  }
+
+  async saveAssetClassTemplate(templateData: unknown): Promise<APIResponse<unknown>> {
+    try {
+      const data = await this.post<unknown>(`${this.baseEndpoint}/asset-class-templates`, templateData);
+      return {
+        status: 200,
+        data,
+        error: null
+      };
+    } catch (error) {
+      console.error("Error saving asset class template:", error);
+      return {
+        status: 500,
+        data: null,
+        error: {
+          message: error instanceof Error ? error.message : "An unknown error occurred"
+        }
+      };
+    }
+  }
+
+  async deleteAssetClassTemplate(id: number): Promise<APIResponse<unknown>> {
+    try {
+      await this.delete<unknown>(`${this.baseEndpoint}/asset-class-templates/${id}`);
+      return {
+        status: 200,
+        data: { success: true },
+        error: null
+      };
+    } catch (error) {
+      console.error("Error deleting asset class template:", error);
+      return {
+        status: 500,
+        data: null,
+        error: {
+          message: error instanceof Error ? error.message : "An unknown error occurred"
+        }
+      };
+    }
+  }
+
   private handleErrorResponse(error: unknown, data: PortfolioData): APIResponse<PortfolioData> {
     return {
       status: 500,

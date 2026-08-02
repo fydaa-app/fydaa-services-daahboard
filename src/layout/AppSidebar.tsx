@@ -113,6 +113,11 @@ const navItems: NavItem[] = [
     path: "/portfolio-new",
   },  
   {
+    icon: <PieChartIcon />,
+    name: "Asset Class Templates",
+    path: "/asset-class-templates",
+  },
+  {
     icon: <FundIcon />,
     name: "My Mutual Fund",
     path: "/my-mutual-fund",
