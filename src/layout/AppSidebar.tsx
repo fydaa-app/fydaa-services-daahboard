@@ -53,6 +53,11 @@ const navItems: NavItem[] = [
     path: "/pending-action",
   },
   {
+    icon: <UserCircleIcon />,
+    name: "Partners",
+    path: "/partners",
+  },
+  {
     icon: <MoneyIcon />,
     name: "Payments",
     path: "/payment-list",
