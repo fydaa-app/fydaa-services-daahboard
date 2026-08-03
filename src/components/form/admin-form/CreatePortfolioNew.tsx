@@ -186,6 +186,8 @@ interface LocalAssetClassTemplate {
   category: string;
   targetWeight?: number;
   geography?: string;
+  templateName?: string;
+  portfolioType?: string;
   stocks: LocalTemplateStock[] | string;
 }
 
