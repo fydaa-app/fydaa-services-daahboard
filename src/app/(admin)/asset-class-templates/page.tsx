@@ -251,7 +251,13 @@ export default function AssetClassTemplatesPage() {
       return;
     }
 
-    const payload: any = {
+    const payload: {
+      category: string;
+      targetWeight: number;
+      geography: string;
+      stocks: { selectValue: string; weight: string; geography: string }[];
+      id?: number;
+    } = {
       category,
       targetWeight: parseFloat(targetCategoryWeight) || 0,
       geography: topGeography,

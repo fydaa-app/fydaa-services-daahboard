@@ -175,6 +175,20 @@ interface Field {
   geography?: string;
 }
 
+interface LocalTemplateStock {
+  selectValue: string | number;
+  weight: string | number;
+  geography?: string;
+}
+
+interface LocalAssetClassTemplate {
+  id: number;
+  category: string;
+  targetWeight?: number;
+  geography?: string;
+  stocks: LocalTemplateStock[] | string;
+}
+
 interface Goal {
   id: number;
   name: string;
@@ -228,7 +242,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
   const [summary, setSummary] = useState({ totalStocks: 0, top3Weight: 0, top5Weight: 0, top10Weight: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [selectedGeography, setSelectedGeography] = useState<string>('');
-  const [templates, setTemplates] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<LocalAssetClassTemplate[]>([]);
   const router = useRouter();
   const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
   const currentStockCategories = isMutualFundCategory ? mutualFundStock : stock;
@@ -244,7 +258,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
         
         if (goalsResponse.goals) setGoalListData(goalsResponse.goals);
         if (packagesResponse.packages) setPackageListData(packagesResponse.packages);
-        if (templatesRes.data) setTemplates(templatesRes.data as any[]);
+        if (templatesRes.data) setTemplates(templatesRes.data as LocalAssetClassTemplate[]);
         
         const stockListData = await stockManagementServiceApi.getStockList();    
         const options = stockListData.data.map((stock: Stock) => ({
@@ -626,7 +640,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
     }
   };
 
-  const handleApplyTemplate = (category: string, template: any) => {
+  const handleApplyTemplate = (category: string, template: LocalAssetClassTemplate) => {
     if (template.targetWeight) {
       updateTotalWeight(category, template.targetWeight);
     }
@@ -635,7 +649,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
     if (typeof template.stocks === 'string') {
       try {
         parsedStocks = JSON.parse(template.stocks);
-      } catch (e) {
+      } catch {
         parsedStocks = [];
       }
     }
@@ -653,7 +667,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
       optionsToUse = [...initialOptions, ...initialUOptions, ...initialWOptions].filter(opt => opt.capType === 'ETF');
     }
     
-    const newFields: Field[] = (parsedStocks || []).map((item: any, index: number) => {
+    const newFields: Field[] = (Array.isArray(parsedStocks) ? parsedStocks : []).map((item: LocalTemplateStock, index: number) => {
       const opt = optionsToUse.find(o => o.value.toString() === item.selectValue.toString());
       return {
         id: index + 1,
