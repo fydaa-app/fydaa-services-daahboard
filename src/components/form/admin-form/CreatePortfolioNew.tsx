@@ -228,6 +228,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
   const [summary, setSummary] = useState({ totalStocks: 0, top3Weight: 0, top5Weight: 0, top10Weight: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [selectedGeography, setSelectedGeography] = useState<string>('');
+  const [templates, setTemplates] = useState<any[]>([]);
   const router = useRouter();
   const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
   const currentStockCategories = isMutualFundCategory ? mutualFundStock : stock;
@@ -235,13 +236,15 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [goalsResponse, packagesResponse] = await Promise.all([
+        const [goalsResponse, packagesResponse, templatesRes] = await Promise.all([
           goalManagementServiceApi.getGoalList(),
-          packagesManagementServiceApi.getPackageList()
+          packagesManagementServiceApi.getPackageList(),
+          portfolioManagementServiceApi.getAssetClassTemplates()
         ]);   
         
         if (goalsResponse.goals) setGoalListData(goalsResponse.goals);
         if (packagesResponse.packages) setPackageListData(packagesResponse.packages);
+        if (templatesRes.data) setTemplates(templatesRes.data as any[]);
         
         const stockListData = await stockManagementServiceApi.getStockList();    
         const options = stockListData.data.map((stock: Stock) => ({
@@ -623,6 +626,62 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
     }
   };
 
+  const handleApplyTemplate = (category: string, template: any) => {
+    if (template.targetWeight) {
+      updateTotalWeight(category, template.targetWeight);
+    }
+    
+    let parsedStocks = template.stocks;
+    if (typeof template.stocks === 'string') {
+      try {
+        parsedStocks = JSON.parse(template.stocks);
+      } catch (e) {
+        parsedStocks = [];
+      }
+    }
+    
+    const isStockCategory = selectedMainCategories.includes('Stocks');
+    const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
+    const isEtfCategory = selectedMainCategories.includes('ETF');
+    let optionsToUse: (StockOption | MutualFundOption)[] = [];
+    
+    if (isStockCategory && !isMutualFundCategory && !isEtfCategory) {
+      optionsToUse = [...initialOptions, ...initialUOptions, ...initialWOptions];
+    } else if (isMutualFundCategory && !isStockCategory && !isEtfCategory) {
+      optionsToUse = initialMOptions;
+    } else if (isEtfCategory && !isStockCategory && !isMutualFundCategory) {
+      optionsToUse = [...initialOptions, ...initialUOptions, ...initialWOptions].filter(opt => opt.capType === 'ETF');
+    }
+    
+    const newFields: Field[] = (parsedStocks || []).map((item: any, index: number) => {
+      const opt = optionsToUse.find(o => o.value.toString() === item.selectValue.toString());
+      return {
+        id: index + 1,
+        selectValue: item.selectValue.toString(),
+        weight: item.weight.toString(),
+        currentPrice: opt?.currentPrice || '',
+        recommendationStock: opt && 'recommendationStock' in opt ? opt.recommendationStock : undefined,
+        geography: item.geography || opt?.geography || selectedGeography,
+        options: optionsToUse,
+        MinAmountquantity: 0,
+        MinAmountorderValue: 0
+      };
+    });
+    
+    setFieldstock(prev => {
+      const updated = { ...prev, [category]: newFields };
+      setTimeout(() => {
+        calculateCapTypeWeights(updated);
+        calculateStockTypeWeights(updated);
+        calculateSummary(updated);
+        calculateOrderValue(updated, { ...totalWeights, [category]: template.targetWeight || 0 }, portfolioDetails);
+      }, 0);
+      return updated;
+    });
+    
+    toast.success(`Loaded template for ${currentStockCategories[category]}`);
+  };
+
   const handleCategoryWeightChange = (category: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = event.target;
     const weight = parseFloat(value) || 0;
@@ -661,6 +720,8 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
           optionsToUse = [...initialOptions, ...initialUOptions, ...initialWOptions].filter(opt => opt.capType === 'ETF');
         }
 
+        const matchingTemplates = templates.filter(t => t.category === category);
+
         setFieldstock((prevFields) => {
             const newFields = {
                 ...prevFields,
@@ -676,6 +737,13 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
                 }],
             };
             calculateOrderValue(newFields, totalWeights, portfolioDetails);
+            
+            if (matchingTemplates.length > 0) {
+              setTimeout(() => {
+                handleApplyTemplate(category, matchingTemplates[0]);
+              }, 0);
+            }
+            
             return newFields;
         });
         return [...prev, category];
@@ -1259,11 +1327,38 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
           <div key={category} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 shadow-theme-xs space-y-5">
             {/* Asset card header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 dark:border-gray-800 pb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-brand-500" />
-                <h4 className="text-base font-bold text-gray-900 dark:text-white">
-                  {currentStockCategories[category]} Allocation Settings
-                </h4>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-brand-500" />
+                  <h4 className="text-base font-bold text-gray-900 dark:text-white">
+                    {currentStockCategories[category]} Allocation Settings
+                  </h4>
+                </div>
+                {/* Template load selector dropdown */}
+                {templates.filter(t => t.category === category).length > 0 && (
+                  <div className="flex items-center gap-2 ml-0 sm:ml-4">
+                    <span className="text-xs text-gray-400 dark:text-gray-500">Load Template:</span>
+                    <select
+                      onChange={(e) => {
+                        const selectedTplId = e.target.value;
+                        if (!selectedTplId) return;
+                        const selectedTpl = templates.find(t => t.id.toString() === selectedTplId);
+                        if (selectedTpl) {
+                          handleApplyTemplate(category, selectedTpl);
+                        }
+                      }}
+                      className="form-select text-xs border rounded-lg px-2 py-1 border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700 focus:outline-none"
+                      defaultValue=""
+                    >
+                      <option value="">-- Select Template --</option>
+                      {templates.filter(t => t.category === category).map(t => (
+                        <option key={t.id} value={t.id}>
+                          Template #{t.id} (Weight: {t.targetWeight ? `${t.targetWeight}%` : '—'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-6">
