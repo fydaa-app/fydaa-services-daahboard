@@ -734,7 +734,8 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
           optionsToUse = [...initialOptions, ...initialUOptions, ...initialWOptions].filter(opt => opt.capType === 'ETF');
         }
 
-        const matchingTemplates = templates.filter(t => t.category === category);
+        const targetPortfolioType = isMutualFundCategory ? 'MUTUALFUND' : isEtfCategory ? 'ETF' : 'STOCK';
+        const matchingTemplates = templates.filter(t => t.category === category && t.portfolioType === targetPortfolioType);
 
         setFieldstock((prevFields) => {
             const newFields = {
@@ -1349,30 +1350,35 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
                   </h4>
                 </div>
                 {/* Template load selector dropdown */}
-                {templates.filter(t => t.category === category).length > 0 && (
-                  <div className="flex items-center gap-2 ml-0 sm:ml-4">
-                    <span className="text-xs text-gray-400 dark:text-gray-500">Load Template:</span>
-                    <select
-                      onChange={(e) => {
-                        const selectedTplId = e.target.value;
-                        if (!selectedTplId) return;
-                        const selectedTpl = templates.find(t => t.id.toString() === selectedTplId);
-                        if (selectedTpl) {
-                          handleApplyTemplate(category, selectedTpl);
-                        }
-                      }}
-                      className="form-select text-xs border rounded-lg px-2 py-1 border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700 focus:outline-none"
-                      defaultValue=""
-                    >
-                      <option value="">-- Select Template --</option>
-                      {templates.filter(t => t.category === category).map(t => (
-                        <option key={t.id} value={t.id}>
-                          Template #{t.id} (Weight: {t.targetWeight ? `${t.targetWeight}%` : '—'})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                {(() => {
+                  const targetType = selectedMainCategories.includes('MutualFunds') ? 'MUTUALFUND' : selectedMainCategories.includes('ETF') ? 'ETF' : 'STOCK';
+                  const filtered = templates.filter(t => t.category === category && t.portfolioType === targetType);
+                  if (filtered.length === 0) return null;
+                  return (
+                    <div className="flex items-center gap-2 ml-0 sm:ml-4">
+                      <span className="text-xs text-gray-400 dark:text-gray-500">Load Template:</span>
+                      <select
+                        onChange={(e) => {
+                          const selectedTplId = e.target.value;
+                          if (!selectedTplId) return;
+                          const selectedTpl = templates.find(t => t.id.toString() === selectedTplId);
+                          if (selectedTpl) {
+                            handleApplyTemplate(category, selectedTpl);
+                          }
+                        }}
+                        className="form-select text-xs border rounded-lg px-2 py-1 border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700 focus:outline-none"
+                        defaultValue=""
+                      >
+                        <option value="">-- Select Template --</option>
+                        {filtered.map(t => (
+                          <option key={t.id} value={t.id}>
+                            {t.templateName || `Template #${t.id}`} ({t.targetWeight ? `${t.targetWeight}%` : '—'})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="flex items-center gap-6">

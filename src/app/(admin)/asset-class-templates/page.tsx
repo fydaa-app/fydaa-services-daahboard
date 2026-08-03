@@ -59,6 +59,8 @@ interface Template {
   category: string;
   targetWeight?: number;
   geography?: string;
+  templateName?: string;
+  portfolioType?: string;
   stocks: TemplateStock[];
 }
 
@@ -69,6 +71,8 @@ export default function AssetClassTemplatesPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   // Form states
+  const [templateName, setTemplateName] = useState("");
+  const [portfolioType, setPortfolioType] = useState("STOCK");
   const [category, setCategory] = useState("");
   const [stockFields, setStockFields] = useState<TemplateStock[]>([
     { id: 1, selectValue: "", weight: "" }
@@ -166,6 +170,8 @@ export default function AssetClassTemplatesPage() {
 
   const handleOpenAddModal = () => {
     setEditingTemplate(null);
+    setTemplateName("");
+    setPortfolioType("STOCK");
     setCategory("");
     setTopGeography("India");
     setTargetCategoryWeight("15");
@@ -176,6 +182,8 @@ export default function AssetClassTemplatesPage() {
   const handleOpenEditModal = (template: Template) => {
     setEditingTemplate(template);
     setCategory(template.category);
+    setTemplateName(template.templateName || "");
+    setPortfolioType(template.portfolioType || "STOCK");
     setTopGeography(template.geography || "India");
     setTargetCategoryWeight(template.targetWeight?.toString() || "15");
     
@@ -251,16 +259,25 @@ export default function AssetClassTemplatesPage() {
       return;
     }
 
+    if (!templateName.trim()) {
+      toast.error("Please enter a template name");
+      return;
+    }
+
     const payload: {
       category: string;
       targetWeight: number;
       geography: string;
+      templateName: string;
+      portfolioType: string;
       stocks: { selectValue: string; weight: string; geography: string }[];
       id?: number;
     } = {
       category,
       targetWeight: parseFloat(targetCategoryWeight) || 0,
       geography: topGeography,
+      templateName,
+      portfolioType,
       stocks: stockFields.map(f => ({
         selectValue: f.selectValue,
         weight: f.weight,
@@ -317,6 +334,37 @@ export default function AssetClassTemplatesPage() {
         <div className="mt-6">
           <ComponentCard title="Template Configurations">
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Template Name and Type Selector */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-2">
+                <div>
+                  <Label htmlFor="templateName" className="mb-2">Template Name *</Label>
+                  <input
+                    id="templateName"
+                    type="text"
+                    placeholder="Enter Template Name (e.g. Aggressive Equities)"
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
+                    required
+                    className="form-input border rounded-xl px-4 py-2.5 w-full border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="portfolioType" className="mb-2">Template Target Type *</Label>
+                  <select
+                    id="portfolioType"
+                    value={portfolioType}
+                    disabled={!!editingTemplate}
+                    onChange={(e) => setPortfolioType(e.target.value)}
+                    className="form-select border rounded-xl px-4 py-2.5 w-full border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700 focus:outline-none"
+                  >
+                    <option value="STOCK">Direct Stocks</option>
+                    <option value="MUTUALFUND">Mutual Funds</option>
+                    <option value="ETF">ETFs</option>
+                  </select>
+                </div>
+              </div>
+
               {/* Asset Classes Pill Selector */}
               <div>
                 <Label className="mb-2">Asset Classes *</Label>
@@ -594,6 +642,8 @@ export default function AssetClassTemplatesPage() {
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-800">
                   <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Template Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Target Type</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Asset Class / Category</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Stock Allocations</th>
                     <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Actions</th>
@@ -602,7 +652,13 @@ export default function AssetClassTemplatesPage() {
                 <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-900">
                   {templates.map(tpl => (
                     <tr key={tpl.id} className="hover:bg-gray-55 dark:hover:bg-gray-800">
-                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                      <td className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">
+                        {tpl.templateName || `Template #${tpl.id}`}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-550 dark:text-gray-300">
+                        {tpl.portfolioType === "MUTUALFUND" ? "Mutual Funds" : tpl.portfolioType === "ETF" ? "ETFs" : "Direct Stocks"}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-550 dark:text-gray-300">
                         {allCategories[tpl.category] || tpl.category}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-300 max-w-xs">
