@@ -45,6 +45,7 @@ interface DBStock {
   StockType?: string;
   currentPrice?: string;
   switchMultiples?: number;
+  geography?: string;
 }
 
 interface TemplateStock {
@@ -99,6 +100,7 @@ export default function AssetClassTemplatesPage() {
           capType: s.CapType || "",
           stockType: s.StockType || "",
           currentPrice: s.currentPrice || "0",
+          geography: s.geography || "",
         })));
 
         const usList = await stockManagementServiceApi.getUsStockList();
@@ -109,6 +111,7 @@ export default function AssetClassTemplatesPage() {
           capType: s.CapType || "",
           stockType: s.StockType || "",
           currentPrice: s.currentPrice || "0",
+          geography: s.geography || "USA",
         })));
 
         const worldList = await stockManagementServiceApi.getWorldStockList();
@@ -119,6 +122,7 @@ export default function AssetClassTemplatesPage() {
           capType: s.CapType || "",
           stockType: s.StockType || "",
           currentPrice: s.currentPrice || "0",
+          geography: s.geography || "",
         })));
 
         const mfList = await amcService.getMutualFundListByPlanType("DIRECT");
@@ -130,6 +134,7 @@ export default function AssetClassTemplatesPage() {
           stockType: m.StockType || "",
           currentPrice: m.currentPrice || "0",
           switchMultiples: m.switchMultiples || 1,
+          geography: m.geography || "",
         })));
       } catch (err) {
         console.error("Error loading options:", err);
@@ -175,7 +180,7 @@ export default function AssetClassTemplatesPage() {
     setCategory("");
     setTopGeography("India");
     setTargetCategoryWeight("15");
-    setStockFields([{ id: 1, selectValue: "", weight: "" }]);
+    setStockFields([{ id: 1, selectValue: "", weight: "", geography: "India" }]);
     setIsModalOpen(true);
   };
 
@@ -201,7 +206,7 @@ export default function AssetClassTemplatesPage() {
       id: idx + 1,
       selectValue: item.selectValue?.toString() || "",
       weight: item.weight?.toString() || "",
-      geography: item.geography
+      geography: item.geography || template.geography || "India"
     })));
     setIsModalOpen(true);
   };
@@ -224,7 +229,7 @@ export default function AssetClassTemplatesPage() {
   const handleAddStockField = () => {
     setStockFields(prev => [
       ...prev,
-      { id: prev.length > 0 ? Math.max(...prev.map(f => f.id)) + 1 : 1, selectValue: "", weight: "" }
+      { id: prev.length > 0 ? Math.max(...prev.map(f => f.id)) + 1 : 1, selectValue: "", weight: "", geography: topGeography }
     ]);
   };
 
@@ -239,10 +244,22 @@ export default function AssetClassTemplatesPage() {
   const handleFieldChange = (id: number, field: keyof TemplateStock, value: string) => {
     setStockFields(prev => prev.map(f => {
       if (f.id === id) {
+        if (field === "geography") {
+          return { ...f, geography: value, selectValue: "" };
+        }
         return { ...f, [field]: value };
       }
       return f;
     }));
+  };
+
+  const handleTopGeographyChange = (geoVal: string) => {
+    setTopGeography(geoVal);
+    setStockFields(prev => prev.map(f => ({
+      ...f,
+      geography: geoVal,
+      selectValue: ""
+    })));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -409,7 +426,7 @@ export default function AssetClassTemplatesPage() {
                   <select
                     id="topGeography"
                     value={topGeography}
-                    onChange={(e) => setTopGeography(e.target.value)}
+                    onChange={(e) => handleTopGeographyChange(e.target.value)}
                     className="form-select border rounded-xl px-4 py-2.5 w-full md:w-80 border-gray-350 dark:bg-gray-800 dark:text-white dark:border-gray-750 mt-1"
                   >
                     <option value="India">India</option>
@@ -473,7 +490,14 @@ export default function AssetClassTemplatesPage() {
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                           {stockFields.map((field) => {
-                            const filteredOptions = getFilteredOptions(category);
+                            const rowGeography = field.geography || topGeography;
+                            const filteredOptions = getFilteredOptions(category).filter(opt => {
+                              if (!rowGeography) return true;
+                              if (rowGeography === "India") {
+                                return opt.geography === "India" || opt.geography === "";
+                              }
+                              return opt.geography === rowGeography;
+                            });
                             const matchedOption = filteredOptions.find(opt => opt.value === field.selectValue);
                             
                             // Dynamic Calculations
