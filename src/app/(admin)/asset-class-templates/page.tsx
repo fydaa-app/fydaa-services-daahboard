@@ -162,15 +162,42 @@ export default function AssetClassTemplatesPage() {
     loadTemplates();
   }, [loadTemplates]);
 
-  // Filter options to use inside the dropdowns based on Category
+  // Filter options to use inside the dropdowns based on Category, Portfolio Type, and Geography
   const getFilteredOptions = (cat: string) => {
-    if (cat === "UsStock") return initialUOptions;
-    if (cat === "WorldStock") return initialWOptions;
+    const isStock = portfolioType === "STOCK";
+    const isMutualFund = portfolioType === "MUTUALFUND";
+    const isEtf = portfolioType === "ETF";
+
+    if (isMutualFund) {
+      if (cat === "IndianStock") {
+        return initialMOptions.filter(
+          opt => opt.stockType === "IndianStock" || opt.stockType === "WorldStock" || opt.stockType === "UsStock"
+        );
+      }
+      return initialMOptions.filter(opt => opt.stockType === cat);
+    }
+
+    // For STOCK or ETF, combine all stock list options
+    const combinedStocks = [...initialOptions, ...initialUOptions, ...initialWOptions];
     
-    // Otherwise, collect matching options from initialOptions (stocks) and initialMOptions (mutual funds)
-    const options = initialOptions.filter(opt => opt.stockType === cat);
-    const mfOptions = initialMOptions.filter(opt => opt.stockType === cat);
-    return [...options, ...mfOptions];
+    // Filter by ETF capType if portfolio type is ETF
+    const baseStocks = isEtf 
+      ? combinedStocks.filter(opt => opt.capType === "ETF")
+      : combinedStocks;
+
+    if (cat === "UsStock") {
+      return baseStocks.filter(opt => opt.stockType === "UsStock");
+    }
+    if (cat === "WorldStock") {
+      return baseStocks.filter(opt => opt.stockType === "WorldStock");
+    }
+    if (cat === "IndianStock") {
+      return baseStocks.filter(
+        opt => opt.stockType === "IndianStock" || opt.stockType === "GlobalStock" || opt.stockType === "WorldStock" || opt.stockType === "UsStock"
+      );
+    }
+    
+    return baseStocks.filter(opt => opt.stockType === cat);
   };
 
   const handleOpenAddModal = () => {
@@ -493,10 +520,12 @@ export default function AssetClassTemplatesPage() {
                             const rowGeography = field.geography || topGeography;
                             const filteredOptions = getFilteredOptions(category).filter(opt => {
                               if (!rowGeography) return true;
-                              if (rowGeography === "India") {
-                                return opt.geography === "India" || opt.geography === "";
+                              const optGeo = (opt.geography || "").trim().toLowerCase();
+                              const rowGeo = rowGeography.trim().toLowerCase();
+                              if (rowGeo === "india") {
+                                return optGeo === "india" || optGeo === "";
                               }
-                              return opt.geography === rowGeography;
+                              return optGeo === rowGeo;
                             });
                             const matchedOption = filteredOptions.find(opt => opt.value === field.selectValue);
                             
