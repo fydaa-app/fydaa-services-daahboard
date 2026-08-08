@@ -430,6 +430,7 @@ export default function AssetClassTemplatesPage() {
                             : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 dark:bg-gray-800 dark:border-gray-700"
                         }`}
                       >
+                      
                         <span>{label.split(" / ")[0]}</span>
                         {isSelected ? (
                           <span className="flex items-center justify-center w-5 h-5 rounded bg-blue-600 text-white">
