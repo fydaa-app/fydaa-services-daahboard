@@ -164,7 +164,6 @@ export default function AssetClassTemplatesPage() {
 
   // Filter options to use inside the dropdowns based on Category, Portfolio Type, and Geography
   const getFilteredOptions = (cat: string) => {
-    const isStock = portfolioType === "STOCK";
     const isMutualFund = portfolioType === "MUTUALFUND";
     const isEtf = portfolioType === "ETF";
 

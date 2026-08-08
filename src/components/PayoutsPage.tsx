@@ -96,6 +96,7 @@ const PayoutsPage: React.FC = () => {
     fetchPartnerRewards();
     fetchAdvisoryFeeCommission();
     fetchPackageFeeCommission();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getAuthHeaders = () => ({
