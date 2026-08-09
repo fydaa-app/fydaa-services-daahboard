@@ -242,6 +242,15 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
   const [isLoading, setIsLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [selectedGeography, setSelectedGeography] = useState<string>('');
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+
+  const toggleCategoryCollapse = (category: string) => {
+    setCollapsedCategories(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }));
+  };
+
   const router = useRouter();
   const hasFetchedRef = useRef(false);
   const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
@@ -1478,14 +1487,34 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
         }, 0);
 
         return (
-          <div key={category} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 shadow-theme-xs space-y-5">
-            {/* Asset card header */}
+          <div key={category} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 shadow-theme-xs space-y-5">            {/* Asset card header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 dark:border-gray-800 pb-4">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-brand-500" />
                 <h4 className="text-base font-bold text-gray-900 dark:text-white">
                   {currentStockCategories[category]} Allocation Settings
                 </h4>
+                <button
+                  type="button"
+                  onClick={() => toggleCategoryCollapse(category)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-650 dark:text-gray-300 transition-colors focus:outline-none"
+                >
+                  {collapsedCategories[category] ? (
+                    <>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                      Show Details
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>
+                      Hide Details
+                    </>
+                  )}
+                </button>
               </div>
 
               <div className="flex items-center gap-6">
@@ -1514,140 +1543,144 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
             </div>
 
             {/* Asset list table */}
-            {fieldsForCategory.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100 dark:border-gray-800 text-gray-400 dark:text-gray-500 font-medium">
-                      <th className="py-2.5 pr-4 font-semibold w-2/12">Geography</th>
-                      <th className="py-2.5 pr-4 font-semibold w-3/12">Select Asset / Stock Name</th>
-                      <th className="py-2.5 px-3 font-semibold text-center w-2/12">Recommendation</th>
-                      <th className="py-2.5 px-3 font-semibold text-right w-1.5/12">LTP (Price)</th>
-                      <th className="py-2.5 px-3 font-semibold text-center w-1.5/12">Weight (%)</th>
-                      <th className="py-2.5 px-3 font-semibold text-right w-1/12">Quantity</th>
-                      <th className="py-2.5 px-3 font-semibold text-right w-1.5/12">Order Value</th>
-                      <th className="py-2.5 pl-4 font-semibold text-center w-12">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
-                    {fieldsForCategory.map((field) => (
-                      <tr key={field.id} className="hover:bg-gray-50/30 dark:hover:bg-gray-800/10">
-                        <td className="py-3 pr-4">
-                          <select
-                            className="form-select text-sm shadow-theme-xs text-gray-800 border-gray-300 h-11 w-full border rounded px-2 py-2.5 disabled:opacity-75 disabled:bg-gray-50 dark:disabled:bg-gray-800"
-                            value={field.geography || ''}
-                            disabled={true}
-                            onChange={(e) => {
-                              const geoVal = e.target.value;
-                              setFieldstock(prev => {
-                                const newFields = { ...prev };
-                                if (!newFields[category]) return prev;
-                                newFields[category] = newFields[category].map(f => 
-                                  f.id === field.id ? { ...f, geography: geoVal, selectValue: '', currentPrice: '' } : f
-                                );
-                                return newFields;
-                              });
-                            }}
-                          >
-                            {geographyOptions.map(opt => (
-                              <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="py-3 pr-4">
-                          {renderStockDropdown(category, field)}
-                        </td>
-                        <td className="py-3 px-3 text-center">
-                          {field.recommendationStock === 1 ? (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-success-50 text-success-600 dark:bg-success-500/15 dark:text-success-500">
-                              Buy
-                            </span>
-                          ) : field.recommendationStock === 2 ? (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-warning-50 text-warning-600 dark:bg-warning-500/15 dark:text-orange-400">
-                              Hold
-                            </span>
-                          ) : field.recommendationStock === 3 ? (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-500">
-                              Sell
-                            </span>
-                          ) : (
-                            <span className="text-xs text-gray-400 dark:text-gray-600">—</span>
-                          )}
-                        </td>
+            {!collapsedCategories[category] && (
+              <>
+                {fieldsForCategory.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-100 dark:border-gray-800 text-gray-400 dark:text-gray-500 font-medium">
+                          <th className="py-2.5 pr-4 font-semibold w-2/12">Geography</th>
+                          <th className="py-2.5 pr-4 font-semibold w-3/12">Select Asset / Stock Name</th>
+                          <th className="py-2.5 px-3 font-semibold text-center w-2/12">Recommendation</th>
+                          <th className="py-2.5 px-3 font-semibold text-right w-1.5/12">LTP (Price)</th>
+                          <th className="py-2.5 px-3 font-semibold text-center w-1.5/12">Weight (%)</th>
+                          <th className="py-2.5 px-3 font-semibold text-right w-1/12">Quantity</th>
+                          <th className="py-2.5 px-3 font-semibold text-right w-1.5/12">Order Value</th>
+                          <th className="py-2.5 pl-4 font-semibold text-center w-12">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
+                        {fieldsForCategory.map((field) => (
+                          <tr key={field.id} className="hover:bg-gray-55 dark:hover:bg-gray-800/10">
+                            <td className="py-3 pr-4">
+                              <select
+                                className="form-select text-sm shadow-theme-xs text-gray-800 border-gray-300 h-11 w-full border rounded px-2 py-2.5 disabled:opacity-75 disabled:bg-gray-50 dark:disabled:bg-gray-800"
+                                value={field.geography || ''}
+                                disabled={true}
+                                onChange={(e) => {
+                                  const geoVal = e.target.value;
+                                  setFieldstock(prev => {
+                                    const newFields = { ...prev };
+                                    if (!newFields[category]) return prev;
+                                    newFields[category] = newFields[category].map(f => 
+                                      f.id === field.id ? { ...f, geography: geoVal, selectValue: '', currentPrice: '' } : f
+                                    );
+                                    return newFields;
+                                  });
+                                }}
+                              >
+                                {geographyOptions.map(opt => (
+                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="py-3 pr-4">
+                              {renderStockDropdown(category, field)}
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              {field.recommendationStock === 1 ? (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-success-50 text-success-600 dark:bg-success-500/15 dark:text-success-500">
+                                  Buy
+                                </span>
+                              ) : field.recommendationStock === 2 ? (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-warning-50 text-warning-600 dark:bg-warning-500/15 dark:text-orange-400">
+                                  Hold
+                                </span>
+                              ) : field.recommendationStock === 3 ? (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-500">
+                                  Sell
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-400 dark:text-gray-600">—</span>
+                              )}
+                            </td>
 
-                        <td className="py-3 px-3 text-right font-medium text-gray-950 dark:text-white">
-                          {field.currentPrice ? formatCurrency(field.currentPrice) : '₹0.00'}
-                        </td>
+                            <td className="py-3 px-3 text-right font-medium text-gray-950 dark:text-white">
+                              {field.currentPrice ? formatCurrency(field.currentPrice) : '₹0.00'}
+                            </td>
 
-                        <td className="py-3 px-3">
-                          <div className="relative mx-auto w-24">
-                            <input
-                              type="number"
-                              value={field.weight}
-                              onChange={(e) => handleInputChange1(category, field.id, e)}
-                              placeholder="%"
-                              required
-                              className="h-9 w-full rounded-lg border border-gray-200 dark:border-gray-800 bg-transparent px-2 py-1 text-center text-sm font-semibold text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
-                            />
-                            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
-                          </div>
-                        </td>
+                            <td className="py-3 px-3">
+                              <div className="relative mx-auto w-24">
+                                <input
+                                  type="number"
+                                  value={field.weight}
+                                  onChange={(e) => handleInputChange1(category, field.id, e)}
+                                  placeholder="%"
+                                  required
+                                  className="h-9 w-full rounded-lg border border-gray-200 dark:border-gray-800 bg-transparent px-2 py-1 text-center text-sm font-semibold text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
+                                />
+                                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
+                              </div>
+                            </td>
 
-                        <td className="py-3 px-3 text-right font-mono text-gray-600 dark:text-gray-400">
-                          {field.MinAmountquantity || 0}
-                        </td>
+                            <td className="py-3 px-3 text-right font-mono text-gray-600 dark:text-gray-400">
+                              {field.MinAmountquantity || 0}
+                            </td>
 
-                        <td className="py-3 px-3 text-right font-semibold text-gray-950 dark:text-white">
-                          {field.MinAmountorderValue ? formatCurrency(field.MinAmountorderValue) : '₹0.00'}
-                        </td>
+                            <td className="py-3 px-3 text-right font-semibold text-gray-950 dark:text-white">
+                              {field.MinAmountorderValue ? formatCurrency(field.MinAmountorderValue) : '₹0.00'}
+                            </td>
 
-                        <td className="py-3 pl-4 text-center">
-                          <button
-                            type="button"
-                            onClick={() => removeField1(category, field.id)}
-                            className="p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                            title="Remove asset"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="py-8 text-center text-gray-400 dark:text-gray-500">No assets allocated yet. Click Add Asset to start.</div>
+                            <td className="py-3 pl-4 text-center">
+                              <button
+                                type="button"
+                                onClick={() => removeField1(category, field.id)}
+                                className="p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg hover:bg-gray-55 dark:hover:bg-gray-800 transition-colors"
+                                title="Remove asset"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="py-8 text-center text-gray-400 dark:text-gray-500">No assets allocated yet. Click Add Asset to start.</div>
+                )}
+
+                {/* Asset card footer */}
+                <div className="flex justify-between items-center pt-2">
+                  <button
+                    type="button"
+                    onClick={() => addField1(category)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-600 dark:bg-brand-950/20 dark:hover:bg-brand-950/40 dark:text-brand-400 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Asset
+                  </button>
+
+                  {currentSum === 100 ? (
+                    <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1.5 font-semibold">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Individual weights sum is 100%
+                    </p>
+                  ) : (
+                    <p className="text-xs text-orange-500 dark:text-orange-400 font-medium">
+                      Individual weights sum: {currentSum}%
+                    </p>
+                  )}
+                </div>
+              </>
             )}
-
-            {/* Asset card footer */}
-            <div className="flex justify-between items-center pt-2">
-              <button
-                type="button"
-                onClick={() => addField1(category)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-600 dark:bg-brand-950/20 dark:hover:bg-brand-950/40 dark:text-brand-400 transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Add Asset
-              </button>
-
-              {currentSum === 100 ? (
-                <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1.5 font-semibold">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Individual weights sum is 100%
-                </p>
-              ) : (
-                <p className="text-xs text-orange-500 dark:text-orange-400 font-medium">
-                  Individual weights sum: {currentSum}%
-                </p>
-              )}
-            </div>
           </div>
         );
       })}
