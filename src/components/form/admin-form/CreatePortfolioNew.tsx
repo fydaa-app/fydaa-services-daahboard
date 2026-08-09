@@ -173,6 +173,7 @@ interface Field {
   mainCategory?: string;
   recommendationStock?: number;
   geography?: string;
+  label?: string;
 }
 
 interface LocalTemplateStock {
@@ -455,7 +456,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
 
     const displayOptions = [...optionsToUse];
     if (isSelectedValueInvalid) {
-      const fieldLabel = (field as any).label || `Asset #${field.selectValue}`;
+      const fieldLabel = field.label || `Asset #${field.selectValue}`;
       displayOptions.push({
         value: field.selectValue,
         label: fieldLabel,

@@ -174,6 +174,7 @@ interface Field {
   options?: StockOption[];
   recommendationStock?: number;
   geography?: string;
+  label?: string;
 }
 
 interface Goal {
@@ -637,7 +638,7 @@ export default function ClonePortfolioNew({ isOpen, onClose, PortfolioData, type
 
     const displayOptions = [...optionsToUse];
     if (isSelectedValueInvalid) {
-      const fieldLabel = (field as any).label || `Asset #${field.selectValue}`;
+      const fieldLabel = field.label || `Asset #${field.selectValue}`;
       displayOptions.push({
         value: field.selectValue,
         label: fieldLabel,
