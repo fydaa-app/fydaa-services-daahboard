@@ -552,17 +552,31 @@ export default function AssetClassTemplatesPage() {
                                   </select>
                                 </td>
                                 <td className="py-3 pr-4">
-                                  <select
-                                    value={field.selectValue}
-                                    onChange={(e) => handleFieldChange(field.id, "selectValue", e.target.value)}
-                                    className="form-select text-sm border rounded-lg px-3 py-1.5 w-full border-gray-300 dark:bg-gray-700 dark:text-white dark:border-gray-650"
-                                    required
-                                  >
-                                    <option value="">Select Asset/Fund</option>
-                                    {filteredOptions.map(opt => (
-                                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                    ))}
-                                  </select>
+                                  {(() => {
+                                    const isSelectedValueInvalid = field.selectValue && !filteredOptions.some(opt => opt.value.toString() === field.selectValue.toString());
+                                    return (
+                                      <div className="space-y-1">
+                                        <select
+                                          value={field.selectValue}
+                                          onChange={(e) => handleFieldChange(field.id, "selectValue", e.target.value)}
+                                          className={`form-select text-sm border rounded-lg px-3 py-1.5 w-full ${
+                                            isSelectedValueInvalid ? 'border-red-300 text-red-900 bg-red-50 focus:border-red-500' : 'border-gray-300 dark:bg-gray-700 dark:text-white dark:border-gray-650'
+                                          }`}
+                                          required
+                                        >
+                                          <option value="">Select Asset/Fund</option>
+                                          {filteredOptions.map(opt => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                          ))}
+                                        </select>
+                                        {isSelectedValueInvalid && (
+                                          <span className="text-red-500 text-xs font-semibold block mt-1">
+                                            This asset is no longer available
+                                          </span>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
                                 </td>
                                 <td className="py-3 pr-4 text-center">
                                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400">

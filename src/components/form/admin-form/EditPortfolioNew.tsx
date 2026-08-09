@@ -628,51 +628,62 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
       optionsToUse = optionsToUse.filter(opt => opt.geography === field.geography);
     }
 
+    const isSelectedValueInvalid = field.selectValue && !optionsToUse.some(opt => opt.value.toString() === field.selectValue.toString());
+
     return (
-      <select
-        className="form-select text-sm shadow-theme-xs text-gray-800 border-gray-300 h-11 w-full border rounded px-2 py-2.5"
-        value={field.selectValue}
-        onChange={(e) => {
-          const value = e.target.value;          
-          const matchingOption = optionsToUse.find(opt => opt.value == value);
-          const currentPrice = matchingOption?.currentPrice || '';
-          const recStock = matchingOption && 'recommendationStock' in matchingOption ? matchingOption.recommendationStock : undefined;
-          
-          setFieldstock(prev => {
-            const newFields = {...prev};
-            if (!newFields[category]) return prev;
+      <div className="space-y-1">
+        <select
+          className={`form-select text-sm shadow-theme-xs h-11 w-full border rounded px-2 py-2.5 ${
+            isSelectedValueInvalid ? 'border-red-300 text-red-900 bg-red-50 focus:border-red-500' : 'text-gray-800 border-gray-300'
+          }`}
+          value={field.selectValue}
+          onChange={(e) => {
+            const value = e.target.value;          
+            const matchingOption = optionsToUse.find(opt => opt.value == value);
+            const currentPrice = matchingOption?.currentPrice || '';
+            const recStock = matchingOption && 'recommendationStock' in matchingOption ? matchingOption.recommendationStock : undefined;
             
-            newFields[category] = newFields[category].map(f => 
-              f.id === field.id ? {
-                ...f,
-                selectValue: value,
-                currentPrice: currentPrice,
-                recommendationStock: recStock
-              } : f
+            setFieldstock(prev => {
+              const newFields = {...prev};
+              if (!newFields[category]) return prev;
+              
+              newFields[category] = newFields[category].map(f => 
+                f.id === field.id ? {
+                  ...f,
+                  selectValue: value,
+                  currentPrice: currentPrice,
+                  recommendationStock: recStock
+                } : f
+              );
+              
+              setTimeout(() => {
+                calculateCapTypeWeights(newFields);
+                calculateStockTypeWeights(newFields);
+                calculateSummary(newFields);
+                calculateOrderValue(newFields, totalWeights, portfolioDetails);
+              }, 0);
+             
+              return newFields;
+            });
+          }}
+        >
+          <option value="">{placeholderText}</option>
+          {optionsToUse.map(option => {
+            const recStock = 'recommendationStock' in option ? option.recommendationStock : undefined;
+            const recLabel = recStock === 1 ? " (Buy)" : recStock === 2 ? " (Hold)" : recStock === 3 ? " (Sell)" : "";
+            return (
+              <option key={option.value} value={option.value}>
+                {option.label}{recLabel}
+              </option>
             );
-            
-            setTimeout(() => {
-              calculateCapTypeWeights(newFields);
-              calculateStockTypeWeights(newFields);
-              calculateSummary(newFields);
-              calculateOrderValue(newFields, totalWeights, portfolioDetails);
-            }, 0);
-           
-            return newFields;
-          });
-        }}
-      >
-        <option value="">{placeholderText}</option>
-        {optionsToUse.map(option => {
-          const recStock = 'recommendationStock' in option ? option.recommendationStock : undefined;
-          const recLabel = recStock === 1 ? " (Buy)" : recStock === 2 ? " (Hold)" : recStock === 3 ? " (Sell)" : "";
-          return (
-            <option key={option.value} value={option.value}>
-              {option.label}{recLabel}
-            </option>
-          );
-        })}
-      </select>
+          })}
+        </select>
+        {isSelectedValueInvalid && (
+          <span className="text-red-500 text-xs font-semibold block mt-1">
+            This asset is no longer available
+          </span>
+        )}
+      </div>
     );
   };
 
