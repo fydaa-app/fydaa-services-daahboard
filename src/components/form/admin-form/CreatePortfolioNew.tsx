@@ -1588,17 +1588,31 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
               Asset Wise Allocation
             </h4>
             <div className="space-y-4">
-              {Object.entries(totalWeights).map(([category, weight]) => (
-                <div key={category} className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500 dark:text-gray-400 font-semibold">{currentStockCategories[category] || stock[category] || category}</span>
-                    <span className="font-bold text-gray-900 dark:text-white">{weight.toFixed(2)}%</span>
-                  </div>
-                  <div className="w-full bg-gray-100 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-brand-500 h-full rounded-full transition-all duration-300" style={{ width: `${weight}%` }} />
-                  </div>
-                </div>
-              ))}
+              {(() => {
+                const allSystemOptions = [...initialOptions, ...initialUOptions, ...initialWOptions, ...initialMOptions];
+                return Object.entries(totalWeights).map(([category, weight]) => {
+                  const categoryFields = fieldstock[category] || [];
+                  const hasInvalidAsset = categoryFields.some(f => 
+                    f.selectValue && !allSystemOptions.some(opt => opt.value.toString() === f.selectValue.toString())
+                  );
+                  return (
+                    <div key={category} className="space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500 dark:text-gray-400 font-semibold">{currentStockCategories[category] || (stock as Record<string, string>)[category] || category}</span>
+                        <span className="font-bold text-gray-900 dark:text-white">{weight.toFixed(2)}%</span>
+                      </div>
+                      <div className="w-full bg-gray-100 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
+                        <div className="bg-brand-500 h-full rounded-full transition-all duration-300" style={{ width: `${weight}%` }} />
+                      </div>
+                      {hasInvalidAsset && (
+                        <span className="text-red-500 text-xs font-semibold block mt-1">
+                          This asset is no longer available
+                        </span>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </div>
 
