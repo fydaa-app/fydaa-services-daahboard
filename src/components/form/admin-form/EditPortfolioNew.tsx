@@ -1640,7 +1640,7 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
               {Object.entries(totalWeights).map(([category, weight]) => (
                 <div key={category} className="space-y-1">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500 dark:text-gray-400 font-semibold">{stock[category]}</span>
+                    <span className="text-gray-500 dark:text-gray-400 font-semibold">{currentStockCategories[category] || stock[category] || category}</span>
                     <span className="font-bold text-gray-900 dark:text-white">{weight.toFixed(2)}%</span>
                   </div>
                   <div className="w-full bg-gray-100 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
