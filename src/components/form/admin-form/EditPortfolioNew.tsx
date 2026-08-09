@@ -787,33 +787,45 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
         if (highestLTPItem) {
             for (const item of enrichedOptions) {
                 let amount = 0;
+                const price = Number(item.currentPrice) || 0;
                 
-                const price = Number(item.currentPrice);
-                item.minimumamount = parseFloat(highestLTPItem.ltp) * item.weightNew / highestLTPItem.weightNew;
-                amount = item.minimumamount;
-
-                const divisionResult = amount / price;
-                
-                const isMutualFund = 'switchMultiples' in item && item.switchMultiples !== undefined;
-                
-                const roundedResult = Math.round(divisionResult);
-                item.quantity = Math.max(roundedResult, 1);
-                item.orderValue = item.quantity * price;
-                item.stock = divisionResult;
-                
-                let minamount = 0;
-                item.MinAmountminimumamount = item.weightNew * parseFloat(portfolioDetails.minimumInvestment);
-                minamount = item.MinAmountminimumamount;
-
-                const MindivisionResult = minamount / price;
-                
-                if (isMutualFund) {
-                    item.MinAmountquantity = Number((MindivisionResult).toFixed(2));
-                    item.MinAmountorderValue = minamount;
+                if (price <= 0) {
+                    item.minimumamount = 0;
+                    item.quantity = 0;
+                    item.orderValue = 0;
+                    item.stock = 0;
+                    item.MinAmountminimumamount = 0;
+                    item.MinAmountquantity = 0;
+                    item.MinAmountorderValue = 0;
                 } else {
-                    const MinroundedResult = Math.round(MindivisionResult);
-                    item.MinAmountquantity = Math.max(MinroundedResult, 1);
-                    item.MinAmountorderValue = item.MinAmountquantity * price;
+                    const highestWeightNew = highestLTPItem.weightNew || 1;
+                    item.minimumamount = parseFloat(highestLTPItem.ltp) * item.weightNew / highestWeightNew;
+                    amount = item.minimumamount;
+
+                    const divisionResult = amount / price;
+                    
+                    const isMutualFund = 'switchMultiples' in item && item.switchMultiples !== undefined;
+                    
+                    const roundedResult = Math.round(divisionResult);
+                    item.quantity = Math.max(roundedResult, 1);
+                    item.orderValue = item.quantity * price;
+                    item.stock = divisionResult;
+                    
+                    let minamount = 0;
+                    const minInvestmentVal = parseFloat(portfolioDetails.minimumInvestment) || parseFloat(portfolioDetails.orderAmount) || 10000;
+                    item.MinAmountminimumamount = item.weightNew * minInvestmentVal;
+                    minamount = item.MinAmountminimumamount;
+
+                    const MindivisionResult = minamount / price;
+                    
+                    if (isMutualFund) {
+                        item.MinAmountquantity = Number((MindivisionResult).toFixed(2));
+                        item.MinAmountorderValue = minamount;
+                    } else {
+                        const MinroundedResult = Math.round(MindivisionResult);
+                        item.MinAmountquantity = Math.max(MinroundedResult, 1);
+                        item.MinAmountorderValue = item.MinAmountquantity * price;
+                    }
                 }
             }
         }
@@ -843,6 +855,7 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
                 });
             }
         } 
+        setFieldstock({ ...dataInvst });
   };
 
 
@@ -1014,6 +1027,40 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
       calculateOrderValue(updatedFields, totalWeights, portfolioDetails);
       return updatedFields;
     });
+  };
+
+  const clearAllFields1 = (category: string) => {
+    setFieldstock((prevFields) => {
+      const updatedFields = {
+        ...prevFields,
+        [category]: []
+      };
+      calculateOrderValue(updatedFields, totalWeights, portfolioDetails);
+      return updatedFields;
+    });
+  };
+
+  const removeCategory = (category: string) => {
+    if (window.confirm(`Are you sure you want to remove the asset class "${currentStockCategories[category] || category}"?`)) {
+      setSelectedCategories((prev) => {
+        const newSelectedCategories = prev.filter((cat) => cat !== category);
+        const newFields = { ...fieldstock };
+        delete newFields[category];
+        setFieldstock(newFields);
+        setTotalWeights((prevWeights) => {
+          const newWeights = { ...prevWeights };
+          delete newWeights[category];
+          calculateOrderValue(newFields, newWeights, portfolioDetails);
+          return newWeights;
+        });
+        return newSelectedCategories;
+      });
+      setCollapsedCategories((prev) => {
+        const newCollapsed = { ...prev };
+        delete newCollapsed[category];
+        return newCollapsed;
+      });
+    }
   };
 
   const calculateSummary = (fields: FieldsState) => {
@@ -1274,7 +1321,12 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
               min="0"
               placeholder="Enter Minimum Amount"
               value={portfolioDetails.minimumInvestment}
-              onChange={(e) => setPortfolioDetails({ ...portfolioDetails, minimumInvestment: e.target.value })}
+              onChange={(e) => {
+                const val = e.target.value;
+                const updatedDetails = { ...portfolioDetails, minimumInvestment: val };
+                setPortfolioDetails(updatedDetails);
+                calculateOrderValue(fieldstock, totalWeights, updatedDetails);
+              }}
               className="h-11 border-gray-200 dark:border-gray-800"
             />
           </div>
@@ -1287,7 +1339,12 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
               min="0"
               placeholder="System Amount"
               value={portfolioDetails.orderAmount}
-              onChange={(e) => setPortfolioDetails({ ...portfolioDetails, orderAmount: e.target.value })}
+              onChange={(e) => {
+                const val = e.target.value;
+                const updatedDetails = { ...portfolioDetails, orderAmount: val };
+                setPortfolioDetails(updatedDetails);
+                calculateOrderValue(fieldstock, totalWeights, updatedDetails);
+              }}
               className="h-11 border-gray-200 dark:border-gray-800"
             />
           </div>
@@ -1514,6 +1571,32 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
                       Hide Details
                     </>
                   )}
+                </button>
+                {fieldsForCategory.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm('Are you sure you want to delete all assets in this category?')) {
+                        clearAllFields1(category);
+                      }
+                    }}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-655 dark:text-red-400 transition-colors focus:outline-none"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Delete All
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => removeCategory(category)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 transition-colors focus:outline-none"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Remove Class
                 </button>
               </div>
 

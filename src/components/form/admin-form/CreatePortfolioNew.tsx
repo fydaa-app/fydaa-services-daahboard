@@ -174,6 +174,7 @@ interface Field {
   recommendationStock?: number;
   geography?: string;
   label?: string;
+  templateId?: string;
 }
 
 interface LocalTemplateStock {
@@ -246,6 +247,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
   const [isLoading, setIsLoading] = useState(false);
   const [selectedGeography, setSelectedGeography] = useState<string>('');
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<Record<string, string>>({});
 
   const toggleCategoryCollapse = (category: string) => {
     setCollapsedCategories(prev => ({
@@ -416,6 +418,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
     const isStockCategory = selectedMainCategories.includes('Stocks');
     const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
     const isEtfCategory = selectedMainCategories.includes('ETF');
+    const isTemplateSelected = !!selectedTemplateIds[category];
     
     let optionsToUse: (StockOption | MutualFundOption)[] = [];
     let placeholderText = "Select option";
@@ -485,7 +488,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
             isSelectedValueInvalid ? 'border-red-300 text-red-900 bg-red-50 focus:border-red-500' : 'text-gray-800 border-gray-300'
           }`}
           value={field.selectValue}
-          disabled={optionsToUse.length === 0}
+          disabled={optionsToUse.length === 0 || isTemplateSelected}
           onChange={(e) => {
             const value = e.target.value;          
             const matchingOption = displayOptions.find(opt => opt.value == value);
@@ -539,84 +542,92 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
 
 
   const calculateOrderValue = (fields: FieldsState, Weights: WeightsState, portfolioDetails: PortfolioData) => {
-    const totalSum = Object.values(Weights).reduce((sum, value) => sum + value, 0);
-    if (totalSum === 100) {
-        const dataInvst = fields;        
-        const newWeights = Weights;
-        const idsArr: number[] = [];
-        const weightsArr: number[] = [];
+    const dataInvst = fields;        
+    const newWeights = Weights;
+    const idsArr: number[] = [];
+    const weightsArr: number[] = [];
 
-        for (const key in newWeights) {
-            if (newWeights.hasOwnProperty(key)) {
-                const weightPercentage = newWeights[key]; 
-                if (Array.isArray(dataInvst[key])) { 
-                    dataInvst[key].forEach(item => {
-                        const itemWeight = parseFloat(item.weight); 
-                        if (!isNaN(itemWeight)) {
-                            idsArr.push(parseInt(item.selectValue.toString(), 10));
-                            weightsArr.push(parseFloat(((itemWeight * weightPercentage) / 100).toString())); 
-                        }
-                    });
-                }
+    for (const key in newWeights) {
+        if (newWeights.hasOwnProperty(key)) {
+            const weightPercentage = newWeights[key]; 
+            if (Array.isArray(dataInvst[key])) { 
+                dataInvst[key].forEach(item => {
+                    const itemWeight = parseFloat(item.weight); 
+                    if (!isNaN(itemWeight)) {
+                        idsArr.push(parseInt(item.selectValue.toString(), 10));
+                        weightsArr.push(parseFloat(((itemWeight * weightPercentage) / 100).toString())); 
+                    }
+                });
             }
-        } 
-        
-        const stockWeights = idsArr.reduce((acc, id, index) => {
-            acc[id] = weightsArr[index];
-            return acc;
-        }, {} as { [key: number]: number });
-
-        const idsSet = new Set(idsArr);
-        
-        const isStockCategory = selectedMainCategories.includes('Stocks');
-        const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
-        const isEtfCategory = selectedMainCategories.includes('ETF');
-        let optionsToFilter: (StockOption | MutualFundOption)[] = [];
-        
-        if (isStockCategory && !isMutualFundCategory && !isEtfCategory) {
-          optionsToFilter = [...initialOptions, ...initialUOptions, ...initialWOptions];
-        } else if (isMutualFundCategory && !isStockCategory && !isEtfCategory) {
-          optionsToFilter = initialMOptions;
-        } else if (isEtfCategory && !isStockCategory && !isMutualFundCategory) {
-          optionsToFilter = [...initialOptions, ...initialUOptions, ...initialWOptions].filter(opt => opt.capType === 'ETF');
-        } else {
-          optionsToFilter = [...initialOptions, ...initialMOptions, ...initialUOptions, ...initialWOptions];
         }
-        
-        const filteredOptions = optionsToFilter.filter(option => idsSet.has(parseInt(option.value, 10)));
-        
-        const enrichedOptions = filteredOptions.map(option => {
-            const id = parseInt(option.value, 10);
-            return {
-                ...option,
-                minimumamount: 0,
-                quantity: 0,
-                MinAmountminimumamount: 0,
-                MinAmountquantity: 0,
-                MinAmountorderValue: 0,
-                stock: 0,
-                orderValue: 0,
-                ltp: option.currentPrice,
-                weightNew: stockWeights[id] !== undefined ? stockWeights[id] / 100 : 0
-            };
-        });                
-        
-        let highestLTP = -Infinity;
-        let highestLTPItem = null;
+    } 
+    
+    const stockWeights = idsArr.reduce((acc, id, index) => {
+        acc[id] = weightsArr[index];
+        return acc;
+    }, {} as { [key: number]: number });
+
+    const idsSet = new Set(idsArr);
+    
+    const isStockCategory = selectedMainCategories.includes('Stocks');
+    const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
+    const isEtfCategory = selectedMainCategories.includes('ETF');
+    let optionsToFilter: (StockOption | MutualFundOption)[] = [];
+    
+    if (isStockCategory && !isMutualFundCategory && !isEtfCategory) {
+      optionsToFilter = [...initialOptions, ...initialUOptions, ...initialWOptions];
+    } else if (isMutualFundCategory && !isStockCategory && !isEtfCategory) {
+      optionsToFilter = initialMOptions;
+    } else if (isEtfCategory && !isStockCategory && !isMutualFundCategory) {
+      optionsToFilter = [...initialOptions, ...initialUOptions, ...initialWOptions].filter(opt => opt.capType === 'ETF');
+    } else {
+      optionsToFilter = [...initialOptions, ...initialMOptions, ...initialUOptions, ...initialWOptions];
+    }
+    
+    const filteredOptions = optionsToFilter.filter(option => idsSet.has(parseInt(option.value, 10)));
+    
+    const enrichedOptions = filteredOptions.map(option => {
+        const id = parseInt(option.value, 10);
+        return {
+            ...option,
+            minimumamount: 0,
+            quantity: 0,
+            MinAmountminimumamount: 0,
+            MinAmountquantity: 0,
+            MinAmountorderValue: 0,
+            stock: 0,
+            orderValue: 0,
+            ltp: option.currentPrice,
+            weightNew: stockWeights[id] !== undefined ? stockWeights[id] / 100 : 0
+        };
+    });                
+    
+    let highestLTP = -Infinity;
+    let highestLTPItem = null;
+    for (const item of enrichedOptions) {
+        const price = Number(item.currentPrice);
+        if (!isNaN(price) && price > highestLTP) {
+            highestLTP = price; 
+            highestLTPItem = item;
+        }
+    }
+    
+    if (highestLTPItem) {
         for (const item of enrichedOptions) {
-            const price = Number(item.currentPrice);
-            if (!isNaN(price) && price > highestLTP) {
-                highestLTP = price; 
-                highestLTPItem = item;
-            }
-        }
-        
-        if (highestLTPItem) {
-            for (const item of enrichedOptions) {
-                let amount = 0;
-                
-                const price = Number(item.currentPrice);
-                item.minimumamount = parseFloat(highestLTPItem.ltp) * item.weightNew / highestLTPItem.weightNew;
+            let amount = 0;
+            const price = Number(item.currentPrice) || 0;
+            
+            if (price <= 0) {
+                item.minimumamount = 0;
+                item.quantity = 0;
+                item.orderValue = 0;
+                item.stock = 0;
+                item.MinAmountminimumamount = 0;
+                item.MinAmountquantity = 0;
+                item.MinAmountorderValue = 0;
+            } else {
+                const highestWeightNew = highestLTPItem.weightNew || 1;
+                item.minimumamount = parseFloat(highestLTPItem.ltp) * item.weightNew / highestWeightNew;
                 amount = item.minimumamount;
 
                 const divisionResult = amount / price;
@@ -636,7 +647,8 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
                 }
                 
                 let minamount = 0;
-                item.MinAmountminimumamount = item.weightNew * parseFloat(portfolioDetails.minimumInvestment);
+                const minInvestmentVal = parseFloat(portfolioDetails.minimumInvestment) || parseFloat(portfolioDetails.orderAmount) || 10000;
+                item.MinAmountminimumamount = item.weightNew * minInvestmentVal;
                 minamount = item.MinAmountminimumamount;
 
                 const MindivisionResult = minamount / price;
@@ -651,38 +663,50 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
                 }
             }
         }
-        
-        const totalOrderAmount = enrichedOptions.reduce((sum, stock) => {
-            return sum + (stock.orderValue ?? 0);
-        }, 0);
-        setPortfolioDetails(prevDetails => ({
-            ...prevDetails,
-            orderAmount: parseFloat(totalOrderAmount.toString()).toFixed(2),
-        }));        
-
-        const secondArrayMap = new Map(enrichedOptions.map(item => [item.value.toString(), item]));
-
-        for (const key in dataInvst) {
-            if (dataInvst.hasOwnProperty(key)) {
-                dataInvst[key] = dataInvst[key].map(item => {
-                    const match = secondArrayMap.get(item.selectValue);
-                    if (match) {
-                        return {
-                            ...item,
-                            ...match, 
-                        };
-                    }
-                    return item;
-                });
-            }
-        } 
     }
+    
+    const totalOrderAmount = enrichedOptions.reduce((sum, stock) => {
+        return sum + (stock.orderValue ?? 0);
+    }, 0);
+    setPortfolioDetails(prevDetails => ({
+        ...prevDetails,
+        orderAmount: parseFloat(totalOrderAmount.toString()).toFixed(2),
+    }));        
+
+    const secondArrayMap = new Map(enrichedOptions.map(item => [item.value.toString(), item]));
+
+    for (const key in dataInvst) {
+        if (dataInvst.hasOwnProperty(key)) {
+            dataInvst[key] = dataInvst[key].map(item => {
+                const match = secondArrayMap.get(item.selectValue);
+                if (match) {
+                    return {
+                        ...item,
+                        ...match, 
+                    };
+                }
+                return item;
+            });
+        }
+    } 
+    setFieldstock({ ...dataInvst });
   };
 
   const handleApplyTemplate = (category: string, template: LocalAssetClassTemplate) => {
+    setSelectedTemplateIds(prev => ({
+      ...prev,
+      [category]: template.id.toString()
+    }));
+    const nextWeights = { ...totalWeights };
     if (template.targetWeight) {
+      nextWeights[category] = template.targetWeight;
       updateTotalWeight(category, template.targetWeight);
     }
+    
+    setCollapsedCategories((prev) => ({
+      ...prev,
+      [category]: true,
+    }));
     
     let parsedStocks = template.stocks;
     if (typeof template.stocks === 'string') {
@@ -717,7 +741,8 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
         geography: item.geography || opt?.geography || selectedGeography,
         options: optionsToUse,
         MinAmountquantity: 0,
-        MinAmountorderValue: 0
+        MinAmountorderValue: 0,
+        templateId: template.id.toString()
       };
     });
     
@@ -727,7 +752,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
         calculateCapTypeWeights(updated);
         calculateStockTypeWeights(updated);
         calculateSummary(updated);
-        calculateOrderValue(updated, { ...totalWeights, [category]: template.targetWeight || 0 }, portfolioDetails);
+        calculateOrderValue(updated, nextWeights, portfolioDetails);
       }, 0);
       return updated;
     });
@@ -737,7 +762,16 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
 
   const handleCategoryWeightChange = (category: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = event.target;
-    const weight = parseFloat(value) || 0;
+    if (value === '') {
+      updateTotalWeight(category, 0);
+      return;
+    }
+    let weight = parseFloat(value) || 0;
+    if (weight > 100) {
+      weight = 100;
+    } else if (weight < 0) {
+      weight = 0;
+    }
     updateTotalWeight(category, weight);
   };
 
@@ -758,6 +792,11 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
         delete newFields[category];
         setFieldstock(newFields);
         calculateOrderValue(newFields, totalWeights, portfolioDetails);
+        setSelectedTemplateIds(prevTpl => {
+          const nextTpl = { ...prevTpl };
+          delete nextTpl[category];
+          return nextTpl;
+        });
         return newSelectedCategories;
       } else {
         const isStockCategory = selectedMainCategories.includes('Stocks');
@@ -774,7 +813,11 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
         }
 
         const targetPortfolioType = isMutualFundCategory ? 'MUTUALFUND' : isEtfCategory ? 'ETF' : 'STOCK';
-        const matchingTemplates = templates.filter(t => t.category === category && t.portfolioType === targetPortfolioType);
+        const matchingTemplates = templates.filter(t => 
+          t.category === category && 
+          t.portfolioType === targetPortfolioType &&
+          (!selectedGeography || t.geography === selectedGeography)
+        );
 
         setFieldstock((prevFields) => {
             const newFields = {
@@ -795,6 +838,10 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
             if (matchingTemplates.length > 0) {
               setTimeout(() => {
                 handleApplyTemplate(category, matchingTemplates[0]);
+                setSelectedTemplateIds(prevTpl => ({
+                  ...prevTpl,
+                  [category]: matchingTemplates[0].id.toString()
+                }));
               }, 0);
             }
             
@@ -830,10 +877,12 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
     setFieldstock({});
     setTotalWeights({});
     setSelectedGeography('');
+    setSelectedTemplateIds({});
   };
 
   const handleGlobalGeographyChange = (geoVal: string) => {
     setSelectedGeography(geoVal);
+    setSelectedTemplateIds({});
     setFieldstock(prev => {
       const newFields = { ...prev };
       for (const category in newFields) {
@@ -859,57 +908,84 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
   };
  
   const addField1 = (category: string) => {
-    setFieldstock((prevFields) => {
-        const categoryFields = prevFields[category] || [];
-        const newId = categoryFields.length > 0 
-                        ? Math.max(...categoryFields.map(field => field.id)) + 1 
-                        : 1;
-        
-        const isStockCategory = selectedMainCategories.includes('Stocks');
-        const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
-        const isEtfCategory = selectedMainCategories.includes('ETF');
-        let optionsToUse: (StockOption | MutualFundOption)[] = [];
-        
-        if (isStockCategory && !isMutualFundCategory && !isEtfCategory) {
-          optionsToUse = [...initialOptions, ...initialUOptions, ...initialWOptions];
-        } else if (isMutualFundCategory && !isStockCategory && !isEtfCategory) {
-          optionsToUse = initialMOptions;
-        } else if (isEtfCategory && !isStockCategory && !isMutualFundCategory) {
-          optionsToUse = [...initialOptions, ...initialUOptions, ...initialWOptions].filter(opt => opt.capType === 'ETF');
-        }
+    const categoryFields = fieldstock[category] || [];
+    const newId = categoryFields.length > 0 
+                    ? Math.max(...categoryFields.map(field => field.id)) + 1 
+                    : 1;
+    
+    const isStockCategory = selectedMainCategories.includes('Stocks');
+    const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
+    const isEtfCategory = selectedMainCategories.includes('ETF');
+    let optionsToUse: (StockOption | MutualFundOption)[] = [];
+    
+    if (isStockCategory && !isMutualFundCategory && !isEtfCategory) {
+      optionsToUse = [...initialOptions, ...initialUOptions, ...initialWOptions];
+    } else if (isMutualFundCategory && !isStockCategory && !isEtfCategory) {
+      optionsToUse = initialMOptions;
+    } else if (isEtfCategory && !isStockCategory && !isMutualFundCategory) {
+      optionsToUse = [...initialOptions, ...initialUOptions, ...initialWOptions].filter(opt => opt.capType === 'ETF');
+    }
 
-        const newField: Field = { 
-          id: newId, 
-          selectValue: '', 
-          weight: '', 
-          currentPrice: '', 
-          options: optionsToUse, 
-          MinAmountquantity: 0, 
-          MinAmountorderValue: 0,
-          geography: selectedGeography
-        };
-        
-        const updatedFields = {
-          ...prevFields,
-          [category]: [...categoryFields, newField],
-        };
-        
-        calculateOrderValue(updatedFields, totalWeights, portfolioDetails);
-        return updatedFields;
-    });
+    const newField: Field = { 
+      id: newId, 
+      selectValue: '', 
+      weight: '', 
+      currentPrice: '', 
+      options: optionsToUse, 
+      MinAmountquantity: 0, 
+      MinAmountorderValue: 0,
+      geography: selectedGeography
+    };
+    
+    const updatedFields = {
+      ...fieldstock,
+      [category]: [...categoryFields, newField],
+    };
+    
+    setFieldstock(updatedFields);
+    calculateOrderValue(updatedFields, totalWeights, portfolioDetails);
   };
 
   const removeField1 = (category: string, id: number) => {
-    setFieldstock((prevFields) => {
-      const updatedCategoryFields = prevFields[category].filter((field) => field.id !== id);
-      const updatedFields = {
-        ...prevFields,
-        [category]: updatedCategoryFields,
-      };
-      
-      calculateOrderValue(updatedFields, totalWeights, portfolioDetails);
-      return updatedFields;
-    });
+    const updatedCategoryFields = (fieldstock[category] || []).filter((field) => field.id !== id);
+    const updatedFields = {
+      ...fieldstock,
+      [category]: updatedCategoryFields,
+    };
+    setFieldstock(updatedFields);
+    calculateOrderValue(updatedFields, totalWeights, portfolioDetails);
+  };
+
+  const clearAllFields1 = (category: string) => {
+    const updatedFields = {
+      ...fieldstock,
+      [category]: []
+    };
+    setFieldstock(updatedFields);
+    calculateOrderValue(updatedFields, totalWeights, portfolioDetails);
+  };
+
+  const removeCategory = (category: string) => {
+    if (window.confirm(`Are you sure you want to remove the asset class "${currentStockCategories[category] || category}"?`)) {
+      setSelectedCategories((prev) => {
+        const newSelectedCategories = prev.filter((cat) => cat !== category);
+        const newFields = { ...fieldstock };
+        delete newFields[category];
+        setFieldstock(newFields);
+        setTotalWeights((prevWeights) => {
+          const newWeights = { ...prevWeights };
+          delete newWeights[category];
+          calculateOrderValue(newFields, newWeights, portfolioDetails);
+          return newWeights;
+        });
+        return newSelectedCategories;
+      });
+      setCollapsedCategories((prev) => {
+        const newCollapsed = { ...prev };
+        delete newCollapsed[category];
+        return newCollapsed;
+      });
+    }
   };
 
   const calculateSummary = (fields: FieldsState) => {
@@ -1165,7 +1241,12 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
               min="0"
               placeholder="Enter Minimum Amount"
               value={portfolioDetails.minimumInvestment}
-              onChange={(e) => setPortfolioDetails({ ...portfolioDetails, minimumInvestment: e.target.value })}
+              onChange={(e) => {
+                const val = e.target.value;
+                const updatedDetails = { ...portfolioDetails, minimumInvestment: val };
+                setPortfolioDetails(updatedDetails);
+                calculateOrderValue(fieldstock, totalWeights, updatedDetails);
+              }}
               className="h-11 border-gray-200 dark:border-gray-800"
             />
           </div>
@@ -1178,7 +1259,12 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
               min="0"
               placeholder="System Amount"
               value={portfolioDetails.orderAmount}
-              onChange={(e) => setPortfolioDetails({ ...portfolioDetails, orderAmount: e.target.value })}
+              onChange={(e) => {
+                const val = e.target.value;
+                const updatedDetails = { ...portfolioDetails, orderAmount: val };
+                setPortfolioDetails(updatedDetails);
+                calculateOrderValue(fieldstock, totalWeights, updatedDetails);
+              }}
               className="h-11 border-gray-200 dark:border-gray-800"
             />
           </div>
@@ -1407,26 +1493,74 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
                       </>
                     )}
                   </button>
+                  {fieldsForCategory.length > 0 && !selectedTemplateIds[category] && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm('Are you sure you want to delete all assets in this category?')) {
+                          clearAllFields1(category);
+                        }
+                      }}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-655 dark:text-red-400 transition-colors focus:outline-none"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Delete All
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeCategory(category)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 transition-colors focus:outline-none"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Remove Class
+                  </button>
                 </div>
                 {/* Template load selector dropdown */}
                 {(() => {
                   const targetType = selectedMainCategories.includes('MutualFunds') ? 'MUTUALFUND' : selectedMainCategories.includes('ETF') ? 'ETF' : 'STOCK';
-                  const filtered = templates.filter(t => t.category === category && t.portfolioType === targetType);
+                  const filtered = templates.filter(t => 
+                    t.category === category && 
+                    t.portfolioType === targetType &&
+                    (!selectedGeography || t.geography === selectedGeography)
+                  );
                   if (filtered.length === 0) return null;
                   return (
                     <div className="flex items-center gap-2 ml-0 sm:ml-4">
                       <span className="text-xs text-gray-400 dark:text-gray-500">Load Template:</span>
                       <select
+                        value={selectedTemplateIds[category] || ""}
                         onChange={(e) => {
                           const selectedTplId = e.target.value;
-                          if (!selectedTplId) return;
+                          if (!selectedTplId) {
+                            setSelectedTemplateIds(prev => {
+                              const next = { ...prev };
+                              delete next[category];
+                              return next;
+                            });
+                            setFieldstock(prev => {
+                              const next = { ...prev };
+                              if (next[category]) {
+                                next[category] = next[category].map(f => {
+                                  const updatedField = { ...f };
+                                  delete updatedField.templateId;
+                                  return updatedField;
+                                });
+                              }
+                              return next;
+                            });
+                            return;
+                          }
                           const selectedTpl = templates.find(t => t.id.toString() === selectedTplId);
                           if (selectedTpl) {
                             handleApplyTemplate(category, selectedTpl);
                           }
                         }}
                         className="form-select text-xs border rounded-lg px-2 py-1 border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700 focus:outline-none"
-                        defaultValue=""
                       >
                         <option value="">-- Select Template --</option>
                         {filtered.map(t => (
@@ -1450,6 +1584,8 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
                       onChange={(e) => handleCategoryWeightChange(category, e)}
                       placeholder="Target %"
                       required
+                      min="0"
+                      max="100"
                       className="h-9 w-full rounded-lg border border-gray-200 bg-transparent px-3 py-1 pr-7 text-sm font-semibold text-gray-800 dark:border-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
@@ -1541,7 +1677,8 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
                                   onChange={(e) => handleInputChange1(category, field.id, e)}
                                   placeholder="%"
                                   required
-                                  className="h-9 w-full rounded-lg border border-gray-200 dark:border-gray-800 bg-transparent px-2 py-1 text-center text-sm font-semibold text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
+                                  disabled={!!selectedTemplateIds[category]}
+                                  className="h-9 w-full rounded-lg border border-gray-200 dark:border-gray-800 bg-transparent px-2 py-1 text-center text-sm font-semibold text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none disabled:opacity-75 disabled:bg-gray-50 dark:disabled:bg-gray-850"
                                 />
                                 <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
                               </div>
@@ -1556,16 +1693,18 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
                             </td>
 
                             <td className="py-3 pl-4 text-center">
-                              <button
-                                type="button"
-                                onClick={() => removeField1(category, field.id)}
-                                className="p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg hover:bg-gray-55 dark:hover:bg-gray-800 transition-colors"
-                                title="Remove asset"
-                              >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
+                              {!selectedTemplateIds[category] && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeField1(category, field.id)}
+                                  className="p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg hover:bg-gray-55 dark:hover:bg-gray-800 transition-colors"
+                                  title="Remove asset"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -1578,16 +1717,18 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
 
                 {/* Asset card footer */}
                 <div className="flex justify-between items-center pt-2">
-                  <button
-                    type="button"
-                    onClick={() => addField1(category)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-600 dark:bg-brand-950/20 dark:hover:bg-brand-950/40 dark:text-brand-400 transition-colors"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Asset
-                  </button>
+                  {!selectedTemplateIds[category] ? (
+                    <button
+                      type="button"
+                      onClick={() => addField1(category)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-600 dark:bg-brand-950/20 dark:hover:bg-brand-950/40 dark:text-brand-400 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Add Asset
+                    </button>
+                  ) : <div />}
 
                   {currentSum === 100 ? (
                     <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1.5 font-semibold">

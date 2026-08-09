@@ -21,6 +21,7 @@ interface Field {
   options?: StockOption[];
   MinAmountquantity: number;
   MinAmountorderValue: number;
+  templateId?: string;
 }
 
 export interface PortfolioData {

@@ -71,6 +71,7 @@ export default function AssetClassTemplatesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false); // Functions as isFormOpen now
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [filterType, setFilterType] = useState<"ALL" | "STOCK" | "MUTUALFUND" | "ETF">("ALL");
 
   // Form states
   const [templateName, setTemplateName] = useState("");
@@ -710,14 +711,39 @@ export default function AssetClassTemplatesPage() {
   }
 
   // Render Lists View (Standard list of templates)
+  const filteredTemplates = templates.filter(tpl => {
+    if (filterType === "ALL") return true;
+    return tpl.portfolioType === filterType;
+  });
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       <PageBreadcrumb pageTitle="Asset Class Templates" />
 
-      <div className="mt-6 flex justify-end">
+      <div className="mt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        {/* Filter buttons */}
+        <div className="flex flex-wrap gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
+          {(["ALL", "STOCK", "MUTUALFUND", "ETF"] as const).map((type) => (
+            <button
+              key={type}
+              onClick={() => setFilterType(type)}
+              className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+                filterType === type
+                  ? "bg-white text-blue-600 shadow-sm dark:bg-gray-700 dark:text-blue-400 font-bold"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              }`}
+            >
+              {type === "ALL" && "All Templates"}
+              {type === "STOCK" && "Direct Stocks"}
+              {type === "MUTUALFUND" && "Mutual Funds"}
+              {type === "ETF" && "ETFs"}
+            </button>
+          ))}
+        </div>
+
         <button
           onClick={handleOpenAddModal}
-          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 shadow-sm transition-all"
         >
           + Add Template
         </button>
@@ -729,6 +755,8 @@ export default function AssetClassTemplatesPage() {
             <div className="py-10 text-center text-gray-500">Loading templates...</div>
           ) : templates.length === 0 ? (
             <div className="py-10 text-center text-gray-500">No pre-configured templates found. Add one to get started!</div>
+          ) : filteredTemplates.length === 0 ? (
+            <div className="py-10 text-center text-gray-500">No templates found matching the selected filter.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -742,7 +770,7 @@ export default function AssetClassTemplatesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-900">
-                  {templates.map(tpl => (
+                  {filteredTemplates.map(tpl => (
                     <tr key={tpl.id} className="hover:bg-gray-55 dark:hover:bg-gray-800">
                       <td className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">
                         {tpl.templateName || `Template #${tpl.id}`}
