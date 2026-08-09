@@ -53,6 +53,7 @@ interface TemplateStock {
   selectValue: string;
   weight: string;
   geography?: string;
+  label?: string;
 }
 
 interface Template {
@@ -228,11 +229,12 @@ export default function AssetClassTemplatesPage() {
       }
     }
     
-    setStockFields(mappedStocks.map((item: { selectValue?: string | number; weight?: string | number; geography?: string }, idx: number) => ({
+    setStockFields(mappedStocks.map((item: { selectValue?: string | number; weight?: string | number; geography?: string; label?: string }, idx: number) => ({
       id: idx + 1,
       selectValue: item.selectValue?.toString() || "",
       weight: item.weight?.toString() || "",
-      geography: item.geography || template.geography || "India"
+      geography: item.geography || template.geography || "India",
+      label: item.label
     })));
     setIsModalOpen(true);
   };
@@ -271,7 +273,12 @@ export default function AssetClassTemplatesPage() {
     setStockFields(prev => prev.map(f => {
       if (f.id === id) {
         if (field === "geography") {
-          return { ...f, geography: value, selectValue: "" };
+          return { ...f, geography: value, selectValue: "", label: "" };
+        }
+        if (field === "selectValue") {
+          const list = [...initialOptions, ...initialMOptions, ...initialUOptions, ...initialWOptions];
+          const match = list.find(opt => opt.value === value);
+          return { ...f, selectValue: value, label: match ? match.label : "" };
         }
         return { ...f, [field]: value };
       }
@@ -313,7 +320,7 @@ export default function AssetClassTemplatesPage() {
       geography: string;
       templateName: string;
       portfolioType: string;
-      stocks: { selectValue: string; weight: string; geography: string }[];
+      stocks: { selectValue: string; weight: string; geography: string; label?: string }[];
       id?: number;
     } = {
       category,
@@ -321,11 +328,16 @@ export default function AssetClassTemplatesPage() {
       geography: topGeography,
       templateName,
       portfolioType,
-      stocks: stockFields.map(f => ({
-        selectValue: f.selectValue,
-        weight: f.weight,
-        geography: f.geography || topGeography
-      }))
+      stocks: stockFields.map(f => {
+        const list = [...initialOptions, ...initialMOptions, ...initialUOptions, ...initialWOptions];
+        const match = list.find(opt => opt.value === f.selectValue);
+        return {
+          selectValue: f.selectValue,
+          weight: f.weight,
+          geography: f.geography || topGeography,
+          label: match ? match.label : f.label
+        };
+      })
     };
 
     if (editingTemplate) {
@@ -351,10 +363,10 @@ export default function AssetClassTemplatesPage() {
   };
 
   // Helper to find stock labels for display in the list table
-  const getStockName = (selectValue: string) => {
+  const getStockName = (selectValue: string, savedLabel?: string) => {
     const list = [...initialOptions, ...initialMOptions, ...initialUOptions, ...initialWOptions];
     const match = list.find(opt => opt.value === selectValue);
-    return match ? match.label : `Stock #${selectValue}`;
+    return match ? match.label : savedLabel || `Stock #${selectValue}`;
   };
 
   // Render Form View (Full Page)
@@ -554,6 +566,19 @@ export default function AssetClassTemplatesPage() {
                                 <td className="py-3 pr-4">
                                   {(() => {
                                     const isSelectedValueInvalid = field.selectValue && !filteredOptions.some(opt => opt.value.toString() === field.selectValue.toString());
+                                    const displayOptions = [...filteredOptions];
+                                    if (isSelectedValueInvalid) {
+                                      const fieldLabel = field.label || `Asset #${field.selectValue}`;
+                                      displayOptions.push({
+                                        value: field.selectValue,
+                                        label: fieldLabel,
+                                        sector: '',
+                                        capType: '',
+                                        stockType: '',
+                                        currentPrice: '0',
+                                        geography: field.geography
+                                      });
+                                    }
                                     return (
                                       <div className="space-y-1">
                                         <select
@@ -565,7 +590,7 @@ export default function AssetClassTemplatesPage() {
                                           required
                                         >
                                           <option value="">Select Asset/Fund</option>
-                                          {filteredOptions.map(opt => (
+                                          {displayOptions.map(opt => (
                                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                                           ))}
                                         </select>
@@ -735,7 +760,7 @@ export default function AssetClassTemplatesPage() {
                               key={idx} 
                               className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
                             >
-                              {getStockName(item.selectValue?.toString() || "")}: {item.weight}%
+                              {getStockName(item.selectValue?.toString() || "", item.label)}: {item.weight}%
                             </span>
                           ))}
                         </div>

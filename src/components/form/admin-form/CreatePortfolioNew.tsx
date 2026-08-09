@@ -453,6 +453,21 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
 
     const isSelectedValueInvalid = field.selectValue && !optionsToUse.some(opt => opt.value.toString() === field.selectValue.toString());
 
+    const displayOptions = [...optionsToUse];
+    if (isSelectedValueInvalid) {
+      const fieldLabel = (field as any).label || `Asset #${field.selectValue}`;
+      displayOptions.push({
+        value: field.selectValue,
+        label: fieldLabel,
+        sector: '',
+        capType: '',
+        stockType: '',
+        currentPrice: field.currentPrice || '0',
+        recommendationStock: field.recommendationStock,
+        geography: field.geography
+      });
+    }
+
     return (
       <div className="space-y-1">
         <select
@@ -463,7 +478,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
           disabled={optionsToUse.length === 0}
           onChange={(e) => {
             const value = e.target.value;          
-            const matchingOption = optionsToUse.find(opt => opt.value == value);
+            const matchingOption = displayOptions.find(opt => opt.value == value);
             const currentPrice = matchingOption?.currentPrice || '';
             const recStock = matchingOption && 'recommendationStock' in matchingOption ? matchingOption.recommendationStock : undefined;
             
@@ -476,7 +491,8 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
                   ...f,
                   selectValue: value,
                   currentPrice: currentPrice,
-                  recommendationStock: recStock
+                  recommendationStock: recStock,
+                  label: matchingOption?.label || ''
                 } : f
               );
               
@@ -492,7 +508,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
           }}
         >
           <option value="">{placeholderText}</option>
-          {optionsToUse.map((option, idx) => {
+          {displayOptions.map((option, idx) => {
             const recStock = 'recommendationStock' in option ? option.recommendationStock : undefined;
             const recLabel = recStock === 1 ? " (Buy)" : recStock === 2 ? " (Hold)" : recStock === 3 ? " (Sell)" : "";
             return (
