@@ -171,10 +171,27 @@ interface Field {
   currentPrice: string;
   MinAmountquantity: number;
   MinAmountorderValue: number;
-  options?: StockOption[];
+  options?: StockOption[] | MutualFundOption[];
   recommendationStock?: number;
   geography?: string;
   label?: string;
+  templateId?: string;
+}
+
+interface LocalTemplateStock {
+  selectValue: string | number;
+  weight: number | string;
+  geography?: string;
+}
+
+interface LocalAssetClassTemplate {
+  id: number;
+  templateName: string;
+  category: string;
+  portfolioType: string;
+  targetWeight?: number;
+  geography?: string;
+  stocks: string | LocalTemplateStock[];
 }
 
 interface Goal {
@@ -243,6 +260,8 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
   const [pageLoading, setPageLoading] = useState(true);
   const [selectedGeography, setSelectedGeography] = useState<string>('');
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<Record<string, string>>({});
+  const [templates, setTemplates] = useState<LocalAssetClassTemplate[]>([]);
 
   const toggleCategoryCollapse = (category: string) => {
     setCollapsedCategories(prev => ({
@@ -264,13 +283,15 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
     const fetchData = async () => {
       try {
         setPageLoading(true);
-        const [goalsResponse, packagesResponse] = await Promise.all([
+        const [goalsResponse, packagesResponse, templatesRes] = await Promise.all([
           goalManagementServiceApi.getGoalList(),
-          packagesManagementServiceApi.getPackageList()
+          packagesManagementServiceApi.getPackageList(),
+          portfolioManagementServiceApi.getAssetClassTemplates()
         ]);   
         
         if (goalsResponse.goals) setGoalListData(goalsResponse.goals);
         if (packagesResponse.packages) setPackageListData(packagesResponse.packages);
+        if (templatesRes.data) setTemplates(templatesRes.data as LocalAssetClassTemplate[]);
 
         const stockListData = await stockManagementServiceApi.getStockList();    
         const options = stockListData.data.map((stock: Stock) => ({
@@ -383,6 +404,7 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
             }
           }
 
+          const initialTemplateIds: Record<string, string> = {};
           for (const category in newFields1) {
               if (newFields1.hasOwnProperty(category)) {
                   newFields1[category].forEach((item: Field) => {
@@ -397,6 +419,9 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
                       } else {
                           console.warn(`No stock found for selectValue: ${item.selectValue}`);
                       }
+                      if (item.templateId) {
+                        initialTemplateIds[category] = item.templateId;
+                      }
                   });
               }
           }
@@ -404,6 +429,7 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
           const categoriesToSelect = Object.keys(assetClassObj || {});
           setSelectedCategories(categoriesToSelect);
           setFieldstock(newFields1);
+          setSelectedTemplateIds(initialTemplateIds);
           setTotalWeights(assetClassObj || {});
 
           let firstGeo = '';
@@ -658,9 +684,10 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
     return (
       <div className="space-y-1">
         <select
-          className={`form-select text-sm shadow-theme-xs h-11 w-full border rounded px-2 py-2.5 ${
+          className={`form-select text-sm shadow-theme-xs h-11 w-full border rounded px-2 py-2.5 disabled:opacity-75 disabled:bg-gray-50 dark:disabled:bg-gray-800 ${
             isSelectedValueInvalid ? 'border-red-300 text-red-900 bg-red-50 focus:border-red-500' : 'text-gray-800 border-gray-300'
           }`}
+          disabled={!!selectedTemplateIds[category]}
           value={field.selectValue}
           onChange={(e) => {
             const value = e.target.value;          
@@ -861,7 +888,9 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
 
   const handleCategoryWeightChange = (category: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = event.target;
-    const weight = parseFloat(value) || 0; 
+    let weight = parseFloat(value) || 0; 
+    if (weight > 100) weight = 100;
+    if (weight < 0) weight = 0;
     updateTotalWeight(category, weight);
   };
 
@@ -881,6 +910,11 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
         const newFields = { ...fieldstock };
         delete newFields[category];
         setFieldstock(newFields);
+        setSelectedTemplateIds(prevTpls => {
+          const next = { ...prevTpls };
+          delete next[category];
+          return next;
+        });
         setTotalWeights((prevWeights) => {
           const newWeights = { ...prevWeights };
           delete newWeights[category];
@@ -933,6 +967,7 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
         setSelectedCategories([]);
         setFieldstock({});
         setTotalWeights({});
+        setSelectedTemplateIds({});
         return newSelectedMainCategories;
       } else {
         return [...prev, mcategory];
@@ -947,10 +982,80 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
     setTotalWeights({});
     setSelectedMainCategories([]);
     setSelectedGeography('');
+    setSelectedTemplateIds({});
+  };
+
+  const handleApplyTemplate = (category: string, template: LocalAssetClassTemplate) => {
+    setSelectedTemplateIds(prev => ({
+      ...prev,
+      [category]: template.id.toString()
+    }));
+    const nextWeights = { ...totalWeights };
+    if (template.targetWeight) {
+      nextWeights[category] = template.targetWeight;
+      updateTotalWeight(category, template.targetWeight);
+    }
+    
+    setCollapsedCategories((prev) => ({
+      ...prev,
+      [category]: true,
+    }));
+
+    const isStockCategory = selectedMainCategories.includes('Stocks');
+    const isMutualFundCategory = selectedMainCategories.includes('MutualFunds');
+    const isEtfCategory = selectedMainCategories.includes('ETF');
+    let optionsToUse: (StockOption | MutualFundOption)[] = [];
+    
+    if (isStockCategory && !isMutualFundCategory && !isEtfCategory) {
+      optionsToUse = [...initialOptions, ...initialUOptions, ...initialWOptions];
+    } else if (isMutualFundCategory && !isStockCategory && !isEtfCategory) {
+      optionsToUse = initialMOptions;
+    } else if (isEtfCategory && !isStockCategory && !isMutualFundCategory) {
+      optionsToUse = [...initialOptions, ...initialUOptions, ...initialWOptions].filter(opt => opt.capType === 'ETF');
+    }
+
+    let parsedStocks = template.stocks;
+    if (typeof template.stocks === 'string') {
+      try {
+        parsedStocks = JSON.parse(template.stocks);
+      } catch {
+        parsedStocks = [];
+      }
+    }
+    
+    const newFields: Field[] = (Array.isArray(parsedStocks) ? parsedStocks : []).map((item: LocalTemplateStock, index: number) => {
+      const opt = optionsToUse.find(o => o.value.toString() === item.selectValue.toString());
+      return {
+        id: index + 1,
+        selectValue: item.selectValue.toString(),
+        weight: item.weight.toString(),
+        currentPrice: opt?.currentPrice || '',
+        recommendationStock: opt && 'recommendationStock' in opt ? opt.recommendationStock : undefined,
+        geography: item.geography || opt?.geography || selectedGeography,
+        options: optionsToUse,
+        MinAmountquantity: 0,
+        MinAmountorderValue: 0,
+        templateId: template.id.toString()
+      };
+    });
+    
+    setFieldstock(prev => {
+      const updated = { ...prev, [category]: newFields };
+      setTimeout(() => {
+        calculateCapTypeWeights(updated);
+        calculateStockTypeWeights(updated);
+        calculateSummary(updated);
+        calculateOrderValue(updated, nextWeights, portfolioDetails);
+      }, 0);
+      return updated;
+    });
+    
+    toast.success(`Loaded template for ${currentStockCategories[category]}`);
   };
 
   const handleGlobalGeographyChange = (geoVal: string) => {
     setSelectedGeography(geoVal);
+    setSelectedTemplateIds({});
     setFieldstock(prev => {
       const newFields = { ...prev };
       for (const category in newFields) {
@@ -976,6 +1081,7 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
   };
  
   const addField1 = (category: string) => {
+    if (selectedTemplateIds[category]) return;
     setFieldstock((prevFields) => {
         const categoryFields = prevFields[category] || [];
         const newId = categoryFields.length > 0 
@@ -1011,12 +1117,15 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
           [category]: [...categoryFields, newField],
         };
         
-        calculateOrderValue(updatedFields, totalWeights, portfolioDetails);
+        setTimeout(() => {
+          calculateOrderValue(updatedFields, totalWeights, portfolioDetails);
+        }, 0);
         return updatedFields;
     });
   };
   
   const removeField1 = (category: string, id: number) => {
+    if (selectedTemplateIds[category]) return;
     setFieldstock((prevFields) => {
       const updatedCategoryFields = prevFields[category].filter((field) => field.id !== id);
       const updatedFields = {
@@ -1024,18 +1133,23 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
         [category]: updatedCategoryFields,
       };
       
-      calculateOrderValue(updatedFields, totalWeights, portfolioDetails);
+      setTimeout(() => {
+        calculateOrderValue(updatedFields, totalWeights, portfolioDetails);
+      }, 0);
       return updatedFields;
     });
   };
 
   const clearAllFields1 = (category: string) => {
+    if (selectedTemplateIds[category]) return;
     setFieldstock((prevFields) => {
       const updatedFields = {
         ...prevFields,
         [category]: []
       };
-      calculateOrderValue(updatedFields, totalWeights, portfolioDetails);
+      setTimeout(() => {
+        calculateOrderValue(updatedFields, totalWeights, portfolioDetails);
+      }, 0);
       return updatedFields;
     });
   };
@@ -1598,6 +1712,58 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
                   </svg>
                   Remove Class
                 </button>
+                {/* Template load selector dropdown */}
+                {(() => {
+                  const targetType = selectedMainCategories.includes('MutualFunds') ? 'MUTUALFUND' : selectedMainCategories.includes('ETF') ? 'ETF' : 'STOCK';
+                  const filtered = templates.filter(t => 
+                    t.category === category && 
+                    t.portfolioType === targetType &&
+                    (!selectedGeography || t.geography === selectedGeography)
+                  );
+                  if (filtered.length === 0) return null;
+                  return (
+                    <div className="flex items-center gap-2 ml-0 sm:ml-4">
+                      <span className="text-xs text-gray-400 dark:text-gray-500">Load Template:</span>
+                      <select
+                        value={selectedTemplateIds[category] || ""}
+                        onChange={(e) => {
+                          const selectedTplId = e.target.value;
+                          if (!selectedTplId) {
+                            setSelectedTemplateIds(prev => {
+                              const next = { ...prev };
+                              delete next[category];
+                              return next;
+                            });
+                            setFieldstock(prev => {
+                              const next = { ...prev };
+                              if (next[category]) {
+                                next[category] = next[category].map(f => {
+                                  const updatedField = { ...f };
+                                  delete updatedField.templateId;
+                                  return updatedField;
+                                });
+                              }
+                              return next;
+                            });
+                            return;
+                          }
+                          const selectedTpl = templates.find(t => t.id.toString() === selectedTplId);
+                          if (selectedTpl) {
+                            handleApplyTemplate(category, selectedTpl);
+                          }
+                        }}
+                        className="form-select text-xs border rounded-lg px-2 py-1 border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700 focus:outline-none"
+                      >
+                        <option value="">-- Select Template --</option>
+                        {filtered.map(t => (
+                          <option key={t.id} value={t.id}>
+                            {t.templateName || `Template #${t.id}`} ({t.targetWeight ? `${t.targetWeight}%` : '—'})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="flex items-center gap-6">
@@ -1701,7 +1867,8 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
                                   onChange={(e) => handleInputChange1(category, field.id, e)}
                                   placeholder="%"
                                   required
-                                  className="h-9 w-full rounded-lg border border-gray-200 dark:border-gray-800 bg-transparent px-2 py-1 text-center text-sm font-semibold text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none"
+                                  disabled={!!selectedTemplateIds[category]}
+                                  className="h-9 w-full rounded-lg border border-gray-200 dark:border-gray-800 bg-transparent px-2 py-1 text-center text-sm font-semibold text-gray-800 dark:text-white focus:border-brand-500 focus:outline-none disabled:opacity-75 disabled:bg-gray-50 dark:disabled:bg-gray-800"
                                 />
                                 <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
                               </div>
@@ -1716,16 +1883,18 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
                             </td>
 
                             <td className="py-3 pl-4 text-center">
-                              <button
-                                type="button"
-                                onClick={() => removeField1(category, field.id)}
-                                className="p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg hover:bg-gray-55 dark:hover:bg-gray-800 transition-colors"
-                                title="Remove asset"
-                              >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
+                              {!selectedTemplateIds[category] && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeField1(category, field.id)}
+                                  className="p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg hover:bg-gray-55 dark:hover:bg-gray-800 transition-colors"
+                                  title="Remove asset"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -1738,16 +1907,20 @@ export default function EditPortfolioNew({ isOpen, onClose, PortfolioData ,type 
 
                 {/* Asset card footer */}
                 <div className="flex justify-between items-center pt-2">
-                  <button
-                    type="button"
-                    onClick={() => addField1(category)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-600 dark:bg-brand-950/20 dark:hover:bg-brand-950/40 dark:text-brand-400 transition-colors"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Asset
-                  </button>
+                  {!selectedTemplateIds[category] ? (
+                    <button
+                      type="button"
+                      onClick={() => addField1(category)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-600 dark:bg-brand-950/20 dark:hover:bg-brand-950/40 dark:text-brand-400 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Add Asset
+                    </button>
+                  ) : (
+                    <div />
+                  )}
 
                   {currentSum === 100 ? (
                     <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1.5 font-semibold">
