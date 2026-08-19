@@ -1243,6 +1243,7 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData, type = '
               id="minimumInvestment"
               type="number"
               min="0"
+              step="any"
               placeholder="Enter Minimum Amount"
               value={portfolioDetails.minimumInvestment}
               onChange={(e) => setPortfolioDetails({ ...portfolioDetails, minimumInvestment: e.target.value })}
@@ -1255,8 +1256,9 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData, type = '
               id="orderAmount"
               type="number"
               min="0"
+              step="any"
               placeholder="System Amount"
-              value={String(Math.round(parseFloat(portfolioDetails?.orderAmount || '0')))}
+              value={portfolioDetails.orderAmount}
               onChange={(e) => setPortfolioDetails({ ...portfolioDetails, orderAmount: e.target.value })}
             />
           </div>
