@@ -168,7 +168,7 @@ export default function PartnersPage() {
   };
 
   // ---- EUIN accept/reject ----
-  const handleAcceptEuin = async (euin: ArnEuin, partner: Partner) => {
+  const handleAcceptEuin = async (euin: ArnEuin, _partner: Partner) => {
     setEuinLoadingId(euin.id);
     try {
       const result = await acceptEuin(euin.id);
@@ -185,7 +185,7 @@ export default function PartnersPage() {
     }
   };
 
-  const handleOpenRejectEuin = (euin: ArnEuin, _partner: Partner) => {
+  const handleOpenRejectEuin = (euin: ArnEuin, __partner: Partner) => {
     setSelectedEuin(euin);
     setRejectEuinModalOpen(true);
   };
