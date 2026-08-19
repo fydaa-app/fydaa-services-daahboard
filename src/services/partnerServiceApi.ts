@@ -9,6 +9,28 @@ export type ArnPartnerVerificationStatus =
   | "OTP_PENDING"
   | "OTP_VERIFIED";
 
+export type ArnEuinVerificationStatus =
+  | "PENDING"
+  | "ACCEPTED"
+  | "REJECTED";
+
+export interface ArnEuin {
+  id: number;
+  euinNumber: string;
+  name: string | null;
+  email: string | null;
+  mobileNumber: string | null;
+  isPartner: boolean;
+  partnerId: number | null;
+  verificationStatus: ArnEuinVerificationStatus;
+  rejectionReason: string | null;
+  referralCode: string | null;
+  deeplink: string | null;
+  detailsComplete: boolean;
+  canApprove: boolean;
+  canReject: boolean;
+}
+
 export interface Partner {
   id: number;
   name: string | null;
@@ -27,7 +49,9 @@ export interface Partner {
   createdAt?: string;
   location?: string | null;
   expiryDate?: string | null;
-  euins?: string[] | null;
+  yourEuinNumber?: string | null;
+  euins?: ArnEuin[];
+  euinNumbers?: string[];
   accountHolderName?: string | null;
   bankName?: string | null;
   accountNumber?: string | null;
@@ -35,6 +59,7 @@ export interface Partner {
   nomineeName?: string | null;
   nomineeRelationship?: string | null;
   nomineeDob?: string | null;
+  nomineePan?: string | null;
   referralCode?: string | null;
   deeplink?: string | null;
 }
@@ -53,6 +78,10 @@ export interface AcceptArnPartnerPayload {
 }
 
 export interface RejectArnPartnerPayload {
+  rejectionReason?: string;
+}
+
+export interface RejectArnEuinPayload {
   rejectionReason?: string;
 }
 
@@ -164,12 +193,10 @@ export async function acceptPartner(
   payload: AcceptArnPartnerPayload = {}
 ): Promise<PartnerActionResponse> {
   const body: AcceptArnPartnerPayload = {};
-  if (payload.karvyBrokerCode?.trim()) {
+  if (payload.karvyBrokerCode?.trim())
     body.karvyBrokerCode = payload.karvyBrokerCode.trim();
-  }
-  if (payload.camsBrokerCode?.trim()) {
+  if (payload.camsBrokerCode?.trim())
     body.camsBrokerCode = payload.camsBrokerCode.trim();
-  }
 
   const response = await fetch(
     `${getBaseUrl()}/arn/admin/partner-verifications/${id}/accept`,
@@ -210,9 +237,8 @@ export async function rejectPartner(
   payload: RejectArnPartnerPayload = {}
 ): Promise<PartnerActionResponse> {
   const body: RejectArnPartnerPayload = {};
-  if (payload.rejectionReason?.trim()) {
+  if (payload.rejectionReason?.trim())
     body.rejectionReason = payload.rejectionReason.trim();
-  }
 
   const response = await fetch(
     `${getBaseUrl()}/arn/admin/partner-verifications/${id}/reject`,
@@ -248,6 +274,83 @@ export async function rejectPartner(
   };
 }
 
+export async function acceptEuin(euinId: number): Promise<PartnerActionResponse> {
+  const response = await fetch(
+    `${getBaseUrl()}/arn/admin/euins/${euinId}/accept`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getAuthToken()}`,
+      },
+      body: JSON.stringify({}),
+    }
+  );
+
+  if (response.status === 401) {
+    handleUnauthorized();
+    throw new Error("Unauthorized");
+  }
+
+  const result = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message =
+      (typeof result?.message === "string" && result.message) ||
+      (Array.isArray(result?.message) && result.message.join(", ")) ||
+      "Failed to approve EUIN";
+    return { success: false, message };
+  }
+
+  return {
+    success: true,
+    message: result?.message || "EUIN approved successfully",
+    data: result?.data,
+  };
+}
+
+export async function rejectEuin(
+  euinId: number,
+  payload: RejectArnEuinPayload = {}
+): Promise<PartnerActionResponse> {
+  const body: RejectArnEuinPayload = {};
+  if (payload.rejectionReason?.trim())
+    body.rejectionReason = payload.rejectionReason.trim();
+
+  const response = await fetch(
+    `${getBaseUrl()}/arn/admin/euins/${euinId}/reject`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getAuthToken()}`,
+      },
+      body: JSON.stringify(body),
+    }
+  );
+
+  if (response.status === 401) {
+    handleUnauthorized();
+    throw new Error("Unauthorized");
+  }
+
+  const result = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message =
+      (typeof result?.message === "string" && result.message) ||
+      (Array.isArray(result?.message) && result.message.join(", ")) ||
+      "Failed to reject EUIN";
+    return { success: false, message };
+  }
+
+  return {
+    success: true,
+    message: result?.message || "EUIN rejected",
+    data: result?.data,
+  };
+}
+
 export function isPartnerActionable(
   status: ArnPartnerVerificationStatus
 ): boolean {
@@ -255,7 +358,7 @@ export function isPartnerActionable(
 }
 
 export function formatVerificationStatus(
-  status: ArnPartnerVerificationStatus
+  status: ArnPartnerVerificationStatus | ArnEuinVerificationStatus
 ): string {
   return status
     .toLowerCase()

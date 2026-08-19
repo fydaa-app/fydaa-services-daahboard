@@ -7,12 +7,16 @@ import PartnerTable from "@/components/tables/PartnerTable";
 import Pagination from "@/components/tables/Pagination";
 import { AcceptPartnerModal } from "@/components/ui/modal/AcceptPartnerModal";
 import { RejectPartnerModal } from "@/components/ui/modal/RejectPartnerModal";
+import { RejectEuinModal } from "@/components/ui/modal/RejectEuinModal";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   getPartners,
   acceptPartner,
   rejectPartner,
+  acceptEuin,
+  rejectEuin,
   Partner,
+  ArnEuin,
 } from "@/services/partnerServiceApi";
 import { toast } from "react-hot-toast";
 
@@ -33,11 +37,17 @@ export default function PartnersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
 
+  // Partner accept/reject
+  const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
   const [acceptModalOpen, setAcceptModalOpen] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
+
+  // EUIN accept/reject
+  const [euinLoadingId, setEuinLoadingId] = useState<number | null>(null);
+  const [rejectEuinModalOpen, setRejectEuinModalOpen] = useState(false);
+  const [selectedEuin, setSelectedEuin] = useState<ArnEuin | null>(null);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -57,9 +67,7 @@ export default function PartnersPage() {
         setPartners([]);
         setTotalPages(0);
         setTotalItems(0);
-        setError(
-          err instanceof Error ? err.message : "Failed to load partners"
-        );
+        setError(err instanceof Error ? err.message : "Failed to load partners");
       } finally {
         setIsLoading(false);
       }
@@ -79,11 +87,7 @@ export default function PartnersPage() {
     fetchPartners(pageNum, query, status);
   }, [searchParams, fetchPartners]);
 
-  const updateUrl = (next: {
-    page?: number;
-    search?: string;
-    status?: string;
-  }) => {
+  const updateUrl = (next: { page?: number; search?: string; status?: string }) => {
     const params = new URLSearchParams();
     const search = next.search ?? searchQuery;
     const status = next.status ?? statusFilter;
@@ -92,7 +96,6 @@ export default function PartnersPage() {
     if (search) params.set("search", search);
     if (status) params.set("status", status);
     params.set("page", String(nextPage));
-
     router.push(`?${params.toString()}`, { scroll: false });
   };
 
@@ -113,6 +116,7 @@ export default function PartnersPage() {
     updateUrl({ page: 1, status });
   };
 
+  // ---- Partner accept/reject ----
   const handleOpenAccept = (partner: Partner) => {
     setSelectedPartner(partner);
     setAcceptModalOpen(true);
@@ -123,15 +127,11 @@ export default function PartnersPage() {
     setRejectModalOpen(true);
   };
 
-  const handleAcceptConfirm = async (payload: {
-    karvyBrokerCode?: string;
-    camsBrokerCode?: string;
-  }) => {
+  const handleAcceptConfirm = async () => {
     if (!selectedPartner) return;
-
     setActionLoadingId(selectedPartner.id);
     try {
-      const result = await acceptPartner(selectedPartner.id, payload);
+      const result = await acceptPartner(selectedPartner.id, {});
       if (result.success) {
         toast.success(result.message);
         setAcceptModalOpen(false);
@@ -141,19 +141,14 @@ export default function PartnersPage() {
         toast.error(result.message);
       }
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to accept partner"
-      );
+      toast.error(err instanceof Error ? err.message : "Failed to accept partner");
     } finally {
       setActionLoadingId(null);
     }
   };
 
-  const handleRejectConfirm = async (payload: {
-    rejectionReason?: string;
-  }) => {
+  const handleRejectConfirm = async (payload: { rejectionReason?: string }) => {
     if (!selectedPartner) return;
-
     setActionLoadingId(selectedPartner.id);
     try {
       const result = await rejectPartner(selectedPartner.id, payload);
@@ -166,11 +161,52 @@ export default function PartnersPage() {
         toast.error(result.message);
       }
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to reject partner"
-      );
+      toast.error(err instanceof Error ? err.message : "Failed to reject partner");
     } finally {
       setActionLoadingId(null);
+    }
+  };
+
+  // ---- EUIN accept/reject ----
+  const handleAcceptEuin = async (euin: ArnEuin, partner: Partner) => {
+    setEuinLoadingId(euin.id);
+    try {
+      const result = await acceptEuin(euin.id);
+      if (result.success) {
+        toast.success(result.message);
+        await fetchPartners(page, searchQuery, statusFilter);
+      } else {
+        toast.error(result.message);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to approve EUIN");
+    } finally {
+      setEuinLoadingId(null);
+    }
+  };
+
+  const handleOpenRejectEuin = (euin: ArnEuin, _partner: Partner) => {
+    setSelectedEuin(euin);
+    setRejectEuinModalOpen(true);
+  };
+
+  const handleRejectEuinConfirm = async (payload: { rejectionReason?: string }) => {
+    if (!selectedEuin) return;
+    setEuinLoadingId(selectedEuin.id);
+    try {
+      const result = await rejectEuin(selectedEuin.id, payload);
+      if (result.success) {
+        toast.success(result.message);
+        setRejectEuinModalOpen(false);
+        setSelectedEuin(null);
+        await fetchPartners(page, searchQuery, statusFilter);
+      } else {
+        toast.error(result.message);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to reject EUIN");
+    } finally {
+      setEuinLoadingId(null);
     }
   };
 
@@ -223,7 +259,7 @@ export default function PartnersPage() {
           </div>
 
           {isLoading && (
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
               Loading partners...
             </p>
           )}
@@ -232,8 +268,11 @@ export default function PartnersPage() {
             partners={partners}
             error={error}
             actionLoadingId={actionLoadingId}
+            euinLoadingId={euinLoadingId}
             onAccept={handleOpenAccept}
             onReject={handleOpenReject}
+            onAcceptEuin={handleAcceptEuin}
+            onRejectEuin={handleOpenRejectEuin}
           />
 
           {totalItems > 0 && (
@@ -246,6 +285,7 @@ export default function PartnersPage() {
         </ComponentCard>
       </div>
 
+      {/* Partner modals */}
       <AcceptPartnerModal
         isOpen={acceptModalOpen}
         partner={selectedPartner}
@@ -268,6 +308,19 @@ export default function PartnersPage() {
           setSelectedPartner(null);
         }}
         onConfirm={handleRejectConfirm}
+      />
+
+      {/* EUIN reject modal */}
+      <RejectEuinModal
+        isOpen={rejectEuinModalOpen}
+        euin={selectedEuin}
+        isLoading={euinLoadingId === selectedEuin?.id}
+        onClose={() => {
+          if (euinLoadingId) return;
+          setRejectEuinModalOpen(false);
+          setSelectedEuin(null);
+        }}
+        onConfirm={handleRejectEuinConfirm}
       />
     </div>
   );
