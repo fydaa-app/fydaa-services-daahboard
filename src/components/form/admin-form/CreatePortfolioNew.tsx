@@ -1239,6 +1239,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
               id="minimumInvestment"
               type="number"
               min="0"
+              step="any"
               placeholder="Enter Minimum Amount"
               value={portfolioDetails.minimumInvestment}
               onChange={(e) => {
@@ -1257,6 +1258,7 @@ export default function CreatePortfolioNew({ isOpen, onClose, onRefresh, isPage 
               id="orderAmount"
               type="number"
               min="0"
+              step="any"
               placeholder="System Amount"
               value={portfolioDetails.orderAmount}
               onChange={(e) => {
