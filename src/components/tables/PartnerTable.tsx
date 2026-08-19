@@ -26,8 +26,8 @@ interface PartnerTableProps {
   euinLoadingId: number | null;
   onAccept: (partner: Partner) => void;
   onReject: (partner: Partner) => void;
-  onAcceptEuin: (euin: ArnEuin, partner: Partner) => void;
-  onRejectEuin: (euin: ArnEuin, partner: Partner) => void;
+  onAcceptEuin: (euin: ArnEuin) => void;
+  onRejectEuin: (euin: ArnEuin) => void;
 }
 
 const getPartnerStatusColor = (
@@ -64,16 +64,14 @@ const getEuinStatusColor = (
 
 function EuinRow({
   euin,
-  partner,
   euinLoadingId,
   onAcceptEuin,
   onRejectEuin,
 }: {
   euin: ArnEuin;
-  partner: Partner;
   euinLoadingId: number | null;
-  onAcceptEuin: (euin: ArnEuin, partner: Partner) => void;
-  onRejectEuin: (euin: ArnEuin, partner: Partner) => void;
+  onAcceptEuin: (euin: ArnEuin) => void;
+  onRejectEuin: (euin: ArnEuin) => void;
 }) {
   const isBusy = euinLoadingId === euin.id;
 
@@ -119,7 +117,7 @@ function EuinRow({
           <Button
             size="sm"
             variant="primary"
-            onClick={() => onAcceptEuin(euin, partner)}
+            onClick={() => onAcceptEuin(euin)}
             disabled={isBusy}
           >
             {isBusy ? "..." : "Approve"}
@@ -129,7 +127,7 @@ function EuinRow({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => onRejectEuin(euin, partner)}
+            onClick={() => onRejectEuin(euin)}
             disabled={isBusy}
           >
             {isBusy ? "..." : "Reject"}
@@ -154,8 +152,8 @@ function PartnerRow({
   euinLoadingId: number | null;
   onAccept: (partner: Partner) => void;
   onReject: (partner: Partner) => void;
-  onAcceptEuin: (euin: ArnEuin, partner: Partner) => void;
-  onRejectEuin: (euin: ArnEuin, partner: Partner) => void;
+  onAcceptEuin: (euin: ArnEuin) => void;
+  onRejectEuin: (euin: ArnEuin) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const actionable = isPartnerActionable(partner.verificationStatus);
@@ -280,7 +278,6 @@ function PartnerRow({
                 <EuinRow
                   key={euin.id}
                   euin={euin}
-                  partner={partner}
                   euinLoadingId={euinLoadingId}
                   onAcceptEuin={onAcceptEuin}
                   onRejectEuin={onRejectEuin}
