@@ -11,8 +11,50 @@ import Badge from "../ui/badge/Badge";
 import { toast } from "react-hot-toast";
 import EditStockModal from "@/components/form/admin-form/EditStock";
 import ConfirmationDialog from "../ui/dialog/ConfirmationDialog";
-import AffectedTemplatesModal, { AffectedData } from "../ui/modal/AffectedTemplatesModal";
+import AffectedTemplatesModal, {
+  AffectedData,
+  AffectedPortfolioItem,
+  AffectedTemplateItem,
+} from "../ui/modal/AffectedTemplatesModal";
 import { portfolioManagementServiceApi } from "@/services/portfolioManagementServiceApi";
+
+interface TemplateStockItem {
+  id?: number | string;
+  selectValue?: number | string;
+  weight?: number | string;
+  geography?: string;
+}
+
+interface RawTemplateItem {
+  id: number;
+  templateName?: string;
+  category?: string;
+  portfolioType?: string;
+  geography?: string;
+  targetWeight?: number;
+  stocks?: string | TemplateStockItem[];
+}
+
+interface PortfolioStockFieldItem {
+  id?: number | string;
+  selectValue?: number | string;
+  weight?: string | number;
+}
+
+interface RawPortfolioItem {
+  id: number;
+  portfolioName?: string;
+  planId?: string | number;
+  goalId?: string | number;
+  goalName?: string | null;
+  packageId?: string | number;
+  packageName?: string | null;
+  riskScore?: string | number;
+  portfolioType?: string;
+  planType?: string;
+  stockIds?: string;
+  assetClassStock?: string | Record<string, PortfolioStockFieldItem[]>;
+}
 
 interface Rationale {
   id: number;
@@ -181,17 +223,18 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
       }
   
       if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
+        const errJson = (await response.json().catch(() => ({}))) as { message?: string };
         throw new Error(errJson.message || `Failed to update stock type (${response.status})`);
       }
   
       toast.success("Stock recommendation type updated!");
       onRefresh?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating stock type:", error);
       // Revert optimistic update on failure
       setLocalStocks(previousStocks);
-      toast.error(error?.message || "Error updating stock recommendation type");
+      const errorMessage = error instanceof Error ? error.message : "Error updating stock recommendation type";
+      toast.error(errorMessage);
       throw error;
     }
   };
@@ -233,7 +276,7 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
       }
 
       if (response && response.ok) {
-        const resData = await response.json();
+        const resData = (await response.json()) as { data?: AffectedData } & AffectedData;
         const rawData = resData?.data || resData;
         
         matchedAffectedData = {
@@ -255,15 +298,19 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
         // Fallback: Check active asset class templates directly from template management API
         try {
           const templatesRes = await portfolioManagementServiceApi.getAssetClassTemplates();
-          const rawTemplates: any = templatesRes?.data || [];
-          const templatesList = Array.isArray(rawTemplates) ? rawTemplates : (rawTemplates?.data || []);
+          const rawTemplates = (templatesRes?.data || []) as RawTemplateItem[] | { data?: RawTemplateItem[] };
+          const templatesList: RawTemplateItem[] = Array.isArray(rawTemplates)
+            ? rawTemplates
+            : Array.isArray(rawTemplates?.data)
+              ? rawTemplates.data
+              : [];
 
-          const affectedTemplates: any[] = [];
+          const affectedTemplates: AffectedTemplateItem[] = [];
           for (const template of templatesList) {
-            let templateStocks: any[] = [];
+            let templateStocks: TemplateStockItem[] = [];
             if (typeof template.stocks === 'string') {
               try {
-                templateStocks = JSON.parse(template.stocks);
+                templateStocks = JSON.parse(template.stocks) as TemplateStockItem[];
               } catch {
                 templateStocks = [];
               }
@@ -271,7 +318,9 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
               templateStocks = template.stocks;
             }
 
-            const foundStock = templateStocks.find((item: any) => String(item.selectValue) === String(stock.id));
+            const foundStock = templateStocks.find(
+              (item) => String(item.selectValue ?? item.id) === String(stock.id)
+            );
             if (foundStock) {
               affectedTemplates.push({
                 id: template.id,
@@ -280,7 +329,7 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
                 portfolioType: template.portfolioType || 'STOCK',
                 geography: template.geography || foundStock.geography,
                 targetWeight: template.targetWeight,
-                stockWeight: parseFloat(foundStock.weight) || 0,
+                stockWeight: parseFloat(String(foundStock.weight || '0')) || 0,
                 totalStocks: templateStocks.length,
               });
             }
@@ -321,9 +370,17 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
           });
 
           if (portRes.ok) {
-            const portData = await portRes.json();
-            const portList: any[] = Array.isArray(portData) ? portData : (portData?.items || portData?.data || []);
-            const foundPortfolios: any[] = [];
+            const portData = (await portRes.json()) as
+              | RawPortfolioItem[]
+              | { items?: RawPortfolioItem[]; data?: RawPortfolioItem[] };
+            const portList: RawPortfolioItem[] = Array.isArray(portData)
+              ? portData
+              : Array.isArray(portData?.items)
+                ? portData.items
+                : Array.isArray(portData?.data)
+                  ? portData.data
+                  : [];
+            const foundPortfolios: AffectedPortfolioItem[] = [];
 
             for (const p of portList) {
               let weight = 0;
@@ -340,9 +397,13 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
               }
 
               // Check assetClassStock structured fields
-              let acStock: any = {};
+              let acStock: Record<string, PortfolioStockFieldItem[]> = {};
               if (typeof p.assetClassStock === 'string') {
-                try { acStock = JSON.parse(p.assetClassStock); } catch {}
+                try {
+                  acStock = JSON.parse(p.assetClassStock) as Record<string, PortfolioStockFieldItem[]>;
+                } catch {
+                  acStock = {};
+                }
               } else if (p.assetClassStock && typeof p.assetClassStock === 'object') {
                 acStock = p.assetClassStock;
               }
@@ -354,7 +415,7 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
                   for (const f of fields) {
                     if (String(f.selectValue) === String(stock.id) || String(f.id) === String(stock.id)) {
                       isStockFound = true;
-                      weight = parseFloat(f.weight) || weight;
+                      weight = parseFloat(String(f.weight || '0')) || weight;
                       categoryName = catKey;
                     }
                   }
@@ -367,9 +428,9 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
                   portfolioName: p.portfolioName || `Portfolio #${p.id}`,
                   planId: p.planId,
                   goalId: p.goalId,
-                  goalName: p.goalName,
+                  goalName: p.goalName || undefined,
                   packageId: p.packageId,
-                  packageName: p.packageName,
+                  packageName: p.packageName || undefined,
                   riskScore: p.riskScore,
                   portfolioType: p.portfolioType || p.planType,
                   stockWeight: weight,
