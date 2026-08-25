@@ -1099,6 +1099,7 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
               id="minimumInvestment"
               type="number"
               min="0"
+              step="any"
               placeholder="Enter Minimum Amount"
               value={portfolioDetails.minimumInvestment}
               onChange={(e) => setPortfolioDetails({ ...portfolioDetails, minimumInvestment: e.target.value })}
@@ -1111,6 +1112,7 @@ export default function CreatePortfolio({ isOpen, onClose }: AddStockProps) {
               id="orderAmount"
               type="number"
               min="0"
+              step="any"
               placeholder="System Amount"
               value={portfolioDetails.orderAmount}
               onChange={(e) => setPortfolioDetails({ ...portfolioDetails, orderAmount: e.target.value })}

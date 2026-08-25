@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Cookies from "js-cookie";
 import {
   Table,
   TableBody,
@@ -10,6 +11,8 @@ import Badge from "../ui/badge/Badge";
 import { toast } from "react-hot-toast";
 import EditStockModal from "@/components/form/admin-form/EditStock";
 import ConfirmationDialog from "../ui/dialog/ConfirmationDialog";
+import AffectedTemplatesModal, { AffectedData } from "../ui/modal/AffectedTemplatesModal";
+import { portfolioManagementServiceApi } from "@/services/portfolioManagementServiceApi";
 
 interface Rationale {
   id: number;
@@ -57,6 +60,7 @@ const formatCurrency = (value: string): string => {
 };
 
 const RECOMMENDATION_LABELS: Record<number, string> = {
+  0: "None",
   1: "Buy",
   2: "Hold",
   3: "Sell",
@@ -80,6 +84,15 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
   const [editingStock, setEditingStock] = useState<StockData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUpdatingRecommendation, setIsUpdatingRecommendation] = useState(false);
+  const [affectedModal, setAffectedModal] = useState<{
+    isOpen: boolean;
+    data: AffectedData | null;
+    stockId?: number;
+    newType?: number;
+    previousType?: number;
+  }>({ isOpen: false, data: null });
+  const [isCheckingAffected, setIsCheckingAffected] = useState(false);
+
   const [recommendationConfirm, setRecommendationConfirm] = useState<{
     isOpen: boolean;
     stockId?: number;
@@ -100,7 +113,7 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
         method: 'DELETE',
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${document.cookie.split("; ").find(row => row.startsWith("authToken="))?.split("=")[1] || ""}`,
+          Authorization: `Bearer ${Cookies.get('authToken') || document.cookie.split("; ").find(row => row.startsWith("authToken="))?.split("=")[1] || ""}`,
         },
       });
 
@@ -131,36 +144,287 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
     setEditingStock(null);
   };
 
+  const [localStocks, setLocalStocks] = useState<Stock[]>(stocks);
+
+  React.useEffect(() => {
+    setLocalStocks(stocks);
+  }, [stocks]);
+
   const handleStockTypeChange = async (id: number, newType: number) => {
+    const previousStocks = [...localStocks];
+    // Optimistic update
+    setLocalStocks(prev => prev.map(s => s.id === id ? { ...s, recommendationStock: newType } : s));
+
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_STOCK_API_URL;
-      const response = await fetch(`${apiUrl}stock/${id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_STOCK_API_URL || '';
+      const baseUrl = apiUrl.endsWith('/') ? apiUrl : `${apiUrl}/`;
+      const authToken = Cookies.get('authToken') || document.cookie.split("; ").find((row) => row.startsWith("authToken="))?.split("=")[1] || "";
+      
+      let response = await fetch(`${baseUrl}stock/${id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${
-            document.cookie.split("; ").find((row) => row.startsWith("authToken="))?.split("=")[1] || ""
-          }`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({ recommendationStock: newType }),
       });
+
+      if (response.status === 404) {
+        response = await fetch(`${baseUrl}stocks/${id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({ recommendationStock: newType }),
+        });
+      }
   
       if (!response.ok) {
-        throw new Error("Failed to update stock type");
+        const errJson = await response.json().catch(() => ({}));
+        throw new Error(errJson.message || `Failed to update stock type (${response.status})`);
       }
   
       toast.success("Stock recommendation type updated!");
       onRefresh?.();
-    } catch (error) {
-      console.error(error);
-      toast.error("Error updating stock recommendation type");
+    } catch (error: any) {
+      console.error("Error updating stock type:", error);
+      // Revert optimistic update on failure
+      setLocalStocks(previousStocks);
+      toast.error(error?.message || "Error updating stock recommendation type");
       throw error;
     }
   };
 
-  const handleRecommendationSelect = (stock: Stock, newType: number) => {
+  const handleRecommendationSelect = async (stock: Stock, newType: number) => {
     const currentType = Number(stock.recommendationStock);
     if (newType === currentType) return;
+
+    setIsCheckingAffected(true);
+    let matchedAffectedData: AffectedData | null = null;
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_STOCK_API_URL || process.env.NEXT_PUBLIC_API_URL || '';
+      const baseUrl = apiUrl.endsWith('/') ? apiUrl : `${apiUrl}/`;
+      const authToken = Cookies.get('authToken') || document.cookie.split("; ").find(row => row.startsWith("authToken="))?.split("=")[1] || "";
+      
+      let response: Response | null = null;
+      try {
+        response = await fetch(`${baseUrl}stock/${stock.id}/affected-templates`, {
+          method: 'GET',
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
+
+        // If singular 'stock/' returns 404, try plural 'stocks/'
+        if (response.status === 404) {
+          response = await fetch(`${baseUrl}stocks/${stock.id}/affected-templates`, {
+            method: 'GET',
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${authToken}`,
+            },
+          });
+        }
+      } catch (networkErr) {
+        console.warn("Backend affected-templates endpoint not reachable:", networkErr);
+      }
+
+      if (response && response.ok) {
+        const resData = await response.json();
+        const rawData = resData?.data || resData;
+        
+        matchedAffectedData = {
+          stock: rawData?.stock || {
+            id: stock.id,
+            stockName: stock.stockName,
+            ticker: stock.ticker,
+            currentPrice: stock.currentPrice,
+            recommendationStock: currentType,
+          },
+          summary: rawData?.summary || {
+            totalTemplatesAffected: rawData?.affectedTemplates?.length || 0,
+            totalPortfoliosAffected: rawData?.affectedPortfolios?.length || 0,
+          },
+          affectedTemplates: rawData?.affectedTemplates || [],
+          affectedPortfolios: rawData?.affectedPortfolios || [],
+        };
+      } else {
+        // Fallback: Check active asset class templates directly from template management API
+        try {
+          const templatesRes = await portfolioManagementServiceApi.getAssetClassTemplates();
+          const rawTemplates: any = templatesRes?.data || [];
+          const templatesList = Array.isArray(rawTemplates) ? rawTemplates : (rawTemplates?.data || []);
+
+          const affectedTemplates: any[] = [];
+          for (const template of templatesList) {
+            let templateStocks: any[] = [];
+            if (typeof template.stocks === 'string') {
+              try {
+                templateStocks = JSON.parse(template.stocks);
+              } catch {
+                templateStocks = [];
+              }
+            } else if (Array.isArray(template.stocks)) {
+              templateStocks = template.stocks;
+            }
+
+            const foundStock = templateStocks.find((item: any) => String(item.selectValue) === String(stock.id));
+            if (foundStock) {
+              affectedTemplates.push({
+                id: template.id,
+                templateName: template.templateName || `Template #${template.id}`,
+                category: template.category || 'Asset Class',
+                portfolioType: template.portfolioType || 'STOCK',
+                geography: template.geography || foundStock.geography,
+                targetWeight: template.targetWeight,
+                stockWeight: parseFloat(foundStock.weight) || 0,
+                totalStocks: templateStocks.length,
+              });
+            }
+          }
+
+          if (affectedTemplates.length > 0) {
+            matchedAffectedData = {
+              stock: {
+                id: stock.id,
+                stockName: stock.stockName,
+                ticker: stock.ticker,
+                currentPrice: stock.currentPrice,
+                recommendationStock: currentType,
+              },
+              summary: {
+                totalTemplatesAffected: affectedTemplates.length,
+                totalPortfoliosAffected: 0,
+              },
+              affectedTemplates,
+              affectedPortfolios: [],
+            };
+          }
+        } catch (templateErr) {
+          console.error("Error checking asset class templates fallback:", templateErr);
+        }
+      }
+
+      // Check portfolios if not already provided or if fallback is active
+      if (!matchedAffectedData || matchedAffectedData.affectedPortfolios.length === 0) {
+        try {
+          const portfolioEndpoint = process.env.NEXT_PUBLIC_PORTFOLIO_ENDPOINT || '/portfolio';
+          const portEndpointClean = portfolioEndpoint.startsWith('/') ? portfolioEndpoint.slice(1) : portfolioEndpoint;
+          const portRes = await fetch(`${baseUrl}${portEndpointClean}?limit=500`, {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (portRes.ok) {
+            const portData = await portRes.json();
+            const portList: any[] = Array.isArray(portData) ? portData : (portData?.items || portData?.data || []);
+            const foundPortfolios: any[] = [];
+
+            for (const p of portList) {
+              let weight = 0;
+              let categoryName = '';
+              let totalStocksCount = 0;
+              let isStockFound = false;
+
+              // Check stockIds string if present
+              if (p.stockIds) {
+                const sIds = String(p.stockIds).split(',').map((s: string) => s.trim());
+                if (sIds.includes(String(stock.id))) {
+                  isStockFound = true;
+                }
+              }
+
+              // Check assetClassStock structured fields
+              let acStock: any = {};
+              if (typeof p.assetClassStock === 'string') {
+                try { acStock = JSON.parse(p.assetClassStock); } catch {}
+              } else if (p.assetClassStock && typeof p.assetClassStock === 'object') {
+                acStock = p.assetClassStock;
+              }
+
+              if (acStock && typeof acStock === 'object') {
+                for (const catKey of Object.keys(acStock)) {
+                  const fields = Array.isArray(acStock[catKey]) ? acStock[catKey] : [];
+                  totalStocksCount += fields.length;
+                  for (const f of fields) {
+                    if (String(f.selectValue) === String(stock.id) || String(f.id) === String(stock.id)) {
+                      isStockFound = true;
+                      weight = parseFloat(f.weight) || weight;
+                      categoryName = catKey;
+                    }
+                  }
+                }
+              }
+
+              if (isStockFound) {
+                foundPortfolios.push({
+                  id: p.id,
+                  portfolioName: p.portfolioName || `Portfolio #${p.id}`,
+                  planId: p.planId,
+                  goalId: p.goalId,
+                  goalName: p.goalName,
+                  packageId: p.packageId,
+                  packageName: p.packageName,
+                  riskScore: p.riskScore,
+                  portfolioType: p.portfolioType || p.planType,
+                  stockWeight: weight,
+                  totalStocks: totalStocksCount || undefined,
+                  category: categoryName || undefined,
+                });
+              }
+            }
+
+            if (foundPortfolios.length > 0) {
+              if (!matchedAffectedData) {
+                matchedAffectedData = {
+                  stock: {
+                    id: stock.id,
+                    stockName: stock.stockName,
+                    ticker: stock.ticker,
+                    currentPrice: stock.currentPrice,
+                    recommendationStock: currentType,
+                  },
+                  summary: {
+                    totalTemplatesAffected: 0,
+                    totalPortfoliosAffected: foundPortfolios.length,
+                  },
+                  affectedTemplates: [],
+                  affectedPortfolios: foundPortfolios,
+                };
+              } else {
+                matchedAffectedData.affectedPortfolios = foundPortfolios;
+                matchedAffectedData.summary.totalPortfoliosAffected = foundPortfolios.length;
+              }
+            }
+          }
+        } catch (portErr) {
+          console.warn("Fallback portfolio check error:", portErr);
+        }
+      }
+
+      const totalTemplates = matchedAffectedData?.summary?.totalTemplatesAffected || matchedAffectedData?.affectedTemplates?.length || 0;
+      const totalPortfolios = matchedAffectedData?.summary?.totalPortfoliosAffected || matchedAffectedData?.affectedPortfolios?.length || 0;
+
+      if (matchedAffectedData && (totalTemplates > 0 || totalPortfolios > 0)) {
+        setAffectedModal({
+          isOpen: true,
+          data: matchedAffectedData,
+          stockId: stock.id,
+          newType,
+          previousType: currentType,
+        });
+        return;
+      }
+    } catch (err) {
+      console.error("Error in handleRecommendationSelect:", err);
+    } finally {
+      setIsCheckingAffected(false);
+    }
 
     setRecommendationConfirm({
       isOpen: true,
@@ -169,6 +433,21 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
       newType,
       previousType: currentType,
     });
+  };
+
+  const handleConfirmAffectedRecommendationChange = async () => {
+    const { stockId, newType } = affectedModal;
+    if (stockId === undefined || newType === undefined) return;
+
+    setIsUpdatingRecommendation(true);
+    try {
+      await handleStockTypeChange(stockId, newType);
+      setAffectedModal({ isOpen: false, data: null });
+    } catch {
+      // Error toast is shown in handleStockTypeChange
+    } finally {
+      setIsUpdatingRecommendation(false);
+    }
   };
 
   const handleConfirmRecommendationChange = async () => {
@@ -250,7 +529,7 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                {stocks.map((stock) => {
+                {localStocks.map((stock) => {
                   const change = getPriceChange(stock.currentPrice, stock.yesterdayPrice);
                   const latestRationale = getLatestRationale(stock.rationales);
                   
@@ -301,10 +580,12 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
                       </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                         <select
-                          value={Number(stock.recommendationStock)}
+                          value={Number(stock.recommendationStock) || 0}
                           onChange={(e) => handleRecommendationSelect(stock, Number(e.target.value))}
-                          className="w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                          disabled={isCheckingAffected || isUpdatingRecommendation}
+                          className="w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 disabled:opacity-50"
                         >
+                          <option value="0" disabled>Select Recommendation</option>
                           <option value="1">Buy</option>
                           <option value="2">Hold</option>
                           <option value="3">Sell</option>
@@ -383,6 +664,7 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
             />
           )}
 
+          {/* Simple confirmation dialog when no templates/portfolios are affected */}
           <ConfirmationDialog
             isOpen={recommendationConfirm.isOpen}
             onClose={handleCancelRecommendationChange}
@@ -398,6 +680,25 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
             confirmText="Yes, Continue"
             cancelText="Cancel"
             variant="warning"
+            isLoading={isUpdatingRecommendation}
+          />
+
+          {/* Detailed warning modal when stock is used in asset class templates or portfolios */}
+          <AffectedTemplatesModal
+            isOpen={affectedModal.isOpen}
+            onClose={() => setAffectedModal({ isOpen: false, data: null })}
+            onConfirm={handleConfirmAffectedRecommendationChange}
+            data={affectedModal.data}
+            newRecommendationLabel={
+              affectedModal.newType !== undefined
+                ? RECOMMENDATION_LABELS[affectedModal.newType]
+                : undefined
+            }
+            previousRecommendationLabel={
+              affectedModal.previousType !== undefined
+                ? RECOMMENDATION_LABELS[affectedModal.previousType]
+                : undefined
+            }
             isLoading={isUpdatingRecommendation}
           />
         </div>
