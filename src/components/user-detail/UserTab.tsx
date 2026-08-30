@@ -131,8 +131,25 @@ interface Transaction {
   orderType: 'BUY' | 'SELL';
   portfolioId: number;
   totalAmount: number;
-  totalTradeQty: string;
+  totalTradeQty: string | number;
   createdAt: string;
+  orderStatus?: string;
+  status?: string;
+  tradeStatus?: string;
+  stockStatus?: string;
+  details?: Array<{
+    id?: number;
+    orderId?: number;
+    stockId?: number;
+    stockName?: string;
+    ticker?: string;
+    quantity?: number | string;
+    price?: number | string;
+    amount?: number | string;
+    status?: string;
+    [key: string]: any;
+  }>;
+  [key: string]: any;
 }
 
 interface StockDetails {
@@ -1359,6 +1376,11 @@ export default function UserTab({
                 ) : transactions && transactions.length > 0 ? (
                   <TransactionTab
                     transactions={transactions}
+                    formatCurrency={formatCurrency}
+                  />
+                ) : transactionsMF && transactionsMF.length > 0 ? (
+                  <FydaaMutualFundTransactionTab
+                    transactionsMF={transactionsMF}
                     formatCurrency={formatCurrency}
                   />
                 ) : (

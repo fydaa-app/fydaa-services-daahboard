@@ -135,154 +135,156 @@ export default function FydaaMutualFundTransactionTab({
         </p>
       </div>
 
-      <div className="overflow-hidden">
-        {transactionsMF && transactionsMF.length > 0 ? (
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-white/[0.05]">
-            <thead className="bg-gray-50 dark:bg-white/[0.02] border-b border-gray-100 dark:border-white/[0.05]">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Transaction Details
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Amount
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Orders
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-white/[0.05]">
-              {transactionsMF.map((transaction) => {
-                const isExpanded = expandedRows.has(transaction.transactionId);
-                return (
-                  <React.Fragment key={transaction.transactionId}>
-                    <tr className="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {transaction.transactionId}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            SIP ID: {transaction.sipId}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="text-sm text-gray-900 dark:text-gray-100">
-                            {formatCurrency(transaction.totalAmount)}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            Processed: {formatCurrency(transaction.processedAmount)}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="text-sm text-gray-900 dark:text-gray-100">
-                            {transaction.totalOrders} total
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {transaction.successfulOrders} success, {transaction.failedOrders} failed
-                          </p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <StatusBadge status={transaction.status as 'FULLY_SUCCESSFUL' | 'PARTIALLY_SUCCESSFUL' | 'FAILED' | 'IN_PROCESS'} />
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                        {formatDate(transaction.createdAt)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <button
-                          onClick={() => toggleRow(transaction.transactionId)}
-                          className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm font-medium"
-                        >
-                          {isExpanded ? 'Hide Details' : 'View Details'}
-                        </button>
-                      </td>
-                    </tr>
-                    {isExpanded && (
-                      <tr>
-                        <td colSpan={6} className="px-6 py-4 bg-gray-50 dark:bg-white/[0.02]">
-                          <div className="space-y-4">
-                            <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Order Details</h4>
-                            <div className="overflow-x-auto">
-                              <table className="min-w-full divide-y divide-gray-200 dark:divide-white/[0.05]">
-                                <thead className="bg-gray-100 dark:bg-white/[0.05]">
-                                  <tr>
-                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                      Scheme
-                                    </th>
-                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                      Status
-                                    </th>
-                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                      Amount
-                                    </th>
-                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                      Processed
-                                    </th>
-                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                      Error
-                                    </th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200 dark:divide-white/[0.05]">
-                                  {transaction.orders.map((order) => (
-                                    <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
-                                      <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
-                                        <div>
-                                          <p className="font-medium">{order.schemeName}</p>
-                                          <p className="text-gray-500 dark:text-gray-500 font-mono">{order.scheme}</p>
-                                        </div>
-                                      </td>
-                                      <td className="px-4 py-3 text-start">
-                                        <OrderStateBadge state={order.state as 'submitted' | 'failed' | 'successful'} />
-                                      </td>
-                                      <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
-                                        {formatCurrency(order.amount)}
-                                      </td>
-                                      <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
-                                        {formatCurrency(order.processed_amount)}
-                                      </td>
-                                      <td className="px-4 py-3 text-xs text-red-600 dark:text-red-400">
-                                        {order.failure_code && order.failure_code !== 'null' ? order.failure_code : "—"}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
+      <div className="overflow-x-auto max-w-full">
+        <div className="min-w-[900px]">
+          {transactionsMF && transactionsMF.length > 0 ? (
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-white/[0.05]">
+              <thead className="bg-gray-50 dark:bg-white/[0.02] border-b border-gray-100 dark:border-white/[0.05]">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                    Transaction Details
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                    Amount
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                    Orders
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-white/[0.05]">
+                {transactionsMF.map((transaction) => {
+                  const isExpanded = expandedRows.has(transaction.transactionId);
+                  return (
+                    <React.Fragment key={transaction.transactionId}>
+                      <tr className="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 font-mono">
+                              {transaction.transactionId}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              SIP ID: {transaction.sipId}
+                            </p>
                           </div>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                              {formatCurrency(transaction.totalAmount)}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              Processed: {formatCurrency(transaction.processedAmount)}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <p className="text-sm text-gray-900 dark:text-gray-100">
+                              {transaction.totalOrders} total
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {transaction.successfulOrders} success, {transaction.failedOrders} failed
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <StatusBadge status={transaction.status as 'FULLY_SUCCESSFUL' | 'PARTIALLY_SUCCESSFUL' | 'FAILED' | 'IN_PROCESS'} />
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                          {formatDate(transaction.createdAt)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            onClick={() => toggleRow(transaction.transactionId)}
+                            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm font-medium"
+                          >
+                            {isExpanded ? 'Hide Details' : 'View Details'}
+                          </button>
+                        </td>
                       </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        ) : (
-          <div className="flex justify-center items-center py-12">
-            <div className="text-center">
-              <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Transactions Found</h3>
-              <p className="text-gray-500 dark:text-gray-400">This user has no mutual fund transactions.</p>
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-4 bg-gray-50 dark:bg-white/[0.02]">
+                            <div className="space-y-4">
+                              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Order Details</h4>
+                              <div className="overflow-x-auto max-w-full">
+                                <table className="min-w-full divide-y divide-gray-200 dark:divide-white/[0.05]">
+                                  <thead className="bg-gray-100 dark:bg-white/[0.05]">
+                                    <tr>
+                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                                        Scheme
+                                      </th>
+                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                                        Status
+                                      </th>
+                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                                        Amount
+                                      </th>
+                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                                        Processed
+                                      </th>
+                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                                        Error
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-200 dark:divide-white/[0.05]">
+                                    {transaction.orders.map((order) => (
+                                      <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                                        <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                          <div>
+                                            <p className="font-medium">{order.schemeName}</p>
+                                            <p className="text-gray-500 dark:text-gray-500 font-mono">{order.scheme}</p>
+                                          </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-start whitespace-nowrap">
+                                          <OrderStateBadge state={order.state as 'submitted' | 'failed' | 'successful'} />
+                                        </td>
+                                        <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                          {formatCurrency(order.amount)}
+                                        </td>
+                                        <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                          {formatCurrency(order.processed_amount)}
+                                        </td>
+                                        <td className="px-4 py-3 text-xs text-red-600 dark:text-red-400 whitespace-nowrap">
+                                          {order.failure_code && order.failure_code !== 'null' ? order.failure_code : "—"}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <div className="flex justify-center items-center py-12">
+              <div className="text-center">
+                <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Transactions Found</h3>
+                <p className="text-gray-500 dark:text-gray-400">This user has no mutual fund transactions.</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

@@ -120,8 +120,14 @@ interface UserTransaction {
   orderType: string;
   portfolioId: number;
   totalAmount: number;
-  totalTradeQty: string;
+  totalTradeQty: string | number;
   createdAt: string;
+  orderStatus?: string;
+  status?: string;
+  tradeStatus?: string;
+  stockStatus?: string;
+  details?: any[];
+  [key: string]: any;
 }
 
 interface Transaction {
@@ -129,8 +135,14 @@ interface Transaction {
   orderType: "BUY" | "SELL";
   portfolioId: number;
   totalAmount: number;
-  totalTradeQty: string;
+  totalTradeQty: string | number;
   createdAt: string;
+  orderStatus?: string;
+  status?: string;
+  tradeStatus?: string;
+  stockStatus?: string;
+  details?: any[];
+  [key: string]: any;
 }
 
 interface StockDetails {
@@ -394,20 +406,20 @@ export default function UserDetails({ params }: PageProps) {
       <PageBreadcrumb pageTitle="User" />
       <div className="space-y-6">
         <div className="mb-4">
-          <button 
+          <button
             onClick={handleBackToList}
             className="flex items-center text-blue-600 hover:text-blue-800"
           >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              className="h-5 w-5 mr-2" 
-              viewBox="0 0 20 20" 
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 mr-2"
+              viewBox="0 0 20 20"
               fill="currentColor"
             >
-              <path 
-                fillRule="evenodd" 
-                d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" 
-                clipRule="evenodd" 
+              <path
+                fillRule="evenodd"
+                d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
+                clipRule="evenodd"
               />
             </svg>
             Back to User List

@@ -1,14 +1,5 @@
 import React from "react";
-import UserTransactionsTable from "../../tables/UserTransactionsTable";
-
-interface Transaction {
-  transactionId: string;
-  orderType: 'BUY' | 'SELL';
-  portfolioId: number;
-  totalAmount: number;
-  totalTradeQty: string;
-  createdAt: string;
-}
+import UserTransactionsTable, { Transaction } from "../../tables/UserTransactionsTable";
 
 interface TransactionTabProps {
   transactions: Transaction[];
