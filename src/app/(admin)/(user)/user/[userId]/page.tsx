@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
-import UserTab from "@/components/user-detail/UserTab";
+import UserTab, { Transaction } from "@/components/user-detail/UserTab";
 import Cookies from "js-cookie";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -126,23 +126,8 @@ interface UserTransaction {
   status?: string;
   tradeStatus?: string;
   stockStatus?: string;
-  details?: any[];
-  [key: string]: any;
-}
-
-interface Transaction {
-  transactionId: string;
-  orderType: "BUY" | "SELL";
-  portfolioId: number;
-  totalAmount: number;
-  totalTradeQty: string | number;
-  createdAt: string;
-  orderStatus?: string;
-  status?: string;
-  tradeStatus?: string;
-  stockStatus?: string;
-  details?: any[];
-  [key: string]: any;
+  details?: unknown[];
+  [key: string]: unknown;
 }
 
 interface StockDetails {

@@ -30,7 +30,7 @@ export interface TransactionDetail {
   last_error?: string | null;
   failureReason?: string | null;
   error?: string | null;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface Transaction {
@@ -45,7 +45,7 @@ export interface Transaction {
   tradeStatus?: string;
   stockStatus?: string;
   details?: TransactionDetail[];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface UserTransactionsTableProps {
@@ -91,7 +91,7 @@ const getOrderStatusBadgeColor = (
   return "info";
 };
 
-const formatOrderStatus = (rawStatus: any): string | null => {
+const formatOrderStatus = (rawStatus: unknown): string | null => {
   if (rawStatus === null || rawStatus === undefined || rawStatus === "") {
     return null;
   }
@@ -153,7 +153,7 @@ export default function UserTransactionsTable({
           </TableHeader>
           <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
             {transactions.map((transaction) => {
-              const raw = transaction as Record<string, any>;
+              const raw = transaction as Record<string, unknown>;
               const rawStatus =
                 transaction.orderStatus ??
                 transaction.status ??
@@ -169,9 +169,9 @@ export default function UserTransactionsTable({
               const isExpanded = expandedRows.has(transaction.transactionId);
               const detailsList: TransactionDetail[] =
                 transaction.details ||
-                raw.orderDetails ||
-                raw.stockOrders ||
-                raw.orders ||
+                (raw.orderDetails as TransactionDetail[] | undefined) ||
+                (raw.stockOrders as TransactionDetail[] | undefined) ||
+                (raw.orders as TransactionDetail[] | undefined) ||
                 [];
 
               return (
@@ -237,30 +237,30 @@ export default function UserTransactionsTable({
                               <span className="text-gray-500 dark:text-gray-400">Transaction ID: </span>
                               <span className="font-mono font-medium text-gray-900 dark:text-gray-100">{transaction.transactionId}</span>
                             </div>
-                            {transaction.portfolioId && (
+                            {Boolean(transaction.portfolioId) && (
                               <div>
                                 <span className="text-gray-500 dark:text-gray-400">• Portfolio ID: </span>
                                 <span className="font-medium text-gray-900 dark:text-gray-100">{transaction.portfolioId}</span>
                               </div>
                             )}
-                            {raw.sipId && (
+                            {Boolean(raw.sipId) && (
                               <div>
                                 <span className="text-gray-500 dark:text-gray-400">• SIP ID: </span>
-                                <span className="font-medium text-gray-900 dark:text-gray-100">{raw.sipId}</span>
+                                <span className="font-medium text-gray-900 dark:text-gray-100">{String(raw.sipId)}</span>
                               </div>
                             )}
-                            {raw.paymentStatus && (
+                            {Boolean(raw.paymentStatus) && (
                               <div>
                                 <span className="text-gray-500 dark:text-gray-400">• Payment: </span>
-                                <Badge color={getOrderStatusBadgeColor(raw.paymentStatus)}>
-                                  {raw.paymentStatus}
+                                <Badge color={getOrderStatusBadgeColor(String(raw.paymentStatus))}>
+                                  {String(raw.paymentStatus)}
                                 </Badge>
                               </div>
                             )}
                             {raw.processedAmount !== undefined && (
                               <div>
                                 <span className="text-gray-500 dark:text-gray-400">• Processed Amount: </span>
-                                <span className="font-medium text-gray-900 dark:text-gray-100">{formatCurrency(raw.processedAmount)}</span>
+                                <span className="font-medium text-gray-900 dark:text-gray-100">{formatCurrency(Number(raw.processedAmount))}</span>
                               </div>
                             )}
                           </div>
@@ -307,22 +307,23 @@ export default function UserTransactionsTable({
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
                                   {detailsList.map((item, idx) => {
-                                    const itemRaw = item as Record<string, any>;
+                                    const itemRaw = item as Record<string, unknown>;
+                                    const stockObj = itemRaw.stock as Record<string, unknown> | undefined;
                                     const itemStatus =
                                       item.status ||
                                       item.tradeStatus ||
                                       item.stockStatus ||
                                       item.orderStatus ||
                                       item.state ||
-                                      itemRaw.orderState;
+                                      (typeof itemRaw.orderState === "string" ? itemRaw.orderState : undefined);
 
-                                    const itemQty =
-                                      item.quantity ??
-                                      item.tradeQty ??
-                                      item.totalTradeQty ??
-                                      itemRaw.qty ??
-                                      itemRaw.units ??
-                                      itemRaw.executedQty ??
+                                    const itemQty: string =
+                                      item.quantity !== undefined && item.quantity !== null ? String(item.quantity) :
+                                      item.tradeQty !== undefined && item.tradeQty !== null ? String(item.tradeQty) :
+                                      item.totalTradeQty !== undefined && item.totalTradeQty !== null ? String(item.totalTradeQty) :
+                                      itemRaw.qty !== undefined && itemRaw.qty !== null ? String(itemRaw.qty) :
+                                      itemRaw.units !== undefined && itemRaw.units !== null ? String(itemRaw.units) :
+                                      itemRaw.executedQty !== undefined && itemRaw.executedQty !== null ? String(itemRaw.executedQty) :
                                       "—";
 
                                     const itemPrice =
@@ -338,48 +339,48 @@ export default function UserTransactionsTable({
                                       itemRaw.processed_amount ??
                                       itemRaw.processedAmount;
 
-                                    const stockName =
-                                      item.stockName ||
-                                      item["stock.stockName"] ||
-                                      itemRaw.schemeName ||
-                                      itemRaw.name ||
-                                      itemRaw.stock?.stockName ||
-                                      itemRaw.stock?.name ||
+                                    const stockName: string =
+                                      (typeof item.stockName === "string" ? item.stockName : undefined) ||
+                                      (typeof item["stock.stockName"] === "string" ? (item["stock.stockName"] as string) : undefined) ||
+                                      (typeof itemRaw.schemeName === "string" ? itemRaw.schemeName : undefined) ||
+                                      (typeof itemRaw.name === "string" ? itemRaw.name : undefined) ||
+                                      (typeof stockObj?.stockName === "string" ? stockObj.stockName : undefined) ||
+                                      (typeof stockObj?.name === "string" ? stockObj.name : undefined) ||
                                       "—";
 
-                                    const ticker =
-                                      item.ticker ||
-                                      item["stock.ticker"] ||
-                                      itemRaw.symbol ||
-                                      itemRaw.scheme ||
-                                      itemRaw.stock?.ticker ||
+                                    const ticker: string =
+                                      (typeof item.ticker === "string" ? item.ticker : undefined) ||
+                                      (typeof item["stock.ticker"] === "string" ? (item["stock.ticker"] as string) : undefined) ||
+                                      (typeof itemRaw.symbol === "string" ? itemRaw.symbol : undefined) ||
+                                      (typeof itemRaw.scheme === "string" ? itemRaw.scheme : undefined) ||
+                                      (typeof stockObj?.ticker === "string" ? stockObj.ticker : undefined) ||
                                       "—";
 
-                                    const orderId =
-                                      item.orderId ??
-                                      item.id ??
-                                      itemRaw.order_id ??
-                                      itemRaw.stockOrderId ??
+                                    const orderId: string =
+                                      item.orderId !== undefined && item.orderId !== null ? String(item.orderId) :
+                                      item.id !== undefined && item.id !== null ? String(item.id) :
+                                      itemRaw.order_id !== undefined && itemRaw.order_id !== null ? String(itemRaw.order_id) :
+                                      itemRaw.stockOrderId !== undefined && itemRaw.stockOrderId !== null ? String(itemRaw.stockOrderId) :
                                       "—";
 
-                                    const stockId =
-                                      item.stockId ??
-                                      itemRaw.stock_id ??
-                                      itemRaw.schemeId ??
+                                    const stockId: string =
+                                      item.stockId !== undefined && item.stockId !== null ? String(item.stockId) :
+                                      itemRaw.stock_id !== undefined && itemRaw.stock_id !== null ? String(itemRaw.stock_id) :
+                                      itemRaw.schemeId !== undefined && itemRaw.schemeId !== null ? String(itemRaw.schemeId) :
                                       "—";
 
-                                    const errorDetails =
-                                      item.failure_code ||
-                                      item.last_error ||
-                                      item.failureReason ||
-                                      item.error ||
-                                      itemRaw.rejectReason ||
-                                      itemRaw.errorMessage ||
-                                      itemRaw.remarks;
+                                    const errorDetails: string | undefined =
+                                      (typeof item.failure_code === "string" ? item.failure_code : undefined) ||
+                                      (typeof item.last_error === "string" ? item.last_error : undefined) ||
+                                      (typeof item.failureReason === "string" ? item.failureReason : undefined) ||
+                                      (typeof item.error === "string" ? item.error : undefined) ||
+                                      (typeof itemRaw.rejectReason === "string" ? itemRaw.rejectReason : undefined) ||
+                                      (typeof itemRaw.errorMessage === "string" ? itemRaw.errorMessage : undefined) ||
+                                      (typeof itemRaw.remarks === "string" ? itemRaw.remarks : undefined);
 
                                     return (
                                       <tr
-                                        key={item.id || item.orderId || idx}
+                                        key={item.id || String(item.orderId) || idx}
                                         className="hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors"
                                       >
                                         <td className="px-4 py-2.5 text-xs font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">

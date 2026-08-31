@@ -126,7 +126,7 @@ interface Subscription {
   plan_name: string;
 }
 
-interface Transaction {
+export interface Transaction {
   transactionId: string;
   orderType: 'BUY' | 'SELL';
   portfolioId: number;
@@ -147,9 +147,9 @@ interface Transaction {
     price?: number | string;
     amount?: number | string;
     status?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   }>;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface StockDetails {
