@@ -157,3 +157,44 @@ export async function getAccountLedgersList(
     },
   };
 }
+
+export async function getUserAccountLedgersList(
+  userId: number,
+  page: number = 1,
+  limit: number = 10,
+): Promise<AccountLedgerResponse> {
+  const baseUrl = getPaymentBaseUrl();
+  const token = getAuthToken();
+
+  const params = new URLSearchParams({
+    page: String(Number(page)),
+    limit: String(Number(limit)),
+  });
+
+  const response = await fetch(`${baseUrl}/subscription/account-ledgers/user/${userId}?${params.toString()}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (response.status === 401) {
+    handleUnauthorized();
+    throw new Error("Unauthorized");
+  }
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error((err?.message as string | undefined) || "Failed to fetch user account ledgers");
+  }
+
+  const result = await response.json();
+  return {
+    data: result.data || [],
+    meta: {
+      total: result.meta?.total || 0,
+      page: result.meta?.page || 1,
+      limit: result.meta?.limit || 10,
+      totalPages: result.meta?.totalPages || 0,
+    },
+  };
+}
