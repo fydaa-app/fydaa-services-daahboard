@@ -1439,7 +1439,7 @@ export default function UserTab({
             )}
 
             {/* Accounts Tab */}
-            {activeTab === 'Accounts' && (
+            {activeTab === 'Account Ledger' && (
               <AccountsTab
                 userId={userDetails.id}
                 authToken={
