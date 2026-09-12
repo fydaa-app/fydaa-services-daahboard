@@ -24,6 +24,7 @@ import ProfileTab from "./tabs/ProfileTab";
 import ReportsTab from "./tabs/ReportsTab";
 import PaymentsTab from "./tabs/PaymentsTab";
 import PendingActionTab from "./tabs/PendingActionTab";
+import AccountsTab from "./tabs/AccountsTab";
 
 // Interfaces
 
@@ -1312,7 +1313,7 @@ export default function UserTab({
         <div className="flex flex-col gap-5">
           {/* Tabs Navigation */}
           <div className="flex gap-2 overflow-x-auto">
-            {['Portfolio', 'Transaction', 'Subscription', isFydaaUser ? 'Stock' : 'Mutual Fund', 'Payments', 'Profile', 'Reports', !isFydaaUser ? '' : 'pending Actions'].map((tab) => (
+            {['Portfolio', 'Transaction', 'Subscription', isFydaaUser ? 'Stock' : 'Mutual Fund', 'Payments', ...(userDetails.fromApp?.toLowerCase() === 'savestment' ? ['Account Ledger'] : []), 'Profile', 'Reports', !isFydaaUser ? '' : 'pending Actions'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => handleTabChange(tab)}
@@ -1434,6 +1435,19 @@ export default function UserTab({
                 sendingEmail={sendingEmail}
                 downloadInvoicePDF={downloadInvoicePDF}
                 sendInvoiceEmail={sendInvoiceEmail}
+              />
+            )}
+
+            {/* Accounts Tab */}
+            {activeTab === 'Account Ledger' && (
+              <AccountsTab
+                userId={userDetails.id}
+                authToken={
+                  document.cookie
+                    .split("; ")
+                    .find((row) => row.startsWith("authToken="))
+                    ?.split("=")[1] || ""
+                }
               />
             )}
 
