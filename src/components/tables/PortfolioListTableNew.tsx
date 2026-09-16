@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Table,
   TableBody,
@@ -8,6 +8,7 @@ import {
 } from "../ui/table";
 import { toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import PaRRVAPortfolioSyncModal from '@/components/parrva/PaRRVAPortfolioSyncModal';
 
 
 interface AssetClass {    
@@ -111,6 +112,8 @@ const hasInvalidWeightsSum = (portfolio: Portfolio): boolean => {
 
 export default function PortfolioListTableNew({ portfolios, error, getPlanName, getPlanTermName, onRefresh }: PortfolioTableProps) {
   const router = useRouter();
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [currentPortfolio, setCurrentPortfolio] = useState<Portfolio | null>(null);
 
   const handleEdit = (portfolio: Portfolio) => { 
     router.push(`/portfolio-new/edit/${portfolio.id}`);
@@ -118,6 +121,16 @@ export default function PortfolioListTableNew({ portfolios, error, getPlanName, 
 
   const handleClone = (portfolio: Portfolio) => { 
     router.push(`/portfolio-new/clone/${portfolio.id}`);
+  };
+
+  const handleSyncPaRRVA = (portfolio: Portfolio) => {
+    setCurrentPortfolio({ ...portfolio });
+    setIsSyncModalOpen(true);
+  };
+
+  const handleSyncModalClose = () => {
+    setIsSyncModalOpen(false);
+    setCurrentPortfolio(null);
   };
 
 
@@ -238,6 +251,16 @@ export default function PortfolioListTableNew({ portfolios, error, getPlanName, 
                       <TableCell className="px-4 py-3">
                         <div className="flex gap-2">                        
                           <button
+                            onClick={() => handleSyncPaRRVA(portfolio)} 
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-theme-xs font-semibold text-emerald-700 shadow-theme-xs hover:bg-emerald-100 hover:text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60"
+                            aria-label={`Sync ${portfolio.portfolioName} with PaRRVA PDC`}
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            PDC Sync
+                          </button>
+                          <button
                             onClick={() => handleClone(portfolio)} 
                             className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-theme-sm font-medium text-blue-600 shadow-theme-xs hover:bg-gray-50 hover:text-blue-800 dark:border-gray-700 dark:bg-gray-800 dark:text-blue-400 dark:hover:bg-white/[0.03] dark:hover:text-blue-300"
                             aria-label={`Clone ${portfolio.portfolioName}`}
@@ -275,6 +298,15 @@ export default function PortfolioListTableNew({ portfolios, error, getPlanName, 
         </div>
       </div>
       
+      {/* PaRRVA PDC Portfolio Sync Modal */}
+      <PaRRVAPortfolioSyncModal
+        isOpen={isSyncModalOpen}
+        onClose={handleSyncModalClose}
+        portfolio={currentPortfolio}
+        onSuccess={() => {
+          onRefresh?.();
+        }}
+      />
     </div>
   );
 }

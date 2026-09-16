@@ -320,6 +320,15 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
         if ((type === "clone") && PortfolioData) {
           const stockIdsArray = PortfolioData?.stockIds?.replace(/'/g, "").split(",") || [];
           const weightsArray = PortfolioData?.weights?.replace(/'/g, "").split(",") || [];
+
+          // ✅ portfolioType ke hisaab se sahi options use karo currentPrice fill karne ke liye
+          const optionsForType = 
+            PortfolioData.portfolioType === 'MUTUALFUND' ? moptions :
+            PortfolioData.portfolioType === 'USSTOCK' ? uoptions :
+            PortfolioData.portfolioType === 'WORLDSTOCK' ? woptions :
+            PortfolioData.portfolioType === 'ETF' ? options.filter((opt: StockOption) => opt.capType === 'ETF') :
+            options;
+
           const newFields = stockIdsArray.map((id: string, index: number) => ({
             id: index + 1,
             selectValue: id,
@@ -332,14 +341,6 @@ export default function EditPortfolio({ isOpen, onClose, PortfolioData ,type = '
           setFields(newFields);
                   
           const newFields1 = PortfolioData?.assetClassStock;
-
-          // ✅ portfolioType ke hisaab se sahi options use karo currentPrice fill karne ke liye
-          const optionsForType = 
-            PortfolioData.portfolioType === 'MUTUALFUND' ? moptions :
-            PortfolioData.portfolioType === 'USSTOCK' ? uoptions :
-            PortfolioData.portfolioType === 'WORLDSTOCK' ? woptions :
-            PortfolioData.portfolioType === 'ETF' ? options.filter((opt: StockOption) => opt.capType === 'ETF') :
-            options;
 
           for (const category in newFields1) {
             if (newFields1.hasOwnProperty(category)) {
