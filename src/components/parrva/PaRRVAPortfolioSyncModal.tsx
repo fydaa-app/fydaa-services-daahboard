@@ -125,14 +125,16 @@ export default function PaRRVAPortfolioSyncModal({
     }
 
     if (assetClassStockObj && typeof assetClassStockObj === 'object') {
-      const categories = Object.keys(assetClassStockObj);
+      const currentStockMap = assetClassStockObj;
+      const currentAssetMap = assetClassObj;
+      const categories = Object.keys(currentStockMap);
       
       // Check if assetClass weights exist
-      const hasAssetClassWeights = assetClassObj && typeof assetClassObj === 'object' && Object.keys(assetClassObj).length > 0;
+      const hasAssetClassWeights = currentAssetMap && typeof currentAssetMap === 'object' && Object.keys(currentAssetMap).length > 0;
 
       categories.forEach((cat) => {
-        const fields = assetClassStockObj[cat];
-        const categoryWeight = hasAssetClassWeights ? (parseFloat(String(assetClassObj[cat] || '0')) || 0) : 0;
+        const fields = currentStockMap[cat];
+        const categoryWeight = (hasAssetClassWeights && currentAssetMap) ? (parseFloat(String(currentAssetMap[cat] || '0')) || 0) : 0;
 
         if (Array.isArray(fields)) {
           fields.forEach((f: AssetStockField) => {

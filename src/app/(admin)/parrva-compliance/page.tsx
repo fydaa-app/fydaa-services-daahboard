@@ -265,12 +265,14 @@ export default function PaRRVACompliancePage() {
     }
 
     if (assetClassStockObj && typeof assetClassStockObj === "object") {
-      const categories = Object.keys(assetClassStockObj);
-      const hasAssetClassWeights = assetClassObj && typeof assetClassObj === "object" && Object.keys(assetClassObj).length > 0;
+      const currentStockMap = assetClassStockObj;
+      const currentAssetMap = assetClassObj;
+      const categories = Object.keys(currentStockMap);
+      const hasAssetClassWeights = currentAssetMap && typeof currentAssetMap === "object" && Object.keys(currentAssetMap).length > 0;
 
       categories.forEach((cat) => {
-        const fields = assetClassStockObj[cat];
-        const categoryWeight = hasAssetClassWeights ? (parseFloat(String(assetClassObj[cat] || "0")) || 0) : 0;
+        const fields = currentStockMap[cat];
+        const categoryWeight = (hasAssetClassWeights && currentAssetMap) ? (parseFloat(String(currentAssetMap[cat] || "0")) || 0) : 0;
 
         if (Array.isArray(fields)) {
           fields.forEach((f: AssetStockField) => {
