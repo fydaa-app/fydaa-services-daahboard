@@ -5,6 +5,11 @@ import { toast } from 'react-hot-toast';
 import { parrvaServiceApi, PortfolioModelItem } from '@/services/parrvaServiceApi';
 import { stockManagementServiceApi } from '@/services/stockManagementServiceApi';
 
+interface AssetStockField {
+  selectValue?: string | number;
+  weight?: string | number;
+}
+
 interface PortfolioLike {
   id?: number | string;
   portfolioName?: string;
@@ -13,8 +18,8 @@ interface PortfolioLike {
   packageName?: string | null;
   stockIds?: string;
   weights?: string;
-  assetClass?: any;
-  assetClassStock?: any;
+  assetClass?: unknown;
+  assetClassStock?: unknown;
   portfolioType?: string;
 }
 
@@ -28,7 +33,7 @@ interface PaRRVAPortfolioSyncModalProps {
   isOpen: boolean;
   onClose: () => void;
   portfolio: PortfolioLike | null;
-  onSuccess?: (result: any) => void;
+  onSuccess?: (result: unknown) => void;
 }
 
 export default function PaRRVAPortfolioSyncModal({
@@ -42,7 +47,7 @@ export default function PaRRVAPortfolioSyncModal({
   const [portfolioType, setPortfolioType] = useState('Equity');
   const [stopPortfolio, setStopPortfolio] = useState<'No' | 'Yes'>('No');
   const [items, setItems] = useState<PortfolioModelItem[]>([]);
-  const [syncResult, setSyncResult] = useState<any | null>(null);
+  const [syncResult, setSyncResult] = useState<Record<string, unknown> | null>(null);
   const [allStocks, setAllStocks] = useState<StockItem[]>([]);
   const [fetchingStocks, setFetchingStocks] = useState(false);
 
@@ -96,23 +101,27 @@ export default function PaRRVAPortfolioSyncModal({
     };
 
     // Parse assetClass if available
-    let assetClassObj: any = portfolio.assetClass;
-    if (typeof assetClassObj === 'string') {
+    let assetClassObj: Record<string, string | number> | null = null;
+    if (typeof portfolio.assetClass === 'string') {
       try {
-        assetClassObj = JSON.parse(assetClassObj);
+        assetClassObj = JSON.parse(portfolio.assetClass);
       } catch {
         assetClassObj = null;
       }
+    } else if (portfolio.assetClass && typeof portfolio.assetClass === 'object') {
+      assetClassObj = portfolio.assetClass as Record<string, string | number>;
     }
 
     // 1. Try parsing assetClassStock with effective weight calculation
-    let assetClassStockObj: any = portfolio.assetClassStock;
-    if (typeof assetClassStockObj === 'string') {
+    let assetClassStockObj: Record<string, AssetStockField[]> | null = null;
+    if (typeof portfolio.assetClassStock === 'string') {
       try {
-        assetClassStockObj = JSON.parse(assetClassStockObj);
+        assetClassStockObj = JSON.parse(portfolio.assetClassStock);
       } catch {
         assetClassStockObj = null;
       }
+    } else if (portfolio.assetClassStock && typeof portfolio.assetClassStock === 'object') {
+      assetClassStockObj = portfolio.assetClassStock as Record<string, AssetStockField[]>;
     }
 
     if (assetClassStockObj && typeof assetClassStockObj === 'object') {
@@ -123,13 +132,13 @@ export default function PaRRVAPortfolioSyncModal({
 
       categories.forEach((cat) => {
         const fields = assetClassStockObj[cat];
-        const categoryWeight = hasAssetClassWeights ? (parseFloat(assetClassObj[cat] || '0') || 0) : 0;
+        const categoryWeight = hasAssetClassWeights ? (parseFloat(String(assetClassObj[cat] || '0')) || 0) : 0;
 
         if (Array.isArray(fields)) {
-          fields.forEach((f: any) => {
+          fields.forEach((f: AssetStockField) => {
             if (f && f.selectValue) {
               const info = findStockInfo(f.selectValue);
-              const rawWeight = parseFloat(f.weight || '0') || 0;
+              const rawWeight = parseFloat(String(f.weight || '0')) || 0;
               
               // If asset class weight is present, effective weight = (stock weight * category weight) / 100
               // Otherwise use raw weight
@@ -314,8 +323,9 @@ export default function PaRRVAPortfolioSyncModal({
       if (onSuccess) {
         onSuccess(res);
       }
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to sync portfolio to PaRRVA PDC');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to sync portfolio to PaRRVA PDC';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -390,7 +400,7 @@ export default function PaRRVAPortfolioSyncModal({
               <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Stop Portfolio</span>
               <select
                 value={stopPortfolio}
-                onChange={(e) => setStopPortfolio(e.target.value as any)}
+                onChange={(e) => setStopPortfolio(e.target.value as 'No' | 'Yes')}
                 className="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
               >
                 <option value="No">No (Active)</option>

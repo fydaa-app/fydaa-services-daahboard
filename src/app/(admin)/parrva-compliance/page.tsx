@@ -9,6 +9,29 @@ import { stockManagementServiceApi } from "@/services/stockManagementServiceApi"
 
 type TabType = "portfolio" | "stock" | "strategy" | "reports" | "audit";
 
+interface AssetStockField {
+  selectValue?: string | number;
+  weight?: string | number;
+}
+
+interface StockItem {
+  id: string | number;
+  stockName: string;
+  ticker?: string;
+}
+
+interface AuditLogItem {
+  id: string;
+  action: string;
+  portfolioName: string;
+  exchange: string;
+  status: string;
+  timestamp: string;
+  ackNumber: string;
+  holdingsCount: number;
+  [key: string]: unknown;
+}
+
 interface PortfolioOption {
   id: number;
   portfolioName: string;
@@ -16,12 +39,12 @@ interface PortfolioOption {
   goalName?: string | null;
   stockIds?: string;
   weights?: string;
-  assetClassStock?: any;
+  assetClass?: unknown;
+  assetClassStock?: unknown;
 }
 
 export default function PaRRVACompliancePage() {
   const [activeTab, setActiveTab] = useState<TabType>("portfolio");
-  const [gatewayStatus, setGatewayStatus] = useState<"CONNECTED" | "CONNECTING" | "ERROR">("CONNECTED");
   const [stats, setStats] = useState({
     portfoliosSynced: 12,
     stockCallsDisclosed: 48,
@@ -30,7 +53,7 @@ export default function PaRRVACompliancePage() {
   });
 
   // Stock catalog
-  const [stockCatalog, setStockCatalog] = useState<any[]>([]);
+  const [stockCatalog, setStockCatalog] = useState<StockItem[]>([]);
 
   // 1. Portfolio Sync State
   const [availablePortfolios, setAvailablePortfolios] = useState<PortfolioOption[]>([]);
@@ -51,7 +74,7 @@ export default function PaRRVACompliancePage() {
     { ISIN: "INFY", Symbol: "INFY", CompanyName: "Infosys Limited", Weightage: 20, ExchangeName: "NSE", IfMutualFund: "NO" },
   ]);
   const [syncingPortfolio, setSyncingPortfolio] = useState(false);
-  const [lastPortfolioSyncResult, setLastPortfolioSyncResult] = useState<any | null>(null);
+  const [lastPortfolioSyncResult, setLastPortfolioSyncResult] = useState<Record<string, unknown> | null>(null);
 
   // 2. Single Stock Call State
   const [stockCallAction, setStockCallAction] = useState<"BUY" | "SELL">("BUY");
@@ -64,7 +87,7 @@ export default function PaRRVACompliancePage() {
   const [stockCallQuantity, setStockCallQuantity] = useState<number>(100);
   const [stockCallHorizon, setStockCallHorizon] = useState("1-3 Months");
   const [syncingStockCall, setSyncingStockCall] = useState(false);
-  const [lastStockCallResult, setLastStockCallResult] = useState<any | null>(null);
+  const [lastStockCallResult, setLastStockCallResult] = useState<Record<string, unknown> | null>(null);
 
   // 3. Strategy Sync State
   const [strategyName, setStrategyName] = useState("Quant Momentum Alpha V2");
@@ -77,16 +100,16 @@ export default function PaRRVACompliancePage() {
   const [strategyQuantity, setStrategyQuantity] = useState<number>(50);
   const [strategyHorizon, setStrategyHorizon] = useState("Weekly");
   const [syncingStrategy, setSyncingStrategy] = useState(false);
-  const [lastStrategyResult, setLastStrategyResult] = useState<any | null>(null);
+  const [lastStrategyResult, setLastStrategyResult] = useState<Record<string, unknown> | null>(null);
 
   // 4. Report Generator State
   const [reportType, setReportType] = useState<"PORTFOLIO" | "SINGLESTOCK" | "STRATEGY">("PORTFOLIO");
   const [reportFormat, setReportFormat] = useState<"PDF" | "PNG" | "QR">("PDF");
   const [generatingReport, setGeneratingReport] = useState(false);
-  const [generatedReportData, setGeneratedReportData] = useState<any | null>(null);
+  const [generatedReportData, setGeneratedReportData] = useState<Record<string, unknown> | null>(null);
 
   // 5. Audit Logs State
-  const [auditLogs, setAuditLogs] = useState<any[]>([
+  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([
     {
       id: "LOG-98214",
       action: "PORTFOLIO_SYNC",
@@ -128,7 +151,7 @@ export default function PaRRVACompliancePage() {
       holdingsCount: 4,
     },
   ]);
-  const [selectedAuditPayload, setSelectedAuditPayload] = useState<any | null>(null);
+  const [selectedAuditPayload, setSelectedAuditPayload] = useState<Record<string, unknown> | null>(null);
   const [fetchingAuditLogs, setFetchingAuditLogs] = useState(false);
 
   // Close dropdown on outside click
@@ -219,22 +242,26 @@ export default function PaRRVACompliancePage() {
     };
 
     // Parse assetClass if available
-    let assetClassObj: any = (selected as any).assetClass;
-    if (typeof assetClassObj === "string") {
+    let assetClassObj: Record<string, string | number> | null = null;
+    if (typeof selected.assetClass === "string") {
       try {
-        assetClassObj = JSON.parse(assetClassObj);
+        assetClassObj = JSON.parse(selected.assetClass);
       } catch {
         assetClassObj = null;
       }
+    } else if (selected.assetClass && typeof selected.assetClass === "object") {
+      assetClassObj = selected.assetClass as Record<string, string | number>;
     }
 
-    let assetClassStockObj: any = selected.assetClassStock;
-    if (typeof assetClassStockObj === "string") {
+    let assetClassStockObj: Record<string, AssetStockField[]> | null = null;
+    if (typeof selected.assetClassStock === "string") {
       try {
-        assetClassStockObj = JSON.parse(assetClassStockObj);
+        assetClassStockObj = JSON.parse(selected.assetClassStock);
       } catch {
         assetClassStockObj = null;
       }
+    } else if (selected.assetClassStock && typeof selected.assetClassStock === "object") {
+      assetClassStockObj = selected.assetClassStock as Record<string, AssetStockField[]>;
     }
 
     if (assetClassStockObj && typeof assetClassStockObj === "object") {
@@ -243,13 +270,13 @@ export default function PaRRVACompliancePage() {
 
       categories.forEach((cat) => {
         const fields = assetClassStockObj[cat];
-        const categoryWeight = hasAssetClassWeights ? (parseFloat(assetClassObj[cat] || "0") || 0) : 0;
+        const categoryWeight = hasAssetClassWeights ? (parseFloat(String(assetClassObj[cat] || "0")) || 0) : 0;
 
         if (Array.isArray(fields)) {
-          fields.forEach((f: any) => {
+          fields.forEach((f: AssetStockField) => {
             if (f && f.selectValue) {
               const info = findStockInfo(f.selectValue);
-              const rawWeight = parseFloat(f.weight || "0") || 0;
+              const rawWeight = parseFloat(String(f.weight || "0")) || 0;
 
               const effectiveWeight = hasAssetClassWeights && categoryWeight > 0
                 ? Number(((rawWeight * categoryWeight) / 100).toFixed(2))
@@ -422,8 +449,9 @@ export default function PaRRVACompliancePage() {
       setAuditLogs((prev) => [newLog, ...prev]);
 
       toast.success("Successfully synced Model Portfolio to NSE PDC!");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to sync portfolio to PaRRVA PDC");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to sync portfolio to PaRRVA PDC";
+      toast.error(message);
     } finally {
       setSyncingPortfolio(false);
     }
@@ -474,8 +502,9 @@ export default function PaRRVACompliancePage() {
       setAuditLogs((prev) => [newLog, ...prev]);
 
       toast.success(`Successfully registered ${stockCallAction} call for ${stockCallSymbol} to NSE PDC!`);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to sync stock call to PaRRVA PDC");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to sync stock call to PaRRVA PDC";
+      toast.error(message);
     } finally {
       setSyncingStockCall(false);
     }
@@ -520,8 +549,9 @@ export default function PaRRVACompliancePage() {
       setAuditLogs((prev) => [newLog, ...prev]);
 
       toast.success(`Successfully synced Strategy "${strategyName}" to NSE PDC!`);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to sync strategy to PaRRVA PDC");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to sync strategy to PaRRVA PDC";
+      toast.error(message);
     } finally {
       setSyncingStrategy(false);
     }
@@ -556,8 +586,9 @@ export default function PaRRVACompliancePage() {
       setAuditLogs((prev) => [newLog, ...prev]);
 
       toast.success("CarePaRRVA Certified Report Generated!");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to generate report from CarePaRRVA");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to generate report from CarePaRRVA";
+      toast.error(message);
     } finally {
       setGeneratingReport(false);
     }
@@ -569,10 +600,10 @@ export default function PaRRVACompliancePage() {
       setFetchingAuditLogs(true);
       const res = await parrvaServiceApi.getAuditLogs().catch(() => null);
       if (res?.data && Array.isArray(res.data)) {
-        setAuditLogs(res.data);
+        setAuditLogs(res.data as unknown as AuditLogItem[]);
       }
       toast.success("Audit logs refreshed from NSE PDC gateway");
-    } catch (err) {
+    } catch {
       toast.error("Failed to fetch fresh audit logs");
     } finally {
       setFetchingAuditLogs(false);
@@ -1006,7 +1037,7 @@ export default function PaRRVACompliancePage() {
                 </label>
                 <select
                   value={stopPortfolio}
-                  onChange={(e) => setStopPortfolio(e.target.value as any)}
+                  onChange={(e) => setStopPortfolio(e.target.value as "No" | "Yes")}
                   className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                 >
                   <option value="No">No (Active Live Model)</option>
@@ -1110,7 +1141,7 @@ export default function PaRRVACompliancePage() {
 
               {/* Datalist for stock auto-fill suggestions */}
               <datalist id="stockSuggestionsList">
-                {stockCatalog.map((s: any) => (
+                {stockCatalog.map((s: StockItem) => (
                   <option key={s.id} value={s.ticker || s.stockName}>
                     {s.stockName} ({s.ticker})
                   </option>
@@ -1366,7 +1397,7 @@ export default function PaRRVACompliancePage() {
                     </label>
                     <select
                       value={stockCallType}
-                      onChange={(e) => setStockCallType(e.target.value as any)}
+                      onChange={(e) => setStockCallType(e.target.value as "SINGLE_STOCK" | "INTRADAY" | "DERIVATIVES")}
                       className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                     >
                       <option value="SINGLE_STOCK">Single Stock (Positional)</option>
@@ -1381,7 +1412,7 @@ export default function PaRRVACompliancePage() {
                     </label>
                     <select
                       value={stockCallExchange}
-                      onChange={(e) => setStockCallExchange(e.target.value as any)}
+                      onChange={(e) => setStockCallExchange(e.target.value as "NSE" | "BSE" | "NFO")}
                       className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                     >
                       <option value="NSE">NSE</option>
@@ -1593,7 +1624,7 @@ export default function PaRRVACompliancePage() {
                 </label>
                 <select
                   value={strategyAction}
-                  onChange={(e) => setStrategyAction(e.target.value as any)}
+                  onChange={(e) => setStrategyAction(e.target.value as "BUY" | "SELL")}
                   className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                 >
                   <option value="BUY">BUY (Long Strategy)</option>
@@ -1607,7 +1638,7 @@ export default function PaRRVACompliancePage() {
                 </label>
                 <select
                   value={strategyExchange}
-                  onChange={(e) => setStrategyExchange(e.target.value as any)}
+                  onChange={(e) => setStrategyExchange(e.target.value as "NSE" | "BSE" | "NFO")}
                   className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                 >
                   <option value="NSE">NSE</option>
@@ -1743,14 +1774,14 @@ export default function PaRRVACompliancePage() {
                   </label>
                   <div className="mt-2 grid grid-cols-3 gap-2">
                     {[
-                      { id: "PORTFOLIO", label: "Model Portfolio" },
-                      { id: "SINGLESTOCK", label: "Single Stocks" },
-                      { id: "STRATEGY", label: "Quant Strategies" },
+                      { id: "PORTFOLIO" as const, label: "Model Portfolio" },
+                      { id: "SINGLESTOCK" as const, label: "Single Stocks" },
+                      { id: "STRATEGY" as const, label: "Quant Strategies" },
                     ].map((item) => (
                       <button
                         key={item.id}
                         type="button"
-                        onClick={() => setReportType(item.id as any)}
+                        onClick={() => setReportType(item.id)}
                         className={`rounded-xl px-3 py-2 text-xs font-bold transition-all ${
                           reportType === item.id
                             ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
@@ -1769,14 +1800,14 @@ export default function PaRRVACompliancePage() {
                   </label>
                   <div className="mt-2 grid grid-cols-3 gap-2">
                     {[
-                      { id: "PDF", label: "📄 PDF Certificate" },
-                      { id: "PNG", label: "🖼️ PNG Graphic" },
-                      { id: "QR", label: "📱 Verification QR" },
+                      { id: "PDF" as const, label: "📄 PDF Certificate" },
+                      { id: "PNG" as const, label: "🖼️ PNG Graphic" },
+                      { id: "QR" as const, label: "📱 Verification QR" },
                     ].map((item) => (
                       <button
                         key={item.id}
                         type="button"
-                        onClick={() => setReportFormat(item.id as any)}
+                        onClick={() => setReportFormat(item.id)}
                         className={`rounded-xl px-3 py-2 text-xs font-bold transition-all ${
                           reportFormat === item.id
                             ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"

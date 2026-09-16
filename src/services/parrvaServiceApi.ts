@@ -117,7 +117,7 @@ class PaRRVAServiceApi extends APIClient {
   /**
    * 1. 📊 Sync Model Portfolio to NSE PDC (with savestment, Equity, No, ISIN: ticker, IfMutualFund: NO)
    */
-  async syncPortfolio(payload: SyncPortfolioPayload): Promise<APIResponse<any>> {
+  async syncPortfolio(payload: SyncPortfolioPayload): Promise<APIResponse<Record<string, unknown>>> {
     try {
       const formattedPayload = {
         productName: payload.productName || 'savestment',
@@ -134,8 +134,8 @@ class PaRRVAServiceApi extends APIClient {
         })),
       };
 
-      return await this.post<APIResponse<any>>(`${this.baseEndpoint}/sync/portfolio`, formattedPayload);
-    } catch (error: any) {
+      return await this.post<APIResponse<Record<string, unknown>>>(`${this.baseEndpoint}/sync/portfolio`, formattedPayload);
+    } catch (error: unknown) {
       console.error('Error syncing portfolio to PaRRVA PDC:', error);
       throw error;
     }
@@ -144,7 +144,7 @@ class PaRRVAServiceApi extends APIClient {
   /**
    * 2. ⚡ Sync Single Stock Advisory Call to NSE PDC
    */
-  async syncSingleStock(payload: SyncStockCallPayload): Promise<APIResponse<any>> {
+  async syncSingleStock(payload: SyncStockCallPayload): Promise<APIResponse<Record<string, unknown>>> {
     try {
       const stockTicker = payload.ticker || payload.symbol || payload.isin || 'RELIANCE';
       const formattedPayload = {
@@ -162,8 +162,8 @@ class PaRRVAServiceApi extends APIClient {
         timeHorizon: payload.timeHorizon || '1-3 Months',
       };
 
-      return await this.post<APIResponse<any>>(`${this.baseEndpoint}/sync/stock-call`, formattedPayload);
-    } catch (error: any) {
+      return await this.post<APIResponse<Record<string, unknown>>>(`${this.baseEndpoint}/sync/stock-call`, formattedPayload);
+    } catch (error: unknown) {
       console.error('Error syncing single stock call to PaRRVA PDC:', error);
       throw error;
     }
@@ -172,7 +172,7 @@ class PaRRVAServiceApi extends APIClient {
   /**
    * 3. 🤖 Sync Quantitative / Multi-Leg Strategy to NSE PDC
    */
-  async syncStrategy(payload: SyncStrategyPayload): Promise<APIResponse<any>> {
+  async syncStrategy(payload: SyncStrategyPayload): Promise<APIResponse<Record<string, unknown>>> {
     try {
       const formattedPayload = {
         productName: payload.productName || 'savestment',
@@ -187,8 +187,8 @@ class PaRRVAServiceApi extends APIClient {
         timeHorizon: payload.timeHorizon || 'Weekly',
       };
 
-      return await this.post<APIResponse<any>>(`${this.baseEndpoint}/sync/strategy`, formattedPayload);
-    } catch (error: any) {
+      return await this.post<APIResponse<Record<string, unknown>>>(`${this.baseEndpoint}/sync/strategy`, formattedPayload);
+    } catch (error: unknown) {
       console.error('Error syncing strategy to PaRRVA PDC:', error);
       throw error;
     }
@@ -197,15 +197,15 @@ class PaRRVAServiceApi extends APIClient {
   /**
    * 4. 📜 Generate Certified Performance Report from CarePaRRVA
    */
-  async generateReport(reportType: 'PORTFOLIO' | 'SINGLESTOCK' | 'STRATEGY' = 'PORTFOLIO', format: 'PDF' | 'PNG' | 'QR' = 'PDF'): Promise<APIResponse<any>> {
+  async generateReport(reportType: 'PORTFOLIO' | 'SINGLESTOCK' | 'STRATEGY' = 'PORTFOLIO', format: 'PDF' | 'PNG' | 'QR' = 'PDF'): Promise<APIResponse<Record<string, unknown>>> {
     try {
-      return await this.post<APIResponse<any>>(`${this.baseEndpoint}/report/generate`, {
+      return await this.post<APIResponse<Record<string, unknown>>>(`${this.baseEndpoint}/report/generate`, {
         reportType,
         reportFormat: format,
         dataType: 'LATEST_DATA',
         isHistorical: 'TRUE',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error generating PaRRVA report:', error);
       throw error;
     }
@@ -214,10 +214,10 @@ class PaRRVAServiceApi extends APIClient {
   /**
    * 5. 🛡️ Get Recent Audit Logs
    */
-  async getAuditLogs(): Promise<APIResponse<any>> {
+  async getAuditLogs(): Promise<APIResponse<Record<string, unknown>>> {
     try {
-      return await this.get<APIResponse<any>>(`${this.baseEndpoint}/audit-logs`);
-    } catch (error: any) {
+      return await this.get<APIResponse<Record<string, unknown>>>(`${this.baseEndpoint}/audit-logs`);
+    } catch (error: unknown) {
       console.error('Error fetching PaRRVA audit logs:', error);
       throw error;
     }
