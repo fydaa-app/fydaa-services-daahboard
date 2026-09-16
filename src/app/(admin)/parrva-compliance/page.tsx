@@ -29,6 +29,15 @@ interface AuditLogItem {
   timestamp: string;
   ackNumber: string;
   holdingsCount: number;
+}
+
+interface ReportData {
+  certificateId?: string;
+  reportType?: string;
+  format?: string;
+  generatedAt?: string;
+  verificationUrl?: string;
+  statusMessage?: string;
   [key: string]: unknown;
 }
 
@@ -106,7 +115,7 @@ export default function PaRRVACompliancePage() {
   const [reportType, setReportType] = useState<"PORTFOLIO" | "SINGLESTOCK" | "STRATEGY">("PORTFOLIO");
   const [reportFormat, setReportFormat] = useState<"PDF" | "PNG" | "QR">("PDF");
   const [generatingReport, setGeneratingReport] = useState(false);
-  const [generatedReportData, setGeneratedReportData] = useState<APIResponse<Record<string, unknown>> | Record<string, unknown> | null>(null);
+  const [generatedReportData, setGeneratedReportData] = useState<ReportData | null>(null);
 
   // 5. Audit Logs State
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([
@@ -151,7 +160,7 @@ export default function PaRRVACompliancePage() {
       holdingsCount: 4,
     },
   ]);
-  const [selectedAuditPayload, setSelectedAuditPayload] = useState<Record<string, unknown> | null>(null);
+  const [selectedAuditPayload, setSelectedAuditPayload] = useState<AuditLogItem | null>(null);
   const [fetchingAuditLogs, setFetchingAuditLogs] = useState(false);
 
   // Close dropdown on outside click
@@ -564,7 +573,7 @@ export default function PaRRVACompliancePage() {
     try {
       setGeneratingReport(true);
       const res = await parrvaServiceApi.generateReport(reportType, reportFormat);
-      setGeneratedReportData(res || {
+      const reportResult: ReportData = (res?.data as ReportData) || (res as unknown as ReportData) || {
         status: 200,
         certificateId: `CAREPARRVA-${Math.floor(100000 + Math.random() * 900000)}`,
         reportType,
@@ -572,7 +581,8 @@ export default function PaRRVACompliancePage() {
         generatedAt: new Date().toISOString(),
         verificationUrl: "https://pdc.nseindia.com/verify/fydaa",
         statusMessage: "SEBI Compliance Certified Performance Sheet generated successfully.",
-      });
+      };
+      setGeneratedReportData(reportResult);
       setStats((prev) => ({ ...prev, reportsCertified: prev.reportsCertified + 1 }));
 
       const newLog = {
@@ -1896,7 +1906,7 @@ export default function PaRRVACompliancePage() {
                     <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-800">
                       <span className="text-gray-500 dark:text-gray-400">NSE Gateway Reference:</span>
                       <span className="font-mono text-[11px] text-gray-700 dark:text-gray-300">
-                        {generatedReportData?.certificateId || "NSE-PDC-CERT-2026-LIVE"}
+                        {String(generatedReportData?.certificateId || "NSE-PDC-CERT-2026-LIVE")}
                       </span>
                     </div>
                   </div>
