@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import { toast } from "react-hot-toast";
 import Cookies from "js-cookie";
-import { parrvaServiceApi, PortfolioModelItem } from "@/services/parrvaServiceApi";
+import { parrvaServiceApi, PortfolioModelItem, APIResponse } from "@/services/parrvaServiceApi";
 import { stockManagementServiceApi } from "@/services/stockManagementServiceApi";
 
 type TabType = "portfolio" | "stock" | "strategy" | "reports" | "audit";
@@ -74,7 +74,7 @@ export default function PaRRVACompliancePage() {
     { ISIN: "INFY", Symbol: "INFY", CompanyName: "Infosys Limited", Weightage: 20, ExchangeName: "NSE", IfMutualFund: "NO" },
   ]);
   const [syncingPortfolio, setSyncingPortfolio] = useState(false);
-  const [lastPortfolioSyncResult, setLastPortfolioSyncResult] = useState<Record<string, unknown> | null>(null);
+  const [lastPortfolioSyncResult, setLastPortfolioSyncResult] = useState<APIResponse<Record<string, unknown>> | Record<string, unknown> | null>(null);
 
   // 2. Single Stock Call State
   const [stockCallAction, setStockCallAction] = useState<"BUY" | "SELL">("BUY");
@@ -87,7 +87,7 @@ export default function PaRRVACompliancePage() {
   const [stockCallQuantity, setStockCallQuantity] = useState<number>(100);
   const [stockCallHorizon, setStockCallHorizon] = useState("1-3 Months");
   const [syncingStockCall, setSyncingStockCall] = useState(false);
-  const [lastStockCallResult, setLastStockCallResult] = useState<Record<string, unknown> | null>(null);
+  const [lastStockCallResult, setLastStockCallResult] = useState<APIResponse<Record<string, unknown>> | Record<string, unknown> | null>(null);
 
   // 3. Strategy Sync State
   const [strategyName, setStrategyName] = useState("Quant Momentum Alpha V2");
@@ -100,13 +100,13 @@ export default function PaRRVACompliancePage() {
   const [strategyQuantity, setStrategyQuantity] = useState<number>(50);
   const [strategyHorizon, setStrategyHorizon] = useState("Weekly");
   const [syncingStrategy, setSyncingStrategy] = useState(false);
-  const [lastStrategyResult, setLastStrategyResult] = useState<Record<string, unknown> | null>(null);
+  const [lastStrategyResult, setLastStrategyResult] = useState<APIResponse<Record<string, unknown>> | Record<string, unknown> | null>(null);
 
   // 4. Report Generator State
   const [reportType, setReportType] = useState<"PORTFOLIO" | "SINGLESTOCK" | "STRATEGY">("PORTFOLIO");
   const [reportFormat, setReportFormat] = useState<"PDF" | "PNG" | "QR">("PDF");
   const [generatingReport, setGeneratingReport] = useState(false);
-  const [generatedReportData, setGeneratedReportData] = useState<Record<string, unknown> | null>(null);
+  const [generatedReportData, setGeneratedReportData] = useState<APIResponse<Record<string, unknown>> | Record<string, unknown> | null>(null);
 
   // 5. Audit Logs State
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([

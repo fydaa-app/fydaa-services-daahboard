@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { parrvaServiceApi, PortfolioModelItem } from '@/services/parrvaServiceApi';
+import { parrvaServiceApi, PortfolioModelItem, APIResponse } from '@/services/parrvaServiceApi';
 import { stockManagementServiceApi } from '@/services/stockManagementServiceApi';
 
 interface AssetStockField {
@@ -47,7 +47,7 @@ export default function PaRRVAPortfolioSyncModal({
   const [portfolioType, setPortfolioType] = useState('Equity');
   const [stopPortfolio, setStopPortfolio] = useState<'No' | 'Yes'>('No');
   const [items, setItems] = useState<PortfolioModelItem[]>([]);
-  const [syncResult, setSyncResult] = useState<Record<string, unknown> | null>(null);
+  const [syncResult, setSyncResult] = useState<APIResponse<Record<string, unknown>> | Record<string, unknown> | null>(null);
   const [allStocks, setAllStocks] = useState<StockItem[]>([]);
   const [fetchingStocks, setFetchingStocks] = useState(false);
 
