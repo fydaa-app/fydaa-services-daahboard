@@ -44,6 +44,7 @@ interface ReportData {
 interface PortfolioOption {
   id: number;
   portfolioName: string;
+  planId?: string | number;
   packageName?: string | null;
   goalName?: string | null;
   stockIds?: string;
@@ -174,7 +175,7 @@ export default function PaRRVACompliancePage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Fetch portfolio list from API
+  // Fetch portfolio list from API (Filtered strictly for Indian Stock Savestment portfolios: planId === 4 and/or IDs 72 to 80)
   const fetchAvailablePortfolios = async (silent = false) => {
     try {
       setLoadingPortfolios(true);
@@ -189,9 +190,15 @@ export default function PaRRVACompliancePage() {
         if (res.ok) {
           const data = await res.json();
           if (data?.items && Array.isArray(data.items)) {
-            setAvailablePortfolios(data.items);
+            // Strictly filter for Savestment Indian Stock portfolios (planId === 4 or IDs 72 to 80)
+            const filteredIndianSavestment = data.items.filter((p: PortfolioOption) => {
+              const idNum = Number(p.id);
+              const planIdNum = Number(p.planId);
+              return planIdNum === 4 || (idNum >= 72 && idNum <= 80);
+            });
+            setAvailablePortfolios(filteredIndianSavestment);
             if (!silent) {
-              toast.success(`Loaded ${data.items.length} portfolios from database`);
+              toast.success(`Loaded ${filteredIndianSavestment.length} Savestment Indian Stock portfolios (Plan 4 / IDs 72-80)`);
             }
           }
         }
@@ -236,6 +243,9 @@ export default function PaRRVACompliancePage() {
     if (!selected) return;
 
     setPortfolioNameInput(selected.portfolioName || `Portfolio_${selected.id}`);
+    setPortfolioProductName("savestment");
+    setPortfolioType("Equity");
+    setStopPortfolio("No");
 
     const parsedItems: PortfolioModelItem[] = [];
 
@@ -964,17 +974,17 @@ export default function PaRRVACompliancePage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                     </svg>
                     <label className="text-xs font-bold uppercase tracking-wider text-gray-800 dark:text-gray-200">
-                      Load Existing Model Portfolio
+                      Load Indian Stock Model Portfolio (Savestment ID 72-80)
                     </label>
                   </div>
                   <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                    Select a portfolio from your live database to automatically populate parameters and stock allocations.
+                    Select a Savestment Indian Stock portfolio (ID 72 to 80) from your database for PaRRVA / NSE PDC compliance.
                   </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
                   {/* Custom Searchable Portfolio Picker */}
-                  <div className="relative min-w-[280px] sm:min-w-[340px]" ref={dropdownRef}>
+                  <div className="relative min-w-[280px] sm:min-w-[360px]" ref={dropdownRef}>
                     <div
                       onClick={() => setIsPortfolioDropdownOpen((prev) => !prev)}
                       className="flex cursor-pointer items-center justify-between rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-xs font-medium text-gray-900 shadow-sm transition hover:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
@@ -982,10 +992,10 @@ export default function PaRRVACompliancePage() {
                       <span className="truncate">
                         {activeLoadedPortfolio ? (
                           <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                            {activeLoadedPortfolio.portfolioName}
+                            [ID: {activeLoadedPortfolio.id}] {activeLoadedPortfolio.portfolioName}
                           </span>
                         ) : (
-                          <span className="text-gray-400 dark:text-gray-500">-- Choose Existing Portfolio --</span>
+                          <span className="text-gray-400 dark:text-gray-500">-- Choose Savestment Portfolio (ID 72-80) --</span>
                         )}
                       </span>
                       <svg

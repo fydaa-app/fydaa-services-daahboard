@@ -207,16 +207,18 @@ export default function PortfolioListTable({ portfolios, error, getPlanName, get
                       </TableCell>                   
                       <TableCell className="px-4 py-3">
                         <div className="flex gap-2">                        
-                          <button
-                            onClick={() => handleSyncPaRRVA(portfolio)} 
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-theme-xs font-semibold text-emerald-700 shadow-theme-xs hover:bg-emerald-100 hover:text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60"
-                            aria-label={`Sync ${portfolio.portfolioName} with PaRRVA PDC`}
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                            PDC Sync
-                          </button>
+                          {(Number(portfolio.planId) === 4 || (Number(portfolio.id) >= 72 && Number(portfolio.id) <= 80)) && (
+                            <button
+                              onClick={() => handleSyncPaRRVA(portfolio)} 
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-theme-xs font-semibold text-emerald-700 shadow-theme-xs hover:bg-emerald-100 hover:text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60"
+                              aria-label={`Sync ${portfolio.portfolioName} with PaRRVA PDC`}
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                              PDC Sync
+                            </button>
+                          )}
                           <button
                             onClick={() => handleClone(portfolio)} 
                             className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-theme-sm font-medium text-blue-600 shadow-theme-xs hover:bg-gray-50 hover:text-blue-800 dark:border-gray-700 dark:bg-gray-800 dark:text-blue-400 dark:hover:bg-white/[0.03] dark:hover:text-blue-300"
