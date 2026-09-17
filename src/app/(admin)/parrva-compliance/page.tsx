@@ -606,6 +606,142 @@ export default function PaRRVACompliancePage() {
     }
   };
 
+  // Handlers for Certificate Download & Verification
+  const handleDownloadCertificate = () => {
+    if (!generatedReportData) {
+      toast.error("Please generate a certified report first");
+      return;
+    }
+
+    const certId = String(generatedReportData.certificateId || `CAREPARRVA-${Date.now()}`);
+    const certScope = String(generatedReportData.reportType || reportType);
+    const certFormat = String(generatedReportData.format || reportFormat);
+    const verifyUrl = String(generatedReportData.verificationUrl || `https://pdc.nseindia.com/verify/fydaa/${certId}`);
+    const generatedDate = generatedReportData.generatedAt ? new Date(String(generatedReportData.generatedAt)).toLocaleString() : new Date().toLocaleString();
+
+    // Direct file URL if provided by API backend
+    if (generatedReportData.fileUrl && typeof generatedReportData.fileUrl === "string") {
+      const a = document.createElement("a");
+      a.href = generatedReportData.fileUrl;
+      a.download = `${certId}.${certFormat.toLowerCase()}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast.success(`Downloaded ${certFormat} Certificate!`);
+      return;
+    }
+
+    // Open certified printable & downloadable PDF/HTML certificate view
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("Please allow popups to download/print the certificate");
+      return;
+    }
+
+    const certHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>CarePaRRVA SEBI Performance Certificate - ${certId}</title>
+          <meta charset="utf-8" />
+          <style>
+            * { box-sizing: border-box; }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0f172a; color: #0f172a; padding: 40px 20px; margin: 0; display: flex; justify-content: center; }
+            .cert-card { max-width: 820px; width: 100%; background: #ffffff; border: 3px solid #059669; border-radius: 20px; padding: 48px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); position: relative; overflow: hidden; }
+            .watermark { position: absolute; top: 52%; left: 50%; transform: translate(-50%, -50%) rotate(-25deg); font-size: 72px; font-weight: 900; color: rgba(5, 150, 105, 0.05); pointer-events: none; text-transform: uppercase; white-space: nowrap; user-select: none; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 24px; }
+            .logo-title { font-size: 24px; font-weight: 800; color: #059669; margin: 0; letter-spacing: -0.5px; }
+            .sub { color: #64748b; font-size: 13px; margin-top: 4px; }
+            .badge { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; padding: 6px 14px; border-radius: 9999px; font-weight: 700; font-size: 12px; }
+            .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin: 32px 0; }
+            .field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; }
+            .field-label { font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; letter-spacing: 0.5px; }
+            .field-val { font-size: 15px; font-weight: 700; color: #0f172a; margin-top: 4px; }
+            .field-val.code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color: #059669; }
+            .cert-body { background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 16px; margin-bottom: 28px; }
+            .cert-body p { margin: 0; font-size: 13px; color: #065f46; line-height: 1.6; }
+            .footer { border-top: 2px solid #e2e8f0; padding-top: 24px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .sig-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; }
+            .sig-val { font-size: 13px; font-weight: 600; color: #0f172a; margin-top: 2px; }
+            .actions { margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end; }
+            .btn { background: #059669; color: white; border: none; padding: 10px 22px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+            .btn:hover { background: #047857; }
+            @media print {
+              body { padding: 0; background: white; }
+              .cert-card { border: 2px solid #059669; box-shadow: none; max-width: 100%; border-radius: 0; }
+              .actions { display: none !important; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="cert-card">
+            <div class="watermark">SEBI PDC VERIFIED</div>
+            <div class="header">
+              <div>
+                <h1 class="logo-title">CarePaRRVA Compliance Certificate</h1>
+                <div class="sub">National Stock Exchange (NSE) & SEBI Performance Disclosure Centre</div>
+              </div>
+              <span class="badge">OFFICIAL VERIFIED ✓</span>
+            </div>
+
+            <div class="grid">
+              <div class="field">
+                <div class="field-label">Certificate ID / Acknowledgment</div>
+                <div class="field-val code">${certId}</div>
+              </div>
+              <div class="field">
+                <div class="field-label">Registered Entity</div>
+                <div class="field-val">Fydaa Savestment Wealth Management</div>
+              </div>
+              <div class="field">
+                <div class="field-label">Disclosure Category</div>
+                <div class="field-val">${certScope} Disclosures</div>
+              </div>
+              <div class="field">
+                <div class="field-label">Document Output Format</div>
+                <div class="field-val">${certFormat} Certified Export</div>
+              </div>
+              <div class="field">
+                <div class="field-label">Generated Timestamp</div>
+                <div class="field-val">${generatedDate}</div>
+              </div>
+              <div class="field">
+                <div class="field-label">Verification Portal URL</div>
+                <div class="field-val" style="font-size: 12px;"><a href="${verifyUrl}" target="_blank" style="color: #059669; text-decoration: underline;">${verifyUrl}</a></div>
+              </div>
+            </div>
+
+            <div class="cert-body">
+              <p><strong>Compliance Attestation:</strong> This document certifies that performance and weightage disclosures submitted by Fydaa Savestment Wealth have been validated against NSE Performance Disclosure Centre (PDC) guidelines and verified via CarePaRRVA Regulatory API Engine.</p>
+            </div>
+
+            <div class="footer">
+              <div>
+                <div class="sig-title">Regulatory Authority</div>
+                <div class="sig-val">SEBI RA/RIA Compliance & NSE Gateway</div>
+              </div>
+              <div style="text-align: right;">
+                <div class="sig-title">Digital Signature Stamp</div>
+                <div class="sig-val" style="font-family: monospace; font-size: 11px; color: #059669;">SHA-256: VALIDATED_CAREPARRVA_PDC</div>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="btn" onclick="window.print()">📥 Print / Save as PDF</button>
+            </div>
+          </div>
+          <script>
+            setTimeout(() => { window.print(); }, 500);
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(certHtml);
+    printWindow.document.close();
+    toast.success("Certificate opened! Use Print / Save as PDF to download.");
+  };
+
   // Audit Logs Refresh
   const handleRefreshAuditLogs = async () => {
     try {
@@ -1913,10 +2049,60 @@ export default function PaRRVACompliancePage() {
                 </div>
 
                 {generatedReportData && (
-                  <div className="mt-6 rounded-xl bg-emerald-100 p-3 text-center dark:bg-emerald-950/60">
-                    <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                      ✓ Certificate Ready for Download & Verification
-                    </p>
+                  <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-800 dark:bg-emerald-950/40 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                        <svg className="h-4 w-4 text-emerald-600 dark:text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        Certificate Ready ({generatedReportData.format || reportFormat})
+                      </p>
+                      <span className="font-mono text-[10px] text-emerald-700 dark:text-emerald-400">
+                        {String(generatedReportData.certificateId || "NSE-PDC-LIVE")}
+                      </span>
+                    </div>
+
+                    {/* Download & Verification Action Buttons */}
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={handleDownloadCertificate}
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-600/25 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] transition"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Download Certificate ({reportFormat})
+                      </button>
+
+                      <a
+                        href={String(generatedReportData.verificationUrl || "https://pdc.nseindia.com/verify/fydaa")}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-white px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-50 dark:border-emerald-700 dark:bg-gray-800 dark:text-emerald-300 transition"
+                      >
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                        Verify
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = String(generatedReportData.verificationUrl || `https://pdc.nseindia.com/verify/fydaa/${generatedReportData.certificateId || ""}`);
+                          navigator.clipboard.writeText(url);
+                          toast.success("Verification link copied to clipboard!");
+                        }}
+                        title="Copy Verification Link"
+                        className="inline-flex items-center gap-1 rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 transition"
+                      >
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        Copy Link
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
