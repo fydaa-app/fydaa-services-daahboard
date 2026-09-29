@@ -128,7 +128,7 @@ export default function PaRRVAPortfolioSyncModal({
       const currentStockMap = assetClassStockObj;
       const currentAssetMap = assetClassObj;
       const categories = Object.keys(currentStockMap);
-      
+
       // Check if assetClass weights exist
       const hasAssetClassWeights = currentAssetMap && typeof currentAssetMap === 'object' && Object.keys(currentAssetMap).length > 0;
 
@@ -141,7 +141,7 @@ export default function PaRRVAPortfolioSyncModal({
             if (f && f.selectValue) {
               const info = findStockInfo(f.selectValue);
               const rawWeight = parseFloat(String(f.weight || '0')) || 0;
-              
+
               // If asset class weight is present, effective weight = (stock weight * category weight) / 100
               // Otherwise use raw weight
               const effectiveWeight = hasAssetClassWeights && categoryWeight > 0
@@ -188,6 +188,7 @@ export default function PaRRVAPortfolioSyncModal({
         });
       });
     }
+
 
     setItems(parsedItems);
   }, [portfolio, isOpen, allStocks]);
@@ -327,7 +328,7 @@ export default function PaRRVAPortfolioSyncModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-gray-900/60 p-4 backdrop-blur-sm transition-all animate-fadeIn">
       <div className="relative w-full max-w-4xl rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900 max-h-[90vh] flex flex-col overflow-hidden">
-        
+
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-gray-100 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-6 py-4 dark:border-gray-800 dark:from-emerald-500/20">
           <div className="flex items-center gap-3">
@@ -363,7 +364,7 @@ export default function PaRRVAPortfolioSyncModal({
 
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          
+
           {/* Portfolio Info Bar */}
           <div className="grid grid-cols-1 gap-4 rounded-xl border border-gray-100 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-800/40 sm:grid-cols-4">
             <div>
@@ -457,11 +458,10 @@ export default function PaRRVAPortfolioSyncModal({
                   ÷ Equalize
                 </button>
 
-                <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-                  isWeightValid
+                <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${isWeightValid
                     ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                     : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
-                }`}>
+                  }`}>
                   <span>Total: {totalWeight.toFixed(2)}%</span>
                   {isWeightValid ? (
                     <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
