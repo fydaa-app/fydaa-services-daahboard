@@ -127,7 +127,7 @@ class PaRRVAServiceApi extends APIClient {
         stopPortfolio: payload.stopPortfolio || 'No',
         details: payload.details.map(item => ({
           ISIN: item.ISIN || item.Symbol || 'RELIANCE',
-          Weightage: item.Weightage,
+          Weightage: Number((Number(item.Weightage) / 100).toFixed(6)),
           ExchangeName: item.ExchangeName || 'NSE',
           IfMutualFund: item.IfMutualFund || 'NO',
           Symbol: item.Symbol || item.ISIN,

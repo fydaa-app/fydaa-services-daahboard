@@ -189,15 +189,6 @@ export default function PaRRVAPortfolioSyncModal({
       });
     }
 
-    // Default sample if portfolio has no stocks yet
-    if (parsedItems.length === 0) {
-      parsedItems.push(
-        { ISIN: 'RELIANCE', Symbol: 'RELIANCE', CompanyName: 'Reliance Industries Ltd', Weightage: 40, ExchangeName: 'NSE', IfMutualFund: 'NO' },
-        { ISIN: 'TCS', Symbol: 'TCS', CompanyName: 'Tata Consultancy Services', Weightage: 35, ExchangeName: 'NSE', IfMutualFund: 'NO' },
-        { ISIN: 'HDFCBANK', Symbol: 'HDFCBANK', CompanyName: 'HDFC Bank Ltd', Weightage: 25, ExchangeName: 'NSE', IfMutualFund: 'NO' }
-      );
-    }
-
     setItems(parsedItems);
   }, [portfolio, isOpen, allStocks]);
 

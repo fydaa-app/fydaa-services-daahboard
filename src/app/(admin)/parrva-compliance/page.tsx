@@ -7,7 +7,7 @@ import Cookies from "js-cookie";
 import { parrvaServiceApi, PortfolioModelItem, APIResponse } from "@/services/parrvaServiceApi";
 import { stockManagementServiceApi } from "@/services/stockManagementServiceApi";
 
-type TabType = "portfolio" | "stock" | "strategy" | "reports" | "audit";
+type TabType = "portfolio" | "reports" | "audit";
 
 interface AssetStockField {
   selectValue?: string | number;
@@ -55,12 +55,6 @@ interface PortfolioOption {
 
 export default function PaRRVACompliancePage() {
   const [activeTab, setActiveTab] = useState<TabType>("portfolio");
-  const [stats, setStats] = useState({
-    portfoliosSynced: 12,
-    stockCallsDisclosed: 48,
-    strategiesRegistered: 9,
-    reportsCertified: 24,
-  });
 
   // Stock catalog
   const [stockCatalog, setStockCatalog] = useState<StockItem[]>([]);
@@ -74,93 +68,21 @@ export default function PaRRVACompliancePage() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const [portfolioProductName, setPortfolioProductName] = useState("savestment");
-  const [portfolioNameInput, setPortfolioNameInput] = useState("Savestment Core Equity Multi-Cap");
+  const [portfolioNameInput, setPortfolioNameInput] = useState("");
   const [portfolioType, setPortfolioType] = useState("Equity");
   const [stopPortfolio, setStopPortfolio] = useState<"No" | "Yes">("No");
-  const [portfolioItems, setPortfolioItems] = useState<PortfolioModelItem[]>([
-    { ISIN: "RELIANCE", Symbol: "RELIANCE", CompanyName: "Reliance Industries Ltd", Weightage: 30, ExchangeName: "NSE", IfMutualFund: "NO" },
-    { ISIN: "TCS", Symbol: "TCS", CompanyName: "Tata Consultancy Services Ltd", Weightage: 25, ExchangeName: "NSE", IfMutualFund: "NO" },
-    { ISIN: "HDFCBANK", Symbol: "HDFCBANK", CompanyName: "HDFC Bank Ltd", Weightage: 25, ExchangeName: "NSE", IfMutualFund: "NO" },
-    { ISIN: "INFY", Symbol: "INFY", CompanyName: "Infosys Limited", Weightage: 20, ExchangeName: "NSE", IfMutualFund: "NO" },
-  ]);
+  const [portfolioItems, setPortfolioItems] = useState<PortfolioModelItem[]>([]);
   const [syncingPortfolio, setSyncingPortfolio] = useState(false);
   const [lastPortfolioSyncResult, setLastPortfolioSyncResult] = useState<APIResponse<Record<string, unknown>> | Record<string, unknown> | null>(null);
 
-  // 2. Single Stock Call State
-  const [stockCallAction, setStockCallAction] = useState<"BUY" | "SELL">("BUY");
-  const [stockCallType, setStockCallType] = useState<"SINGLE_STOCK" | "INTRADAY" | "DERIVATIVES">("SINGLE_STOCK");
-  const [stockCallSymbol, setStockCallSymbol] = useState("TCS");
-  const [stockCallExchange, setStockCallExchange] = useState<"NSE" | "BSE" | "NFO">("NSE");
-  const [stockCallEntry, setStockCallEntry] = useState<number>(3850);
-  const [stockCallTarget, setStockCallTarget] = useState<number>(4250);
-  const [stockCallStopLoss, setStockCallStopLoss] = useState<number>(3680);
-  const [stockCallQuantity, setStockCallQuantity] = useState<number>(100);
-  const [stockCallHorizon, setStockCallHorizon] = useState("1-3 Months");
-  const [syncingStockCall, setSyncingStockCall] = useState(false);
-  const [lastStockCallResult, setLastStockCallResult] = useState<APIResponse<Record<string, unknown>> | Record<string, unknown> | null>(null);
-
-  // 3. Strategy Sync State
-  const [strategyName, setStrategyName] = useState("Quant Momentum Alpha V2");
-  const [strategyAction, setStrategyAction] = useState<"BUY" | "SELL">("BUY");
-  const [strategySymbol, setStrategySymbol] = useState("NIFTY50");
-  const [strategyExchange, setStrategyExchange] = useState<"NSE" | "BSE" | "NFO">("NSE");
-  const [strategyEntry, setStrategyEntry] = useState<number>(24500);
-  const [strategyTarget, setStrategyTarget] = useState<number>(25200);
-  const [strategyStopLoss, setStrategyStopLoss] = useState<number>(24100);
-  const [strategyQuantity, setStrategyQuantity] = useState<number>(50);
-  const [strategyHorizon, setStrategyHorizon] = useState("Weekly");
-  const [syncingStrategy, setSyncingStrategy] = useState(false);
-  const [lastStrategyResult, setLastStrategyResult] = useState<APIResponse<Record<string, unknown>> | Record<string, unknown> | null>(null);
-
-  // 4. Report Generator State
-  const [reportType, setReportType] = useState<"PORTFOLIO" | "SINGLESTOCK" | "STRATEGY">("PORTFOLIO");
+  // 2. Report Generator State
+  const [reportType, setReportType] = useState<"PORTFOLIO">("PORTFOLIO");
   const [reportFormat, setReportFormat] = useState<"PDF" | "PNG" | "QR">("PDF");
   const [generatingReport, setGeneratingReport] = useState(false);
   const [generatedReportData, setGeneratedReportData] = useState<ReportData | null>(null);
 
-  // 5. Audit Logs State
-  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([
-    {
-      id: "LOG-98214",
-      action: "PORTFOLIO_SYNC",
-      portfolioName: "Savestment Core Equity Multi-Cap",
-      exchange: "NSE",
-      status: "SUCCESS",
-      timestamp: new Date(Date.now() - 1000 * 60 * 18).toISOString(),
-      ackNumber: "NSE-PDC-20260904-87192",
-      holdingsCount: 4,
-    },
-    {
-      id: "LOG-98213",
-      action: "STOCK_CALL_SYNC",
-      portfolioName: "TCS [BUY]",
-      exchange: "NSE",
-      status: "SUCCESS",
-      timestamp: new Date(Date.now() - 1000 * 60 * 65).toISOString(),
-      ackNumber: "NSE-PDC-20260904-74291",
-      holdingsCount: 1,
-    },
-    {
-      id: "LOG-98212",
-      action: "STRATEGY_SYNC",
-      portfolioName: "Alpha Trend Quant",
-      exchange: "NSE",
-      status: "SUCCESS",
-      timestamp: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
-      ackNumber: "NSE-PDC-20260904-62180",
-      holdingsCount: 1,
-    },
-    {
-      id: "LOG-98211",
-      action: "REPORT_CERTIFIED",
-      portfolioName: "CarePaRRVA Certified Report #1184",
-      exchange: "SEBI / NSE",
-      status: "SUCCESS",
-      timestamp: new Date(Date.now() - 1000 * 60 * 360).toISOString(),
-      ackNumber: "PDC-CERT-2026-993",
-      holdingsCount: 4,
-    },
-  ]);
+  // 3. Audit Logs State
+  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
   const [selectedAuditPayload, setSelectedAuditPayload] = useState<AuditLogItem | null>(null);
   const [fetchingAuditLogs, setFetchingAuditLogs] = useState(false);
 
@@ -351,15 +273,12 @@ export default function PaRRVACompliancePage() {
     }
   };
 
-  // Reset to blank / custom portfolio
+  // Reset to blank / unselected state
   const handleClearSelectedPortfolio = () => {
     setSelectedPortfolioId("");
-    setPortfolioNameInput("Custom NSE Model Portfolio");
-    setPortfolioItems([
-      { ISIN: "RELIANCE", Symbol: "RELIANCE", CompanyName: "Reliance Industries Ltd", Weightage: 50, ExchangeName: "NSE", IfMutualFund: "NO" },
-      { ISIN: "TCS", Symbol: "TCS", CompanyName: "Tata Consultancy Services Ltd", Weightage: 50, ExchangeName: "NSE", IfMutualFund: "NO" },
-    ]);
-    toast.success("Reset to blank custom model portfolio");
+    setPortfolioNameInput("");
+    setPortfolioItems([]);
+    toast.success("Cleared portfolio selection");
   };
 
   // Calculations for Portfolio items
@@ -420,14 +339,7 @@ export default function PaRRVACompliancePage() {
 
   const activeLoadedPortfolio = availablePortfolios.find((p) => String(p.id) === String(selectedPortfolioId));
 
-  // Calculation for Single Stock Risk/Reward
-  const stockPotentialGain = stockCallAction === "BUY"
-    ? ((stockCallTarget - stockCallEntry) / stockCallEntry) * 100
-    : ((stockCallEntry - stockCallTarget) / stockCallEntry) * 100;
-  const stockRisk = stockCallAction === "BUY"
-    ? ((stockCallEntry - stockCallStopLoss) / stockCallEntry) * 100
-    : ((stockCallStopLoss - stockCallEntry) / stockCallEntry) * 100;
-  const riskRewardRatio = stockRisk > 0 ? (stockPotentialGain / stockRisk).toFixed(2) : "N/A";
+
 
   // Handlers for Portfolio Sync
   const handleSyncPortfolio = async () => {
@@ -455,7 +367,6 @@ export default function PaRRVACompliancePage() {
 
       const res = await parrvaServiceApi.syncPortfolio(payload);
       setLastPortfolioSyncResult(res);
-      setStats((prev) => ({ ...prev, portfoliosSynced: prev.portfoliosSynced + 1 }));
 
       const newLog = {
         id: `LOG-${Math.floor(10000 + Math.random() * 90000)}`,
@@ -478,105 +389,7 @@ export default function PaRRVACompliancePage() {
     }
   };
 
-  // Handlers for Stock Call Sync
-  const handleSyncStockCall = async () => {
-    if (!stockCallSymbol) {
-      toast.error("Please enter a stock symbol");
-      return;
-    }
-    if (stockCallEntry <= 0 || stockCallTarget <= 0 || stockCallStopLoss <= 0) {
-      toast.error("Please enter valid entry, target and stop-loss prices");
-      return;
-    }
 
-    try {
-      setSyncingStockCall(true);
-      const payload = {
-        productName: "savestment",
-        callType: stockCallType,
-        action: stockCallAction,
-        symbol: stockCallSymbol.toUpperCase(),
-        ticker: stockCallSymbol.toUpperCase(),
-        isin: stockCallSymbol.toUpperCase(),
-        exchange: stockCallExchange,
-        entryPrice: Number(stockCallEntry),
-        targetPrice: Number(stockCallTarget),
-        stopLoss: Number(stockCallStopLoss),
-        quantityOrLot: Number(stockCallQuantity),
-        timeHorizon: stockCallHorizon,
-      };
-
-      const res = await parrvaServiceApi.syncSingleStock(payload);
-      setLastStockCallResult(res);
-      setStats((prev) => ({ ...prev, stockCallsDisclosed: prev.stockCallsDisclosed + 1 }));
-
-      const newLog = {
-        id: `LOG-${Math.floor(10000 + Math.random() * 90000)}`,
-        action: "STOCK_CALL_SYNC",
-        portfolioName: `${stockCallSymbol.toUpperCase()} [${stockCallAction}]`,
-        exchange: stockCallExchange,
-        status: "SUCCESS",
-        timestamp: new Date().toISOString(),
-        ackNumber: `NSE-PDC-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(10000 + Math.random() * 90000)}`,
-        holdingsCount: 1,
-      };
-      setAuditLogs((prev) => [newLog, ...prev]);
-
-      toast.success(`Successfully registered ${stockCallAction} call for ${stockCallSymbol} to NSE PDC!`);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to sync stock call to PaRRVA PDC";
-      toast.error(message);
-    } finally {
-      setSyncingStockCall(false);
-    }
-  };
-
-  // Handlers for Strategy Sync
-  const handleSyncStrategy = async () => {
-    if (!strategyName || !strategySymbol) {
-      toast.error("Please enter strategy name and underlying symbol");
-      return;
-    }
-
-    try {
-      setSyncingStrategy(true);
-      const payload = {
-        productName: "savestment",
-        strategyName,
-        action: strategyAction,
-        symbol: strategySymbol.toUpperCase(),
-        exchange: strategyExchange,
-        entryPrice: Number(strategyEntry),
-        targetPrice: Number(strategyTarget),
-        stopLoss: Number(strategyStopLoss),
-        quantityOrLot: Number(strategyQuantity),
-        timeHorizon: strategyHorizon,
-      };
-
-      const res = await parrvaServiceApi.syncStrategy(payload);
-      setLastStrategyResult(res);
-      setStats((prev) => ({ ...prev, strategiesRegistered: prev.strategiesRegistered + 1 }));
-
-      const newLog = {
-        id: `LOG-${Math.floor(10000 + Math.random() * 90000)}`,
-        action: "STRATEGY_SYNC",
-        portfolioName: `${strategyName} (${strategySymbol})`,
-        exchange: strategyExchange,
-        status: "SUCCESS",
-        timestamp: new Date().toISOString(),
-        ackNumber: `NSE-PDC-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(10000 + Math.random() * 90000)}`,
-        holdingsCount: 1,
-      };
-      setAuditLogs((prev) => [newLog, ...prev]);
-
-      toast.success(`Successfully synced Strategy "${strategyName}" to NSE PDC!`);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to sync strategy to PaRRVA PDC";
-      toast.error(message);
-    } finally {
-      setSyncingStrategy(false);
-    }
-  };
 
   // Handlers for Report Generation
   const handleGenerateReport = async () => {
@@ -593,7 +406,6 @@ export default function PaRRVACompliancePage() {
         statusMessage: "SEBI Compliance Certified Performance Sheet generated successfully.",
       };
       setGeneratedReportData(reportResult);
-      setStats((prev) => ({ ...prev, reportsCertified: prev.reportsCertified + 1 }));
 
       const newLog = {
         id: `LOG-${Math.floor(10000 + Math.random() * 90000)}`,
@@ -773,84 +585,15 @@ export default function PaRRVACompliancePage() {
       {/* Breadcrumb & Header */}
       <PageBreadcrumb pageTitle="PaRRVA Compliance Hub & NSE PDC Sync" />
 
-      {/* Hero / Gateway Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-6 text-white shadow-xl">
-        <div className="absolute right-0 top-0 -mt-12 -mr-12 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" />
-        <div className="absolute left-1/3 bottom-0 -mb-12 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl" />
-
-        <div className="relative z-10 flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-500/30">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                NSE PDC Gateway Active
-              </span>
-              <span className="rounded-full bg-indigo-500/20 px-3 py-1 text-xs font-medium text-indigo-300 ring-1 ring-indigo-500/30">
-                SEBI Performance Disclosure & Compliance (PDC)
-              </span>
-              <span className="rounded-full bg-cyan-500/20 px-3 py-1 text-xs font-medium text-cyan-300 ring-1 ring-cyan-500/30">
-                CarePaRRVA Engine
-              </span>
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              PaRRVA Regulatory Compliance & Portfolio Sync
-            </h1>
-            <p className="max-w-2xl text-sm text-slate-300">
-              Synchronize model portfolios, single-stock advisory calls, and algorithmic quantitative strategies with NSE PDC in real-time, ensuring strict SEBI compliance and certified performance tracking.
-            </p>
-          </div>
-
-          {/* Gateway Status Badge & Quick Action */}
-          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center lg:flex-col lg:items-end">
-            <div className="flex items-center gap-2 rounded-xl bg-slate-800/80 p-3 ring-1 ring-white/10 backdrop-blur-md">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              </div>
-              <div className="text-left">
-                <p className="text-xs text-slate-400">PDC Connection</p>
-                <p className="text-xs font-bold text-emerald-400">100% Verified & In-Sync</p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => {
-                setActiveTab("reports");
-                handleGenerateReport();
-              }}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-emerald-500/25 hover:from-emerald-400 hover:to-teal-400 transition-all"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Generate CarePaRRVA Certificate
-            </button>
-          </div>
-        </div>
-
-        {/* Quick KPI Metrics */}
-        <div className="mt-8 grid grid-cols-2 gap-4 border-t border-white/10 pt-6 sm:grid-cols-4">
-          <div className="space-y-1">
-            <span className="text-xs text-slate-400">Portfolios Synced</span>
-            <p className="text-2xl font-bold text-white">{stats.portfoliosSynced}</p>
-            <span className="text-[11px] font-medium text-emerald-400">✓ Fully Disclosed</span>
-          </div>
-          <div className="space-y-1">
-            <span className="text-xs text-slate-400">Advisory Calls</span>
-            <p className="text-2xl font-bold text-white">{stats.stockCallsDisclosed}</p>
-            <span className="text-[11px] font-medium text-emerald-400">✓ Logged to PDC</span>
-          </div>
-          <div className="space-y-1">
-            <span className="text-xs text-slate-400">Quant Strategies</span>
-            <p className="text-2xl font-bold text-white">{stats.strategiesRegistered}</p>
-            <span className="text-[11px] font-medium text-cyan-400">✓ Multi-Leg Verified</span>
-          </div>
-          <div className="space-y-1">
-            <span className="text-xs text-slate-400">Certified Reports</span>
-            <p className="text-2xl font-bold text-white">{stats.reportsCertified}</p>
-            <span className="text-[11px] font-medium text-indigo-400">✓ SEBI Stamp Valid</span>
-          </div>
+      {/* Page Header Title */}
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+            PaRRVA Regulatory Compliance & Portfolio Sync
+          </h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Disclose model portfolios and synchronize compliance records directly to NSE PDC.
+          </p>
         </div>
       </div>
 
@@ -872,34 +615,6 @@ export default function PaRRVACompliancePage() {
         </button>
 
         <button
-          onClick={() => setActiveTab("stock")}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
-            activeTab === "stock"
-              ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
-              : "bg-white text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-          }`}
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-          </svg>
-          2. Single Stock Call Sync
-        </button>
-
-        <button
-          onClick={() => setActiveTab("strategy")}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
-            activeTab === "strategy"
-              ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
-              : "bg-white text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-          }`}
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
-          3. Quant Strategy Sync
-        </button>
-
-        <button
           onClick={() => setActiveTab("reports")}
           className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
             activeTab === "reports"
@@ -910,7 +625,7 @@ export default function PaRRVACompliancePage() {
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          4. Certified Reports (CarePaRRVA)
+          2. Certified Performance Reports
         </button>
 
         <button
@@ -924,7 +639,7 @@ export default function PaRRVACompliancePage() {
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          5. PDC Audit Trail & Logs
+          3. PDC Audit Trail & Logs
         </button>
       </div>
 
@@ -1144,319 +859,348 @@ export default function PaRRVACompliancePage() {
               )}
             </div>
 
-            {/* Form Fields Grid */}
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                  Portfolio Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={portfolioNameInput}
-                  onChange={(e) => setPortfolioNameInput(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                  placeholder="e.g. Savestment Core Equity"
-                />
-              </div>
+            {/* Form & Holdings Matrix - Displayed after portfolio selection */}
+            {selectedPortfolioId || portfolioItems.length > 0 ? (
+              <div className="animate-fadeIn space-y-6">
+                {/* Form Fields Grid */}
+                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                      Portfolio Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={portfolioNameInput}
+                      onChange={(e) => setPortfolioNameInput(e.target.value)}
+                      className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                      placeholder="e.g. Savestment Core Equity"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                  Product Name
-                </label>
-                <select
-                  value={portfolioProductName}
-                  onChange={(e) => setPortfolioProductName(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                >
-                  <option value="savestment">savestment</option>
-                  <option value="fydaa">fydaa</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                  Portfolio Type
-                </label>
-                <select
-                  value={portfolioType}
-                  onChange={(e) => setPortfolioType(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                >
-                  <option value="Equity">Equity</option>
-                  <option value="Hybrid">Hybrid</option>
-                  <option value="Multi-Asset">Multi-Asset</option>
-                  <option value="Debt">Debt</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                  Stop Portfolio Flag
-                </label>
-                <select
-                  value={stopPortfolio}
-                  onChange={(e) => setStopPortfolio(e.target.value as "No" | "Yes")}
-                  className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                >
-                  <option value="No">No (Active Live Model)</option>
-                  <option value="Yes">Yes (Discontinued / Stopped)</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Holdings Table & Allocation Controller */}
-            <div className="mt-8 space-y-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h4 className="font-bold text-gray-900 dark:text-white text-sm">
-                    Holdings & Weightage Matrix ({portfolioItems.length} Securities)
-                  </h4>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    NSE PDC requires the cumulative weightage of all securities to equal exactly 100.00%.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {/* Auto-Balance Helper */}
-                  <button
-                    type="button"
-                    onClick={handleAutoNormalizeWeights}
-                    title="Scale weights proportionally to reach exactly 100%"
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300 transition"
-                  >
-                    <span>⚖️</span> Auto-Balance 100%
-                  </button>
-
-                  {/* Equal Weight Helper */}
-                  <button
-                    type="button"
-                    onClick={handleEqualizeWeights}
-                    title="Divide 100% equally across all holdings"
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-bold text-purple-700 hover:bg-purple-100 dark:border-purple-900 dark:bg-purple-950/40 dark:text-purple-300 transition"
-                  >
-                    <span>÷</span> Equal Weights
-                  </button>
-
-                  {/* Add Security Button */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPortfolioItems((prev) => [
-                        ...prev,
-                        { ISIN: "SBIN", Symbol: "SBIN", CompanyName: "State Bank of India", Weightage: 0, ExchangeName: "NSE", IfMutualFund: "NO" },
-                      ]);
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 transition"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Security
-                  </button>
-                </div>
-              </div>
-
-              {/* Live Weightage Progress Bar */}
-              <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-3 dark:border-gray-800 dark:bg-gray-800/40">
-                <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">
-                    Allocation Balance:
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                        isPortfolioWeightValid
-                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                          : weightDelta > 0
-                          ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-                          : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
-                      }`}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                      Product Name
+                    </label>
+                    <select
+                      value={portfolioProductName}
+                      onChange={(e) => setPortfolioProductName(e.target.value)}
+                      className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                     >
-                      Total Weight: {portfolioTotalWeight.toFixed(2)}%
-                      {isPortfolioWeightValid ? (
-                        " (SEBI PDC Compliant ✓)"
-                      ) : weightDelta > 0 ? (
-                        ` (${weightDelta.toFixed(2)}% remaining)`
-                      ) : (
-                        ` (${Math.abs(weightDelta).toFixed(2)}% over limit)`
-                      )}
-                    </span>
+                      <option value="savestment">savestment</option>
+                      <option value="fydaa">fydaa</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                      Portfolio Type
+                    </label>
+                    <select
+                      value={portfolioType}
+                      onChange={(e) => setPortfolioType(e.target.value)}
+                      className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                    >
+                      <option value="Equity">Equity</option>
+                      <option value="Hybrid">Hybrid</option>
+                      <option value="Multi-Asset">Multi-Asset</option>
+                      <option value="Debt">Debt</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                      Stop Portfolio Flag
+                    </label>
+                    <select
+                      value={stopPortfolio}
+                      onChange={(e) => setStopPortfolio(e.target.value as "No" | "Yes")}
+                      className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                    >
+                      <option value="No">No (Active Live Model)</option>
+                      <option value="Yes">Yes (Discontinued / Stopped)</option>
+                    </select>
                   </div>
                 </div>
-                <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                  <div
-                    className={`h-full transition-all duration-300 rounded-full ${
-                      isPortfolioWeightValid
-                        ? "bg-emerald-500"
-                        : portfolioTotalWeight > 100
-                        ? "bg-rose-500"
-                        : "bg-amber-500"
-                    }`}
-                    style={{ width: `${Math.min(portfolioTotalWeight, 100)}%` }}
-                  />
+
+                {/* Holdings Table & Allocation Controller */}
+                <div className="mt-8 space-y-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h4 className="font-bold text-gray-900 dark:text-white text-sm">
+                        Holdings & Weightage Matrix ({portfolioItems.length} Securities)
+                      </h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        NSE PDC requires the cumulative weightage of all securities to equal exactly 100.00%.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Auto-Balance Helper */}
+                      <button
+                        type="button"
+                        onClick={handleAutoNormalizeWeights}
+                        title="Scale weights proportionally to reach exactly 100%"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300 transition"
+                      >
+                        <span>⚖️</span> Auto-Balance 100%
+                      </button>
+
+                      {/* Equal Weight Helper */}
+                      <button
+                        type="button"
+                        onClick={handleEqualizeWeights}
+                        title="Divide 100% equally across all holdings"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-bold text-purple-700 hover:bg-purple-100 dark:border-purple-900 dark:bg-purple-950/40 dark:text-purple-300 transition"
+                      >
+                        <span>÷</span> Equal Weights
+                      </button>
+
+                      {/* Add Security Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPortfolioItems((prev) => [
+                            ...prev,
+                            { ISIN: "SBIN", Symbol: "SBIN", CompanyName: "State Bank of India", Weightage: 0, ExchangeName: "NSE", IfMutualFund: "NO" },
+                          ]);
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 transition"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Security
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Live Weightage Progress Bar */}
+                  <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-3 dark:border-gray-800 dark:bg-gray-800/40">
+                    <div className="flex items-center justify-between text-xs mb-1.5">
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">
+                        Allocation Balance:
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                            isPortfolioWeightValid
+                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                              : weightDelta > 0
+                              ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                              : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                          }`}
+                        >
+                          Total Weight: {portfolioTotalWeight.toFixed(2)}%
+                          {isPortfolioWeightValid ? (
+                            " (SEBI PDC Compliant ✓)"
+                          ) : weightDelta > 0 ? (
+                            ` (${weightDelta.toFixed(2)}% remaining)`
+                          ) : (
+                            ` (${Math.abs(weightDelta).toFixed(2)}% over limit)`
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                      <div
+                        className={`h-full transition-all duration-300 rounded-full ${
+                          isPortfolioWeightValid
+                            ? "bg-emerald-500"
+                            : portfolioTotalWeight > 100
+                            ? "bg-rose-500"
+                            : "bg-amber-500"
+                        }`}
+                        style={{ width: `${Math.min(portfolioTotalWeight, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Datalist for stock auto-fill suggestions */}
+                  <datalist id="stockSuggestionsList">
+                    {stockCatalog.map((s: StockItem) => (
+                      <option key={s.id} value={s.ticker || s.stockName}>
+                        {s.stockName} ({s.ticker})
+                      </option>
+                    ))}
+                  </datalist>
+
+                  <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-800/60 dark:text-gray-400">
+                        <tr>
+                          <th className="px-4 py-3">Ticker / ISIN</th>
+                          <th className="px-4 py-3">Security Name</th>
+                          <th className="px-4 py-3">Exchange</th>
+                          <th className="px-4 py-3">Weightage (%)</th>
+                          <th className="px-4 py-3 text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                        {portfolioItems.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition">
+                            <td className="px-4 py-2.5">
+                              <input
+                                type="text"
+                                list="stockSuggestionsList"
+                                value={item.ISIN}
+                                onChange={(e) => {
+                                  const val = e.target.value.toUpperCase();
+                                  const matchedStock = stockCatalog.find(
+                                    (s) => s.ticker?.toUpperCase() === val || s.stockName?.toUpperCase() === val
+                                  );
+                                  setPortfolioItems((prev) => {
+                                    const next = [...prev];
+                                    next[idx] = {
+                                      ...next[idx],
+                                      ISIN: matchedStock?.ticker || val,
+                                      Symbol: matchedStock?.ticker || val,
+                                      CompanyName: matchedStock?.stockName || next[idx].CompanyName,
+                                    };
+                                    return next;
+                                  });
+                                }}
+                                placeholder="e.g. RELIANCE"
+                                className="w-36 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-bold text-gray-900 uppercase dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-emerald-500 focus:outline-none"
+                              />
+                            </td>
+                            <td className="px-4 py-2.5 text-xs text-gray-600 dark:text-gray-300">
+                              <input
+                                type="text"
+                                value={item.CompanyName || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setPortfolioItems((prev) => {
+                                    const next = [...prev];
+                                    next[idx] = { ...next[idx], CompanyName: val };
+                                    return next;
+                                  });
+                                }}
+                                className="w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-emerald-500 focus:outline-none"
+                                placeholder="Security Name"
+                              />
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <select
+                                value={item.ExchangeName || "NSE"}
+                                onChange={(e) => {
+                                  const val = e.target.value as "NSE" | "BSE";
+                                  setPortfolioItems((prev) => {
+                                    const next = [...prev];
+                                    next[idx] = { ...next[idx], ExchangeName: val };
+                                    return next;
+                                  });
+                                }}
+                                className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-emerald-500 focus:outline-none"
+                              >
+                                <option value="NSE">NSE</option>
+                                <option value="BSE">BSE</option>
+                              </select>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  max="100"
+                                  value={item.Weightage}
+                                  onChange={(e) => {
+                                    const val = parseFloat(e.target.value) || 0;
+                                    setPortfolioItems((prev) => {
+                                      const next = [...prev];
+                                      next[idx] = { ...next[idx], Weightage: val };
+                                      return next;
+                                    });
+                                  }}
+                                  className="w-24 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-bold text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-emerald-500 focus:outline-none"
+                                />
+                                <span className="text-xs text-gray-400 font-semibold">%</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-2.5 text-center">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (portfolioItems.length <= 1) {
+                                    toast.error("Portfolio must have at least 1 holding");
+                                    return;
+                                  }
+                                  setPortfolioItems((prev) => prev.filter((_, i) => i !== idx));
+                                }}
+                                title="Remove Security"
+                                className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30"
+                              >
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Submit Action Bar */}
+                <div className="mt-8 flex flex-col justify-between gap-4 border-t border-gray-100 pt-6 dark:border-gray-800 sm:flex-row sm:items-center">
+                  <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <svg className="h-4 w-4 text-emerald-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span>Automated daily reconciliation & immutable audit trail with NSE Performance Disclosure Centre</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSyncPortfolio}
+                    disabled={syncingPortfolio || !isPortfolioWeightValid}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                  >
+                    {syncingPortfolio ? (
+                      <>
+                        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                        </svg>
+                        Syncing to NSE PDC...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Sync Model Portfolio to NSE PDC
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
-
-              {/* Datalist for stock auto-fill suggestions */}
-              <datalist id="stockSuggestionsList">
-                {stockCatalog.map((s: StockItem) => (
-                  <option key={s.id} value={s.ticker || s.stockName}>
-                    {s.stockName} ({s.ticker})
-                  </option>
-                ))}
-              </datalist>
-
-              <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-800/60 dark:text-gray-400">
-                    <tr>
-                      <th className="px-4 py-3">Ticker / ISIN</th>
-                      <th className="px-4 py-3">Security Name</th>
-                      <th className="px-4 py-3">Exchange</th>
-                      <th className="px-4 py-3">Weightage (%)</th>
-                      <th className="px-4 py-3 text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                    {portfolioItems.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition">
-                        <td className="px-4 py-2.5">
-                          <input
-                            type="text"
-                            list="stockSuggestionsList"
-                            value={item.ISIN}
-                            onChange={(e) => {
-                              const val = e.target.value.toUpperCase();
-                              const matchedStock = stockCatalog.find(
-                                (s) => s.ticker?.toUpperCase() === val || s.stockName?.toUpperCase() === val
-                              );
-                              setPortfolioItems((prev) => {
-                                const next = [...prev];
-                                next[idx] = {
-                                  ...next[idx],
-                                  ISIN: matchedStock?.ticker || val,
-                                  Symbol: matchedStock?.ticker || val,
-                                  CompanyName: matchedStock?.stockName || next[idx].CompanyName,
-                                };
-                                return next;
-                              });
-                            }}
-                            placeholder="e.g. RELIANCE"
-                            className="w-36 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-bold text-gray-900 uppercase dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-emerald-500 focus:outline-none"
-                          />
-                        </td>
-                        <td className="px-4 py-2.5 text-xs text-gray-600 dark:text-gray-300">
-                          <input
-                            type="text"
-                            value={item.CompanyName || ""}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setPortfolioItems((prev) => {
-                                const next = [...prev];
-                                next[idx] = { ...next[idx], CompanyName: val };
-                                return next;
-                              });
-                            }}
-                            className="w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-emerald-500 focus:outline-none"
-                            placeholder="Security Name"
-                          />
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <select
-                            value={item.ExchangeName || "NSE"}
-                            onChange={(e) => {
-                              const val = e.target.value as "NSE" | "BSE";
-                              setPortfolioItems((prev) => {
-                                const next = [...prev];
-                                next[idx] = { ...next[idx], ExchangeName: val };
-                                return next;
-                              });
-                            }}
-                            className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-emerald-500 focus:outline-none"
-                          >
-                            <option value="NSE">NSE</option>
-                            <option value="BSE">BSE</option>
-                          </select>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <div className="flex items-center gap-1.5">
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              max="100"
-                              value={item.Weightage}
-                              onChange={(e) => {
-                                const val = parseFloat(e.target.value) || 0;
-                                setPortfolioItems((prev) => {
-                                  const next = [...prev];
-                                  next[idx] = { ...next[idx], Weightage: val };
-                                  return next;
-                                });
-                              }}
-                              className="w-24 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-bold text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-emerald-500 focus:outline-none"
-                            />
-                            <span className="text-xs text-gray-400 font-semibold">%</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-2.5 text-center">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (portfolioItems.length <= 1) {
-                                toast.error("Portfolio must have at least 1 holding");
-                                return;
-                              }
-                              setPortfolioItems((prev) => prev.filter((_, i) => i !== idx));
-                            }}
-                            title="Remove Security"
-                            className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30"
-                          >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            ) : (
+              /* Placeholder before portfolio is selected */
+              <div className="mt-6 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50 p-8 text-center dark:border-gray-800 dark:bg-gray-800/20">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h4 className="mt-3 text-sm font-bold text-gray-900 dark:text-white">
+                  No Portfolio Selected
+                </h4>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                  Please select a Savestment Model Portfolio (ID 72 to 80) from the dropdown above to load its Holdings & Weightage Matrix and configure PDC disclosure.
+                </p>
+                <div className="mt-4 flex items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setIsPortfolioDropdownOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 transition shadow-sm"
+                  >
+                    <span>📂</span> Select Portfolio from Database
+                  </button>
+                </div>
               </div>
-            </div>
-
-            {/* Submit Action Bar */}
-            <div className="mt-8 flex flex-col justify-between gap-4 border-t border-gray-100 pt-6 dark:border-gray-800 sm:flex-row sm:items-center">
-              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                <svg className="h-4 w-4 text-emerald-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                <span>Automated daily reconciliation & immutable audit trail with NSE Performance Disclosure Centre</span>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleSyncPortfolio}
-                disabled={syncingPortfolio || !isPortfolioWeightValid}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
-              >
-                {syncingPortfolio ? (
-                  <>
-                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                    </svg>
-                    Syncing to NSE PDC...
-                  </>
-                ) : (
-                  <>
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Sync Model Portfolio to NSE PDC
-                  </>
-                )}
-              </button>
-            </div>
+            )}
 
             {/* Last Sync Result Card */}
             {lastPortfolioSyncResult && (
@@ -1487,431 +1231,7 @@ export default function PaRRVACompliancePage() {
         </div>
       )}
 
-      {/* TAB 2: SINGLE STOCK CALL SYNC */}
-      {activeTab === "stock" && (
-        <div className="space-y-6 animate-fadeIn">
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="border-b border-gray-100 pb-4 dark:border-gray-800">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                Single Stock Advisory Call Compliance Sync
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Log SEBI Research Analyst (RA) stock recommendations to NSE PDC for immutable performance verification.
-              </p>
-            </div>
-
-            <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-              {/* Left 2 Cols: Form Inputs */}
-              <div className="space-y-5 lg:col-span-2">
-                
-                {/* Action Toggle */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                    Recommendation Action
-                  </label>
-                  <div className="mt-2 flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setStockCallAction("BUY")}
-                      className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-all ${
-                        stockCallAction === "BUY"
-                          ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/25 ring-2 ring-emerald-500"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300"
-                      }`}
-                    >
-                      🟢 BUY (Long Call)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStockCallAction("SELL")}
-                      className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-all ${
-                        stockCallAction === "SELL"
-                          ? "bg-rose-600 text-white shadow-lg shadow-rose-600/25 ring-2 ring-rose-500"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300"
-                      }`}
-                    >
-                      🔴 SELL (Exit / Short)
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                      Stock Symbol / ISIN <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={stockCallSymbol}
-                      onChange={(e) => setStockCallSymbol(e.target.value.toUpperCase())}
-                      className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-bold text-gray-900 uppercase focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                      placeholder="e.g. TCS, RELIANCE, INFY"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                      Call Type
-                    </label>
-                    <select
-                      value={stockCallType}
-                      onChange={(e) => setStockCallType(e.target.value as "SINGLE_STOCK" | "INTRADAY" | "DERIVATIVES")}
-                      className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                    >
-                      <option value="SINGLE_STOCK">Single Stock (Positional)</option>
-                      <option value="INTRADAY">Intraday Call</option>
-                      <option value="DERIVATIVES">Futures & Options</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                      Exchange
-                    </label>
-                    <select
-                      value={stockCallExchange}
-                      onChange={(e) => setStockCallExchange(e.target.value as "NSE" | "BSE" | "NFO")}
-                      className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                    >
-                      <option value="NSE">NSE</option>
-                      <option value="BSE">BSE</option>
-                      <option value="NFO">NFO</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                      Time Horizon
-                    </label>
-                    <select
-                      value={stockCallHorizon}
-                      onChange={(e) => setStockCallHorizon(e.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                    >
-                      <option value="Intraday">Intraday</option>
-                      <option value="1-2 Weeks">1-2 Weeks</option>
-                      <option value="1-3 Months">1-3 Months</option>
-                      <option value="3-6 Months">3-6 Months</option>
-                      <option value="1 Year+">1 Year+</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Pricing & Target Grid */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                      Entry Price (₹) <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.05"
-                      value={stockCallEntry}
-                      onChange={(e) => setStockCallEntry(parseFloat(e.target.value) || 0)}
-                      className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-bold text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                      Target Price (₹) <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.05"
-                      value={stockCallTarget}
-                      onChange={(e) => setStockCallTarget(parseFloat(e.target.value) || 0)}
-                      className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-bold text-emerald-600 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-emerald-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                      Stop Loss (₹) <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.05"
-                      value={stockCallStopLoss}
-                      onChange={(e) => setStockCallStopLoss(parseFloat(e.target.value) || 0)}
-                      className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-bold text-rose-600 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-rose-400"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                    Recommended Quantity / Lot
-                  </label>
-                  <input
-                    type="number"
-                    value={stockCallQuantity}
-                    onChange={(e) => setStockCallQuantity(parseInt(e.target.value) || 1)}
-                    className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                  />
-                </div>
-              </div>
-
-              {/* Right Col: Live Risk-Reward Card */}
-              <div className="flex flex-col justify-between rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/50 via-slate-50 to-emerald-50/40 p-5 dark:border-indigo-950 dark:from-slate-800/80 dark:via-slate-900 dark:to-emerald-950/20">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-900 dark:text-indigo-300">
-                      Trade Risk Profile
-                    </span>
-                    <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-bold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-                      SEBI RA Formula
-                    </span>
-                  </div>
-
-                  <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-800/80 space-y-3">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-500 dark:text-gray-400">Potential Upside:</span>
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                        +{stockPotentialGain.toFixed(2)}%
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-500 dark:text-gray-400">Max Downside Risk:</span>
-                      <span className="font-bold text-rose-600 dark:text-rose-400">
-                        -{Math.abs(stockRisk).toFixed(2)}%
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center border-t border-gray-100 pt-2 dark:border-gray-700 text-xs">
-                      <span className="font-semibold text-gray-700 dark:text-gray-300">Risk-to-Reward:</span>
-                      <span className="font-bold text-indigo-600 dark:text-indigo-400">
-                        1 : {riskRewardRatio}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-gray-200/80 bg-white/60 p-3 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300 space-y-1">
-                    <p className="font-semibold">PDC Payload Preview:</p>
-                    <p className="font-mono text-[11px] text-gray-500 dark:text-gray-400 truncate">
-                      {stockCallAction} {stockCallSymbol} @ ₹{stockCallEntry} (T: {stockCallTarget}, SL: {stockCallStopLoss})
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleSyncStockCall}
-                  disabled={syncingStockCall}
-                  className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 transition-all"
-                >
-                  {syncingStockCall ? (
-                    <>
-                      <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                      </svg>
-                      Disclosing Call...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                      </svg>
-                      Disclose Stock Call to NSE PDC
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Last Result */}
-            {lastStockCallResult && (
-              <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/30">
-                <div className="flex items-center gap-2 font-bold text-emerald-900 dark:text-emerald-200">
-                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                  Single Stock Advisory Call Logged to PDC
-                </div>
-                <pre className="mt-2 max-h-32 overflow-x-auto rounded-lg bg-gray-950 p-3 text-xs text-emerald-400 font-mono">
-                  {JSON.stringify(lastStockCallResult, null, 2)}
-                </pre>
-              </div>
-            )}
-
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: QUANT STRATEGY SYNC */}
-      {activeTab === "strategy" && (
-        <div className="space-y-6 animate-fadeIn">
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="border-b border-gray-100 pb-4 dark:border-gray-800">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                Quantitative & Multi-Leg Strategy Sync
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Disclose systematic algorithmic models and index derivatives strategies to NSE PDC.
-              </p>
-            </div>
-
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                  Strategy Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={strategyName}
-                  onChange={(e) => setStrategyName(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                  placeholder="e.g. Nifty Bull Call Spread V1"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                  Underlying Symbol <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={strategySymbol}
-                  onChange={(e) => setStrategySymbol(e.target.value.toUpperCase())}
-                  className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-bold text-gray-900 uppercase focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                  placeholder="e.g. NIFTY50, BANKNIFTY"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                  Action
-                </label>
-                <select
-                  value={strategyAction}
-                  onChange={(e) => setStrategyAction(e.target.value as "BUY" | "SELL")}
-                  className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                >
-                  <option value="BUY">BUY (Long Strategy)</option>
-                  <option value="SELL">SELL (Short Strategy)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                  Exchange
-                </label>
-                <select
-                  value={strategyExchange}
-                  onChange={(e) => setStrategyExchange(e.target.value as "NSE" | "BSE" | "NFO")}
-                  className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                >
-                  <option value="NSE">NSE</option>
-                  <option value="BSE">BSE</option>
-                  <option value="NFO">NFO</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                  Entry Trigger Price (₹)
-                </label>
-                <input
-                  type="number"
-                  value={strategyEntry}
-                  onChange={(e) => setStrategyEntry(parseFloat(e.target.value) || 0)}
-                  className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-bold text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                  Target Price (₹)
-                </label>
-                <input
-                  type="number"
-                  value={strategyTarget}
-                  onChange={(e) => setStrategyTarget(parseFloat(e.target.value) || 0)}
-                  className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-bold text-emerald-600 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-emerald-400"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                  Stop Loss (₹)
-                </label>
-                <input
-                  type="number"
-                  value={strategyStopLoss}
-                  onChange={(e) => setStrategyStopLoss(parseFloat(e.target.value) || 0)}
-                  className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-bold text-rose-600 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-rose-400"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                  Lot Size / Quantity
-                </label>
-                <input
-                  type="number"
-                  value={strategyQuantity}
-                  onChange={(e) => setStrategyQuantity(parseInt(e.target.value) || 1)}
-                  className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                  Execution Horizon
-                </label>
-                <select
-                  value={strategyHorizon}
-                  onChange={(e) => setStrategyHorizon(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                >
-                  <option value="Daily">Daily</option>
-                  <option value="Weekly">Weekly</option>
-                  <option value="Monthly">Monthly</option>
-                  <option value="Quarterly">Quarterly</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="mt-8 flex justify-end">
-              <button
-                type="button"
-                onClick={handleSyncStrategy}
-                disabled={syncingStrategy}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 transition-all"
-              >
-                {syncingStrategy ? (
-                  <>
-                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                    </svg>
-                    Registering Quant Model...
-                  </>
-                ) : (
-                  <>
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    Sync Strategy to NSE PDC
-                  </>
-                )}
-              </button>
-            </div>
-
-            {lastStrategyResult && (
-              <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/30">
-                <div className="flex items-center gap-2 font-bold text-emerald-900 dark:text-emerald-200">
-                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                  Strategy Disclosed Successfully
-                </div>
-                <pre className="mt-2 max-h-32 overflow-x-auto rounded-lg bg-gray-950 p-3 text-xs text-emerald-400 font-mono">
-                  {JSON.stringify(lastStrategyResult, null, 2)}
-                </pre>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: CERTIFIED REPORTS (CAREPARRVA) */}
+      {/* TAB 2: CERTIFIED REPORTS (CAREPARRVA) */}
       {activeTab === "reports" && (
         <div className="space-y-6 animate-fadeIn">
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -1930,25 +1250,10 @@ export default function PaRRVACompliancePage() {
                   <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
                     Report Target Type
                   </label>
-                  <div className="mt-2 grid grid-cols-3 gap-2">
-                    {[
-                      { id: "PORTFOLIO" as const, label: "Model Portfolio" },
-                      { id: "SINGLESTOCK" as const, label: "Single Stocks" },
-                      { id: "STRATEGY" as const, label: "Quant Strategies" },
-                    ].map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => setReportType(item.id)}
-                        className={`rounded-xl px-3 py-2 text-xs font-bold transition-all ${
-                          reportType === item.id
-                            ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300"
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
+                  <div className="mt-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3.5 py-2 text-xs font-bold text-emerald-800 ring-1 ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-800">
+                      ✓ Savestment Model Portfolios (Stocks & Mutual Funds)
+                    </span>
                   </div>
                 </div>
 
