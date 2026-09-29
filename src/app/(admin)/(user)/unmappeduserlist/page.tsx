@@ -155,6 +155,7 @@ export default function UserTablesPage() {
             router.push(`?${params.toString()}`, { scroll: false });
         }
         setIsTyping(false);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchQuery]);
 
     const fetchData = useCallback(async () => {

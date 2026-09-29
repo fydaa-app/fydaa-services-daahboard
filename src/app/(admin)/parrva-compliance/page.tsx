@@ -76,7 +76,7 @@ export default function PaRRVACompliancePage() {
   const [lastPortfolioSyncResult, setLastPortfolioSyncResult] = useState<APIResponse<Record<string, unknown>> | Record<string, unknown> | null>(null);
 
   // 2. Report Generator State
-  const [reportType, setReportType] = useState<"PORTFOLIO">("PORTFOLIO");
+  const [reportType] = useState<"PORTFOLIO">("PORTFOLIO");
   const [reportFormat, setReportFormat] = useState<"PDF" | "PNG" | "QR">("PDF");
   const [generatingReport, setGeneratingReport] = useState(false);
   const [generatedReportData, setGeneratedReportData] = useState<ReportData | null>(null);
