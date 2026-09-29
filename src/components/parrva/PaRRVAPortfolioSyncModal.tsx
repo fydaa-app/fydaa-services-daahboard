@@ -459,8 +459,8 @@ export default function PaRRVAPortfolioSyncModal({
                 </button>
 
                 <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${isWeightValid
-                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                    : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                  : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
                   }`}>
                   <span>Total: {totalWeight.toFixed(2)}%</span>
                   {isWeightValid ? (
