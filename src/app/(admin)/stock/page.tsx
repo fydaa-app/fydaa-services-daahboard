@@ -14,6 +14,7 @@ interface Stock {
     scriptcode: number;
     stockName: string;
     ticker: string;
+    isin?: string;
     currentPrice: string;
     yesterdayPrice: string;
     StockType: string;

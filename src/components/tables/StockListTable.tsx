@@ -70,6 +70,7 @@ interface Stock {
   scriptcode: number;
   stockName: string;
   ticker: string;
+  isin?: string;
   currentPrice: string;
   yesterdayPrice: string;
   StockType: string;
@@ -609,7 +610,12 @@ export default function StockListTable({ stocks, error, onRefresh }: StockTableP
                         </div>
                       </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {stock.ticker}
+                        <span className="block font-medium text-gray-800 dark:text-gray-200">{stock.ticker}</span>
+                        {stock.isin && (
+                          <span className="block text-[11px] text-gray-500 dark:text-gray-400 font-mono">
+                            {stock.isin}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                         {formatCurrency(stock.currentPrice)}

@@ -27,6 +27,7 @@ interface StockData {
   id?: number;
   stockName: string;
   ticker: string;
+  isin?: string;
   scriptcode: number;
   currentPrice: string;
   yesterdayPrice?: string;
@@ -44,6 +45,7 @@ interface StockData {
 const DEFAULT_STOCK_DATA: StockData = {
   stockName: '',
   ticker: '',
+  isin: '',
   scriptcode: 0,
   currentPrice: '',
   StockType: '',
@@ -102,6 +104,13 @@ export default function StockModal({
   }, [initialData]);
 
   const validateForm = () => {
+    if (stockData.geography === 'India' && stockData.isin && stockData.isin.trim()) {
+      const isinRegex = /^IN[A-Za-z0-9]{10}$/;
+      if (!isinRegex.test(stockData.isin.trim())) {
+        toast.error("It must start with 'IN' and be exactly 12 alphanumeric characters");
+        return false;
+      }
+    }
     if (!stockData.stockName) {
       toast.error('Stock name is required');
       return false;
@@ -289,6 +298,45 @@ export default function StockModal({
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
+              <Label htmlFor="geography">Geography</Label>
+              <Select
+                value={stockData.geography || ''}
+                onChange={(e) => setStockData(prev => ({
+                  ...prev,
+                  geography: e.value,
+                  isin: e.value === 'India' ? prev.isin || '' : '',
+                }))}
+                options={[
+                  { value: "", label: "Select Geography" },
+                  { value: "India", label: "India" },
+                  { value: "USA", label: "USA" },
+                  { value: "Europe", label: "Europe" },
+                  { value: "Japan", label: "Japan" },
+                  { value: "GreaterChina", label: "Greater China" },
+                  { value: "MiddleEast", label: "Middle East" },
+                  { value: "Australia", label: "Australia" },
+                  { value: "LatinAmerica", label: "Latin America" },
+                ]}
+              />
+            </div>
+
+            {stockData.geography === 'India' && (
+              <div>
+                <Label htmlFor="isin">ISIN</Label>
+                <Input
+                  id="isin"
+                  value={stockData.isin || ''}
+                  onChange={(e) => setStockData(prev => ({
+                    ...prev,
+                    isin: e.target.value.toUpperCase()
+                  }))}
+                  placeholder="e.g. INE002A01018"
+                  maxLength={12}
+                />
+              </div>
+            )}
+
+            <div>
               <Label htmlFor="scriptcode">Script Code</Label>
               <Input
                 id="scriptcode"
@@ -399,25 +447,6 @@ export default function StockModal({
                   { value: "8", label: "Healthcare" },
                   { value: "9", label: "Utilities" },
                   { value: "10", label: "Others" },
-                ]}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="geography">Geography</Label>
-              <Select
-                value={stockData.geography || ''}
-                onChange={handleSelectChange('geography')}
-                options={[
-                  { value: "", label: "Select Geography" },
-                  { value: "India", label: "India" },
-                  { value: "USA", label: "USA" },
-                  { value: "Europe", label: "Europe" },
-                  { value: "Japan", label: "Japan" },
-                  { value: "GreaterChina", label: "Greater China" },
-                  { value: "MiddleEast", label: "Middle East" },
-                  { value: "Australia", label: "Australia" },
-                  { value: "LatinAmerica", label: "Latin America" },
                 ]}
               />
             </div>

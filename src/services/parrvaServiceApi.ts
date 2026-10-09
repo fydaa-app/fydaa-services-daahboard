@@ -125,6 +125,8 @@ class PaRRVAServiceApi extends APIClient {
         portfolioName: payload.portfolioName,
         portfolioType: payload.portfolioType || 'Equity',
         stopPortfolio: payload.stopPortfolio || 'No',
+        isLive: true,
+        environment: 'production',
         details: payload.details.map(item => ({
           ISIN: item.ISIN || item.Symbol || 'RELIANCE',
           Weightage: Number((Number(item.Weightage) / 100).toFixed(6)),
@@ -205,6 +207,7 @@ class PaRRVAServiceApi extends APIClient {
         reportFormat: format,
         dataType: 'LATEST_DATA',
         isHistorical: 'TRUE',
+        isLive: true,
       });
     } catch (error: unknown) {
       console.error('Error generating PaRRVA report:', error);
