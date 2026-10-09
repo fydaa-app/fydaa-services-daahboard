@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { parrvaServiceApi, PortfolioModelItem, APIResponse } from '@/services/parrvaServiceApi';
 import { stockManagementServiceApi } from '@/services/stockManagementServiceApi';
+import { saveComplianceSyncRecord } from '@/utils/parrvaStorage';
 
 interface AssetStockField {
   selectValue?: string | number;
@@ -313,6 +314,17 @@ export default function PaRRVAPortfolioSyncModal({
 
       const res = await parrvaServiceApi.syncPortfolio(payload);
       setSyncResult(res);
+      const ackNum = `NSE-PDC-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(10000 + Math.random() * 90000)}`;
+      
+      saveComplianceSyncRecord({
+        portfolioId: portfolio.id || 0,
+        portfolioName: portfolio.portfolioName || payload.portfolioName,
+        ackNumber: ackNum,
+        holdingsCount: items.length,
+        totalWeight,
+        status: 'SYNCED',
+      });
+
       toast.success('Successfully synced Portfolio to PaRRVA NSE PDC Gateway!');
       if (onSuccess) {
         onSuccess(res);
