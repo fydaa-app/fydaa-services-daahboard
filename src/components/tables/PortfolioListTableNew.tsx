@@ -9,6 +9,7 @@ import {
 import { toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import PaRRVAPortfolioSyncModal from '@/components/parrva/PaRRVAPortfolioSyncModal';
+import { getPortfolioComplianceStatus } from '@/utils/parrvaStorage';
 
 
 interface AssetClass {    
@@ -220,6 +221,27 @@ export default function PortfolioListTableNew({ portfolios, error, getPlanName, 
                           <span className="font-semibold text-gray-900 dark:text-white">
                             {portfolio.portfolioName || 'N/A'}
                           </span>
+                          {(Number(portfolio.planId) === 4 || (Number(portfolio.id) >= 72 && Number(portfolio.id) <= 80)) && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              {(() => {
+                                const compliance = getPortfolioComplianceStatus(portfolio.id, portfolio.portfolioName);
+                                if (compliance?.status === 'SYNCED') {
+                                  return (
+                                    <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                      PDC Compliant ✓
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                                    PDC Sync Pending
+                                  </span>
+                                );
+                              })()}
+                            </div>
+                          )}
                           {hasInvalidWeightsSum(portfolio) && (
                             <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-500 dark:text-red-400">
                               <svg className="w-3.5 h-3.5 text-red-500 dark:text-red-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">

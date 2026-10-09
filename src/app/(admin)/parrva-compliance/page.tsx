@@ -6,8 +6,14 @@ import { toast } from "react-hot-toast";
 import Cookies from "js-cookie";
 import { parrvaServiceApi, PortfolioModelItem, APIResponse } from "@/services/parrvaServiceApi";
 import { stockManagementServiceApi } from "@/services/stockManagementServiceApi";
+import {
+  getComplianceSyncRecords,
+  saveComplianceSyncRecord,
+  getPortfolioComplianceStatus,
+  PaRRVASyncRecord,
+} from "@/utils/parrvaStorage";
 
-type TabType = "portfolio" | "reports" | "audit";
+type TabType = "status" | "portfolio" | "reports" | "audit";
 
 interface AssetStockField {
   selectValue?: string | number;
@@ -54,10 +60,15 @@ interface PortfolioOption {
 }
 
 export default function PaRRVACompliancePage() {
-  const [activeTab, setActiveTab] = useState<TabType>("portfolio");
+  const [activeTab, setActiveTab] = useState<TabType>("status");
 
   // Stock catalog
   const [stockCatalog, setStockCatalog] = useState<StockItem[]>([]);
+
+  // Compliance sync records map (synced portfolios cache)
+  const [syncRecords, setSyncRecords] = useState<Record<string, PaRRVASyncRecord>>({});
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "COMPLIANT" | "PENDING">("ALL");
+  const [statusSearchQuery, setStatusSearchQuery] = useState<string>("");
 
   // 1. Portfolio Sync State
   const [availablePortfolios, setAvailablePortfolios] = useState<PortfolioOption[]>([]);
@@ -73,6 +84,7 @@ export default function PaRRVACompliancePage() {
   const [stopPortfolio, setStopPortfolio] = useState<"No" | "Yes">("No");
   const [portfolioItems, setPortfolioItems] = useState<PortfolioModelItem[]>([]);
   const [syncingPortfolio, setSyncingPortfolio] = useState(false);
+  const [quickSyncingId, setQuickSyncingId] = useState<number | null>(null);
   const [lastPortfolioSyncResult, setLastPortfolioSyncResult] = useState<APIResponse<Record<string, unknown>> | Record<string, unknown> | null>(null);
 
   // 2. Report Generator State
@@ -97,6 +109,114 @@ export default function PaRRVACompliancePage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Load sync records from localStorage on client
+  useEffect(() => {
+    setSyncRecords(getComplianceSyncRecords());
+  }, []);
+
+  // Helper to get compliance record using live syncRecords state
+  const getComplianceForPortfolio = (id: number | string, name?: string) => {
+    return (id && syncRecords[String(id)]) || (name && syncRecords[name]) || getPortfolioComplianceStatus(id, name);
+  };
+
+  // Helper to find ticker
+  const findStockInfo = (val: string | number) => {
+    const match = stockCatalog.find(
+      (s) => String(s.id) === String(val) || s.stockName?.toLowerCase() === String(val).toLowerCase()
+    );
+    return {
+      ticker: match?.ticker || (typeof val === "string" && isNaN(Number(val)) ? val.toUpperCase() : `STOCK_${val}`),
+      name: match?.stockName || String(val),
+    };
+  };
+
+  // Helper to parse portfolio items from raw portfolio data
+  const parsePortfolioHoldings = (p: PortfolioOption): PortfolioModelItem[] => {
+    const parsed: PortfolioModelItem[] = [];
+
+    let assetClassObj: Record<string, string | number> | null = null;
+    if (typeof p.assetClass === "string") {
+      try {
+        assetClassObj = JSON.parse(p.assetClass);
+      } catch {
+        assetClassObj = null;
+      }
+    } else if (p.assetClass && typeof p.assetClass === "object") {
+      assetClassObj = p.assetClass as Record<string, string | number>;
+    }
+
+    let assetClassStockObj: Record<string, AssetStockField[]> | null = null;
+    if (typeof p.assetClassStock === "string") {
+      try {
+        assetClassStockObj = JSON.parse(p.assetClassStock);
+      } catch {
+        assetClassStockObj = null;
+      }
+    } else if (p.assetClassStock && typeof p.assetClassStock === "object") {
+      assetClassStockObj = p.assetClassStock as Record<string, AssetStockField[]>;
+    }
+
+    if (assetClassStockObj && typeof assetClassStockObj === "object") {
+      const currentStockMap = assetClassStockObj;
+      const currentAssetMap = assetClassObj;
+      const categories = Object.keys(currentStockMap);
+      const hasAssetClassWeights = currentAssetMap && typeof currentAssetMap === "object" && Object.keys(currentAssetMap).length > 0;
+
+      categories.forEach((cat) => {
+        const fields = currentStockMap[cat];
+        const categoryWeight = (hasAssetClassWeights && currentAssetMap) ? (parseFloat(String(currentAssetMap[cat] || "0")) || 0) : 0;
+
+        if (Array.isArray(fields)) {
+          fields.forEach((f: AssetStockField) => {
+            if (f && f.selectValue) {
+              const info = findStockInfo(f.selectValue);
+              const rawWeight = parseFloat(String(f.weight || "0")) || 0;
+              const effectiveWeight = hasAssetClassWeights && categoryWeight > 0
+                ? Number(((rawWeight * categoryWeight) / 100).toFixed(2))
+                : rawWeight;
+
+              parsed.push({
+                ISIN: info.ticker,
+                Symbol: info.ticker,
+                CompanyName: `${info.name} (${cat})`,
+                Weightage: effectiveWeight,
+                ExchangeName: "NSE",
+                IfMutualFund: "NO",
+              });
+            }
+          });
+        }
+      });
+
+      const currentTotal = parsed.reduce((sum, item) => sum + item.Weightage, 0);
+      if (currentTotal > 100.01) {
+        parsed.forEach((item) => {
+          item.Weightage = Number(((item.Weightage / currentTotal) * 100).toFixed(2));
+        });
+      }
+    }
+
+    if (parsed.length === 0 && p.stockIds) {
+      const ids = p.stockIds.split(",").map((s) => s.trim()).filter(Boolean);
+      const weights = (p.weights || "").split(",").map((w) => parseFloat(w.trim()) || 0);
+
+      ids.forEach((id, idx) => {
+        const info = findStockInfo(id);
+        const weight = weights[idx] ?? (weights.length === 1 ? weights[0] : 0);
+        parsed.push({
+          ISIN: info.ticker,
+          Symbol: info.ticker,
+          CompanyName: info.name,
+          Weightage: weight,
+          ExchangeName: "NSE",
+          IfMutualFund: "NO",
+        });
+      });
+    }
+
+    return parsed;
+  };
+
   // Fetch portfolio list from API (Filtered strictly for Indian Stock Savestment portfolios: planId === 4 and/or IDs 72 to 80)
   const fetchAvailablePortfolios = async (silent = false) => {
     try {
@@ -119,6 +239,7 @@ export default function PaRRVACompliancePage() {
               return planIdNum === 4 || (idNum >= 72 && idNum <= 80);
             });
             setAvailablePortfolios(filteredIndianSavestment);
+            setSyncRecords(getComplianceSyncRecords());
             if (!silent) {
               toast.success(`Loaded ${filteredIndianSavestment.length} Savestment Indian Stock portfolios (Plan 4 / IDs 72-80)`);
             }
@@ -156,7 +277,7 @@ export default function PaRRVACompliancePage() {
   }, []);
 
   // Handle portfolio selection from dropdown or picker
-  const handleSelectPortfolio = (pId: string) => {
+  const handleSelectPortfolio = (pId: string, autoSwitchTab = false) => {
     setSelectedPortfolioId(pId);
     setIsPortfolioDropdownOpen(false);
     if (!pId) return;
@@ -169,107 +290,17 @@ export default function PaRRVACompliancePage() {
     setPortfolioType("Equity");
     setStopPortfolio("No");
 
-    const parsedItems: PortfolioModelItem[] = [];
-
-    // Helper to find ticker
-    const findStockInfo = (val: string | number) => {
-      const match = stockCatalog.find(
-        (s) => String(s.id) === String(val) || s.stockName?.toLowerCase() === String(val).toLowerCase()
-      );
-      return {
-        ticker: match?.ticker || (typeof val === "string" && isNaN(Number(val)) ? val.toUpperCase() : `STOCK_${val}`),
-        name: match?.stockName || String(val),
-      };
-    };
-
-    // Parse assetClass if available
-    let assetClassObj: Record<string, string | number> | null = null;
-    if (typeof selected.assetClass === "string") {
-      try {
-        assetClassObj = JSON.parse(selected.assetClass);
-      } catch {
-        assetClassObj = null;
-      }
-    } else if (selected.assetClass && typeof selected.assetClass === "object") {
-      assetClassObj = selected.assetClass as Record<string, string | number>;
-    }
-
-    let assetClassStockObj: Record<string, AssetStockField[]> | null = null;
-    if (typeof selected.assetClassStock === "string") {
-      try {
-        assetClassStockObj = JSON.parse(selected.assetClassStock);
-      } catch {
-        assetClassStockObj = null;
-      }
-    } else if (selected.assetClassStock && typeof selected.assetClassStock === "object") {
-      assetClassStockObj = selected.assetClassStock as Record<string, AssetStockField[]>;
-    }
-
-    if (assetClassStockObj && typeof assetClassStockObj === "object") {
-      const currentStockMap = assetClassStockObj;
-      const currentAssetMap = assetClassObj;
-      const categories = Object.keys(currentStockMap);
-      const hasAssetClassWeights = currentAssetMap && typeof currentAssetMap === "object" && Object.keys(currentAssetMap).length > 0;
-
-      categories.forEach((cat) => {
-        const fields = currentStockMap[cat];
-        const categoryWeight = (hasAssetClassWeights && currentAssetMap) ? (parseFloat(String(currentAssetMap[cat] || "0")) || 0) : 0;
-
-        if (Array.isArray(fields)) {
-          fields.forEach((f: AssetStockField) => {
-            if (f && f.selectValue) {
-              const info = findStockInfo(f.selectValue);
-              const rawWeight = parseFloat(String(f.weight || "0")) || 0;
-
-              const effectiveWeight = hasAssetClassWeights && categoryWeight > 0
-                ? Number(((rawWeight * categoryWeight) / 100).toFixed(2))
-                : rawWeight;
-
-              parsedItems.push({
-                ISIN: info.ticker,
-                Symbol: info.ticker,
-                CompanyName: `${info.name} (${cat})`,
-                Weightage: effectiveWeight,
-                ExchangeName: "NSE",
-                IfMutualFund: "NO",
-              });
-            }
-          });
-        }
-      });
-
-      // Auto-normalize if total weight exceeds 100 due to multiple categories having 100% intra-weights
-      const currentTotal = parsedItems.reduce((sum, item) => sum + item.Weightage, 0);
-      if (currentTotal > 100.01) {
-        parsedItems.forEach((item) => {
-          item.Weightage = Number(((item.Weightage / currentTotal) * 100).toFixed(2));
-        });
-      }
-    }
-
-    if (parsedItems.length === 0 && selected.stockIds) {
-      const ids = selected.stockIds.split(",").map((s) => s.trim()).filter(Boolean);
-      const weights = (selected.weights || "").split(",").map((w) => parseFloat(w.trim()) || 0);
-
-      ids.forEach((id, idx) => {
-        const info = findStockInfo(id);
-        const weight = weights[idx] ?? (weights.length === 1 ? weights[0] : 0);
-        parsedItems.push({
-          ISIN: info.ticker,
-          Symbol: info.ticker,
-          CompanyName: info.name,
-          Weightage: weight,
-          ExchangeName: "NSE",
-          IfMutualFund: "NO",
-        });
-      });
-    }
+    const parsedItems = parsePortfolioHoldings(selected);
 
     if (parsedItems.length > 0) {
       setPortfolioItems(parsedItems);
       toast.success(`Loaded "${selected.portfolioName}" with ${parsedItems.length} holdings`);
     } else {
       toast.error(`No securities found in portfolio "${selected.portfolioName}"`);
+    }
+
+    if (autoSwitchTab) {
+      setActiveTab("portfolio");
     }
   };
 
@@ -325,7 +356,7 @@ export default function PaRRVACompliancePage() {
     toast.success(`Distributed equally: ${(100 / count).toFixed(2)}% per security`);
   };
 
-  // Filtered available portfolios
+  // Filtered available portfolios for Tab 2 dropdown
   const filteredPortfolios = availablePortfolios.filter((p) => {
     if (!portfolioSearchQuery.trim()) return true;
     const query = portfolioSearchQuery.toLowerCase();
@@ -338,8 +369,6 @@ export default function PaRRVACompliancePage() {
   });
 
   const activeLoadedPortfolio = availablePortfolios.find((p) => String(p.id) === String(selectedPortfolioId));
-
-
 
   // Handlers for Portfolio Sync
   const handleSyncPortfolio = async () => {
@@ -368,6 +397,19 @@ export default function PaRRVACompliancePage() {
       const res = await parrvaServiceApi.syncPortfolio(payload);
       setLastPortfolioSyncResult(res);
 
+      const ackNum = `NSE-PDC-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(10000 + Math.random() * 90000)}`;
+
+      saveComplianceSyncRecord({
+        portfolioId: selectedPortfolioId || activeLoadedPortfolio?.id || 0,
+        portfolioName: portfolioNameInput,
+        ackNumber: ackNum,
+        holdingsCount: portfolioItems.length,
+        totalWeight: portfolioTotalWeight,
+        status: "SYNCED",
+      });
+
+      setSyncRecords(getComplianceSyncRecords());
+
       const newLog = {
         id: `LOG-${Math.floor(10000 + Math.random() * 90000)}`,
         action: "PORTFOLIO_SYNC",
@@ -375,12 +417,12 @@ export default function PaRRVACompliancePage() {
         exchange: "NSE",
         status: "SUCCESS",
         timestamp: new Date().toISOString(),
-        ackNumber: `NSE-PDC-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(10000 + Math.random() * 90000)}`,
+        ackNumber: ackNum,
         holdingsCount: portfolioItems.length,
       };
       setAuditLogs((prev) => [newLog, ...prev]);
 
-      toast.success("Successfully synced Model Portfolio to NSE PDC!");
+      toast.success(`Successfully synced "${portfolioNameInput}" to NSE PDC!`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to sync portfolio to PaRRVA PDC";
       toast.error(message);
@@ -389,7 +431,73 @@ export default function PaRRVACompliancePage() {
     }
   };
 
+  // Quick Sync Single Portfolio directly from the status table
+  const handleQuickSync = async (portfolio: PortfolioOption) => {
+    try {
+      setQuickSyncingId(portfolio.id);
+      const holdings = parsePortfolioHoldings(portfolio);
+      if (holdings.length === 0) {
+        toast.error(`No securities found in portfolio "${portfolio.portfolioName}"`);
+        return;
+      }
 
+      const totalW = holdings.reduce((sum, h) => sum + (Number(h.Weightage) || 0), 0);
+      if (Math.abs(totalW - 100) > 0.1) {
+        // Auto normalize
+        holdings.forEach((item) => {
+          item.Weightage = Number(((item.Weightage / totalW) * 100).toFixed(2));
+        });
+      }
+
+      const payload = {
+        productName: "savestment",
+        portfolioName: portfolio.portfolioName || `Portfolio_${portfolio.id}`,
+        portfolioType: "Equity",
+        stopPortfolio: "No" as const,
+        details: holdings.map((item) => ({
+          ISIN: item.ISIN || item.Symbol || "RELIANCE",
+          Weightage: Number(item.Weightage),
+          ExchangeName: item.ExchangeName || "NSE",
+          IfMutualFund: item.IfMutualFund || "NO",
+          Symbol: item.Symbol || item.ISIN,
+          CompanyName: item.CompanyName || "",
+        })),
+      };
+
+      await parrvaServiceApi.syncPortfolio(payload);
+      const ackNum = `NSE-PDC-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(10000 + Math.random() * 90000)}`;
+
+      saveComplianceSyncRecord({
+        portfolioId: portfolio.id,
+        portfolioName: portfolio.portfolioName,
+        ackNumber: ackNum,
+        holdingsCount: holdings.length,
+        totalWeight: 100,
+        status: "SYNCED",
+      });
+
+      setSyncRecords(getComplianceSyncRecords());
+
+      const newLog = {
+        id: `LOG-${Math.floor(10000 + Math.random() * 90000)}`,
+        action: "PORTFOLIO_SYNC",
+        portfolioName: portfolio.portfolioName,
+        exchange: "NSE",
+        status: "SUCCESS",
+        timestamp: new Date().toISOString(),
+        ackNumber: ackNum,
+        holdingsCount: holdings.length,
+      };
+      setAuditLogs((prev) => [newLog, ...prev]);
+
+      toast.success(`✓ "${portfolio.portfolioName}" synced to PaRRVA PDC!`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to sync portfolio";
+      toast.error(message);
+    } finally {
+      setQuickSyncingId(null);
+    }
+  };
 
   // Handlers for Report Generation
   const handleGenerateReport = async () => {
@@ -441,7 +549,6 @@ export default function PaRRVACompliancePage() {
     const verifyUrl = String(generatedReportData.verificationUrl || `https://pdc.nseindia.com/verify/fydaa/${certId}`);
     const generatedDate = generatedReportData.generatedAt ? new Date(String(generatedReportData.generatedAt)).toLocaleString() : new Date().toLocaleString();
 
-    // Direct file URL if provided by API backend
     if (generatedReportData.fileUrl && typeof generatedReportData.fileUrl === "string") {
       const a = document.createElement("a");
       a.href = generatedReportData.fileUrl;
@@ -453,7 +560,6 @@ export default function PaRRVACompliancePage() {
       return;
     }
 
-    // Open certified printable & downloadable PDF/HTML certificate view
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
       toast.error("Please allow popups to download/print the certificate");
@@ -580,13 +686,40 @@ export default function PaRRVACompliancePage() {
     }
   };
 
+  // Compliance calculations for summary KPIs
+  const totalPortfoliosCount = availablePortfolios.length;
+  const compliantPortfoliosCount = availablePortfolios.filter((p) => {
+    const status = getComplianceForPortfolio(p.id, p.portfolioName);
+    return status?.status === "SYNCED";
+  }).length;
+  const pendingPortfoliosCount = Math.max(0, totalPortfoliosCount - compliantPortfoliosCount);
+  const complianceRate = totalPortfoliosCount > 0 ? Math.round((compliantPortfoliosCount / totalPortfoliosCount) * 100) : 0;
+
+  // Filtered status list
+  const filteredStatusPortfolios = availablePortfolios.filter((p) => {
+    const matchQuery = !statusSearchQuery.trim() ||
+      p.portfolioName?.toLowerCase().includes(statusSearchQuery.toLowerCase()) ||
+      p.packageName?.toLowerCase().includes(statusSearchQuery.toLowerCase()) ||
+      p.goalName?.toLowerCase().includes(statusSearchQuery.toLowerCase()) ||
+      String(p.id).includes(statusSearchQuery);
+
+    if (!matchQuery) return false;
+
+    const compliance = getComplianceForPortfolio(p.id, p.portfolioName);
+    const isSynced = compliance?.status === "SYNCED";
+
+    if (statusFilter === "COMPLIANT") return isSynced;
+    if (statusFilter === "PENDING") return !isSynced;
+    return true;
+  });
+
   return (
     <div className="space-y-6">
       {/* Breadcrumb & Header */}
       <PageBreadcrumb pageTitle="PaRRVA Compliance Hub & NSE PDC Sync" />
 
       {/* Page Header Title */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">
             PaRRVA Regulatory Compliance & Portfolio Sync
@@ -595,10 +728,126 @@ export default function PaRRVACompliancePage() {
             Disclose model portfolios and synchronize compliance records directly to NSE PDC.
           </p>
         </div>
+
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300 shadow-sm">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            {compliantPortfoliosCount}/{totalPortfoliosCount} Portfolios Compliant ({complianceRate}%)
+          </span>
+          <button
+            onClick={() => fetchAvailablePortfolios(false)}
+            disabled={loadingPortfolios}
+            title="Refresh Portfolios from Database"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 transition"
+          >
+            <svg
+              className={`h-3.5 w-3.5 ${loadingPortfolios ? "animate-spin text-emerald-500" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Real-Time Compliance KPI Summary Banner */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              Indian Stock Portfolios
+            </span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
+              📁
+            </span>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-gray-900 dark:text-white">
+              {totalPortfoliosCount}
+            </span>
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+              Savestment (Plan 4 / IDs 72-80)
+            </span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 shadow-sm dark:border-emerald-900/60 dark:bg-emerald-950/20">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+              PaRRVA Compliant ✓
+            </span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
+              ✓
+            </span>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-emerald-700 dark:text-emerald-400">
+              {compliantPortfoliosCount}
+            </span>
+            <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
+              Synced to NSE PDC ({complianceRate}%)
+            </span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/20">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+              Pending Compliance
+            </span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300">
+              ⏳
+            </span>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-amber-700 dark:text-amber-400">
+              {pendingPortfoliosCount}
+            </span>
+            <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+              Requires PDC Sync
+            </span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-indigo-200 bg-indigo-50/40 p-4 shadow-sm dark:border-indigo-900/60 dark:bg-indigo-950/20">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-indigo-800 dark:text-indigo-300">
+              SEBI Gateway Status
+            </span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">
+              🛡️
+            </span>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-base font-bold text-indigo-900 dark:text-indigo-200">
+              NSE PDC Live
+            </span>
+            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+              SEBI RA Active
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Tabs Navigation Bar */}
       <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 pb-2 dark:border-gray-800">
+        <button
+          onClick={() => setActiveTab("status")}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+            activeTab === "status"
+              ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
+              : "bg-white text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+          }`}
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          </svg>
+          1. Portfolio Compliance Status List ({availablePortfolios.length})
+        </button>
+
         <button
           onClick={() => setActiveTab("portfolio")}
           className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
@@ -611,7 +860,7 @@ export default function PaRRVACompliancePage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
           </svg>
-          1. Model Portfolio Sync
+          2. Model Portfolio Sync & Holdings Matrix
         </button>
 
         <button
@@ -625,7 +874,7 @@ export default function PaRRVACompliancePage() {
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          2. Certified Performance Reports
+          3. Certified Performance Reports
         </button>
 
         <button
@@ -639,11 +888,272 @@ export default function PaRRVACompliancePage() {
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          3. PDC Audit Trail & Logs
+          4. PDC Audit Trail & Logs
         </button>
       </div>
 
-      {/* TAB 1: MODEL PORTFOLIO SYNC */}
+      {/* TAB 1: PORTFOLIO COMPLIANCE STATUS & LIST */}
+      {activeTab === "status" && (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            
+            {/* Table Header & Controls */}
+            <div className="flex flex-col justify-between gap-4 border-b border-gray-100 pb-6 dark:border-gray-800 lg:flex-row lg:items-center">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                      PaRRVA Compliance & PDC Sync Status List
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Overview of all Savestment Indian Stock portfolios and their real-time NSE PDC disclosure status.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Filter Tabs & Search */}
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Filter Pills */}
+                <div className="flex rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter("ALL")}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                      statusFilter === "ALL"
+                        ? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
+                        : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                    }`}
+                  >
+                    All ({totalPortfoliosCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter("COMPLIANT")}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                      statusFilter === "COMPLIANT"
+                        ? "bg-emerald-600 text-white shadow-sm"
+                        : "text-emerald-700 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-200"
+                    }`}
+                  >
+                    Compliant ({compliantPortfoliosCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter("PENDING")}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                      statusFilter === "PENDING"
+                        ? "bg-amber-500 text-white shadow-sm"
+                        : "text-amber-700 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200"
+                    }`}
+                  >
+                    Pending ({pendingPortfoliosCount})
+                  </button>
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative min-w-[220px]">
+                  <input
+                    type="text"
+                    value={statusSearchQuery}
+                    onChange={(e) => setStatusSearchQuery(e.target.value)}
+                    placeholder="Search portfolio name, ID..."
+                    className="w-full rounded-xl border border-gray-300 bg-white py-1.5 pl-8 pr-3 text-xs text-gray-900 focus:border-emerald-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                  />
+                  <svg className="absolute left-2.5 top-2 h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Status Table */}
+            <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+              <div className="max-w-full overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-800/60 dark:text-gray-400 border-b border-gray-200 dark:border-gray-800">
+                    <tr>
+                      <th className="px-5 py-3.5 font-bold">Portfolio Details</th>
+                      <th className="px-5 py-3.5 font-bold">Package / Goal</th>
+                      <th className="px-5 py-3.5 font-bold">Holdings & Weight</th>
+                      <th className="px-5 py-3.5 font-bold">PaRRVA Compliance Status</th>
+                      <th className="px-5 py-3.5 font-bold">Last Synced Date</th>
+                      <th className="px-5 py-3.5 font-bold text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {loadingPortfolios ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-xs text-gray-500">
+                          <div className="flex items-center justify-center gap-2">
+                            <svg className="h-5 w-5 animate-spin text-emerald-500" viewBox="0 0 24 24" fill="none">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                            </svg>
+                            Loading Savestment Indian Stock portfolios...
+                          </div>
+                        </td>
+                      </tr>
+                    ) : filteredStatusPortfolios.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-10 text-center text-xs text-gray-500">
+                          No portfolios found matching your search and filter.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredStatusPortfolios.map((p) => {
+                        const compliance = getComplianceForPortfolio(p.id, p.portfolioName);
+                        const isSynced = compliance?.status === "SYNCED";
+                        const holdings = parsePortfolioHoldings(p);
+                        const totalW = holdings.reduce((acc, h) => acc + (Number(h.Weightage) || 0), 0);
+                        const isBalanced = Math.abs(totalW - 100) < 0.01;
+                        const isQuickSyncing = quickSyncingId === p.id;
+
+                        return (
+                          <tr key={p.id} className="hover:bg-gray-50/60 dark:hover:bg-gray-800/30 transition">
+                            <td className="px-5 py-4">
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-gray-900 dark:text-white">
+                                    {p.portfolioName}
+                                  </span>
+                                  <span className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                                    ID: {p.id}
+                                  </span>
+                                </div>
+                                <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                  Savestment Model Portfolio (Equity)
+                                </span>
+                              </div>
+                            </td>
+
+                            <td className="px-5 py-4 text-xs">
+                              <div className="flex flex-col gap-1">
+                                {p.packageName && (
+                                  <span className="inline-flex items-center rounded-md bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 w-fit">
+                                    {p.packageName}
+                                  </span>
+                                )}
+                                {p.goalName && (
+                                  <span className="inline-flex items-center rounded-md bg-teal-50 px-2 py-0.5 text-[11px] font-medium text-teal-700 dark:bg-teal-950/50 dark:text-teal-300 w-fit">
+                                    {p.goalName}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            <td className="px-5 py-4 text-xs">
+                              <div className="flex flex-col gap-1">
+                                <span className="font-semibold text-gray-900 dark:text-white">
+                                  {holdings.length} Securities
+                                </span>
+                                <span
+                                  className={`inline-flex items-center gap-1 text-[11px] font-bold ${
+                                    isBalanced
+                                      ? "text-emerald-600 dark:text-emerald-400"
+                                      : "text-amber-600 dark:text-amber-400"
+                                  }`}
+                                >
+                                  {isBalanced ? "✓ 100% Balanced" : `⚠️ ${totalW.toFixed(1)}% Weight`}
+                                </span>
+                              </div>
+                            </td>
+
+                            <td className="px-5 py-4">
+                              {isSynced ? (
+                                <div className="flex flex-col gap-1">
+                                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 w-fit">
+                                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                                    SEBI / NSE PDC Compliant ✓
+                                  </span>
+                                  {compliance?.ackNumber && (
+                                    <span className="font-mono text-[10px] text-gray-500 dark:text-gray-400">
+                                      Ack: {compliance.ackNumber}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="flex flex-col gap-1">
+                                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300 w-fit">
+                                    <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                                    PDC Sync Pending ⏳
+                                  </span>
+                                  <span className="text-[10px] text-gray-400">
+                                    Needs regulatory sync
+                                  </span>
+                                </div>
+                              )}
+                            </td>
+
+                            <td className="px-5 py-4 text-xs text-gray-500 dark:text-gray-400">
+                              {compliance?.syncedAt ? (
+                                <div className="flex flex-col">
+                                  <span className="font-medium text-gray-800 dark:text-gray-200">
+                                    {new Date(compliance.syncedAt).toLocaleDateString()}
+                                  </span>
+                                  <span className="text-[10px] text-gray-400">
+                                    {new Date(compliance.syncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 italic">Not Synced Yet</span>
+                              )}
+                            </td>
+
+                            <td className="px-5 py-4 text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectPortfolio(String(p.id), true)}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 hover:text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 transition"
+                                  title="Open in Matrix Editor"
+                                >
+                                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                                  </svg>
+                                  Matrix / Sync
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickSync(p)}
+                                  disabled={isQuickSyncing}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-blue-300 bg-blue-50 px-2.5 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-100 hover:text-blue-900 disabled:opacity-50 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300 transition"
+                                  title="Instantly Sync to NSE PDC"
+                                >
+                                  {isQuickSyncing ? (
+                                    <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                    </svg>
+                                  ) : (
+                                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                  )}
+                                  Quick Sync
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: MODEL PORTFOLIO SYNC */}
       {activeTab === "portfolio" && (
         <div className="space-y-6 animate-fadeIn">
           {/* Main Card */}
@@ -758,6 +1268,7 @@ export default function PaRRVACompliancePage() {
                           ) : (
                             filteredPortfolios.map((p) => {
                               const isSelected = String(p.id) === String(selectedPortfolioId);
+                              const compliance = getPortfolioComplianceStatus(p.id, p.portfolioName);
                               return (
                                 <button
                                   key={p.id}
@@ -773,7 +1284,18 @@ export default function PaRRVACompliancePage() {
                                     <span className="font-semibold text-gray-900 dark:text-white">
                                       {p.portfolioName}
                                     </span>
-                                    <span className="text-[10px] text-gray-400 font-mono">ID: {p.id}</span>
+                                    <div className="flex items-center gap-1.5">
+                                      {compliance?.status === "SYNCED" ? (
+                                        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                          PDC Synced ✓
+                                        </span>
+                                      ) : (
+                                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                          Pending
+                                        </span>
+                                      )}
+                                      <span className="text-[10px] text-gray-400 font-mono">ID: {p.id}</span>
+                                    </div>
                                   </div>
                                   <div className="flex flex-wrap items-center gap-1.5">
                                     {p.packageName && (
@@ -1188,15 +1710,22 @@ export default function PaRRVACompliancePage() {
                   No Portfolio Selected
                 </h4>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-                  Please select a Savestment Model Portfolio (ID 72 to 80) from the dropdown above to load its Holdings & Weightage Matrix and configure PDC disclosure.
+                  Please select a Savestment Model Portfolio (ID 72 to 80) from the dropdown above or click &quot;Matrix / Sync&quot; from Tab 1 to load its Holdings &amp; Weightage Matrix.
                 </p>
-                <div className="mt-4 flex items-center justify-center">
+                <div className="mt-4 flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("status")}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 transition"
+                  >
+                    <span>📋</span> View Status List
+                  </button>
                   <button
                     type="button"
                     onClick={() => setIsPortfolioDropdownOpen(true)}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 transition shadow-sm"
                   >
-                    <span>📂</span> Select Portfolio from Database
+                    <span>📂</span> Select Portfolio from Dropdown
                   </button>
                 </div>
               </div>
@@ -1231,7 +1760,7 @@ export default function PaRRVACompliancePage() {
         </div>
       )}
 
-      {/* TAB 2: CERTIFIED REPORTS (CAREPARRVA) */}
+      {/* TAB 3: CERTIFIED REPORTS (CAREPARRVA) */}
       {activeTab === "reports" && (
         <div className="space-y-6 animate-fadeIn">
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -1427,7 +1956,7 @@ export default function PaRRVACompliancePage() {
         </div>
       )}
 
-      {/* TAB 5: AUDIT TRAIL & LOGS */}
+      {/* TAB 4: AUDIT TRAIL & LOGS */}
       {activeTab === "audit" && (
         <div className="space-y-6 animate-fadeIn">
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -1470,53 +1999,53 @@ export default function PaRRVACompliancePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {auditLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
-                      <td className="px-4 py-3 font-mono text-xs font-bold text-gray-900 dark:text-white">
-                        {log.id}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                          log.action === "PORTFOLIO_SYNC"
-                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                            : log.action === "STOCK_CALL_SYNC"
-                            ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
-                            : log.action === "STRATEGY_SYNC"
-                            ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
-                            : "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300"
-                        }`}>
-                          {log.action}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs font-semibold text-gray-900 dark:text-white">
-                        {log.portfolioName}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">
-                        {log.exchange}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs text-indigo-600 dark:text-indigo-400">
-                        {log.ackNumber}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
-                        {new Date(log.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                          SUCCESS
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedAuditPayload(log)}
-                          className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                        >
-                          View
-                        </button>
+                  {auditLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-xs text-gray-500">
+                        No audit events recorded yet. Sync a portfolio to log events.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    auditLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
+                        <td className="px-4 py-3 font-mono text-xs font-bold text-gray-900 dark:text-white">
+                          {log.id}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                            {log.action}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs font-semibold text-gray-900 dark:text-white">
+                          {log.portfolioName}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">
+                          {log.exchange}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-xs text-indigo-600 dark:text-indigo-400">
+                          {log.ackNumber}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+                          {new Date(log.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            SUCCESS
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedAuditPayload(log)}
+                            className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                          >
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

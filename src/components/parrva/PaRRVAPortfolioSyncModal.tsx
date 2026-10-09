@@ -207,6 +207,7 @@ export default function PaRRVAPortfolioSyncModal({
     });
   };
 
+  
   const handleExchangeChange = (index: number, ex: 'NSE' | 'BSE') => {
     setItems((prev) => {
       const next = [...prev];
