@@ -265,12 +265,6 @@ export default function StockModal({
     }));
   };
 
-  const handleSelectChange = (field: keyof StockData) => (e: { value: string }) => {
-    setStockData(prev => ({
-      ...prev,
-      [field]: e.value
-    }));
-  };
 
   const viewRationaleFile = (fileUrl: string) => {
     window.open(fileUrl, '_blank');
